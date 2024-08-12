@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      2.1 Close BETA
+// @version      2.21 Close BETA
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -116,120 +116,12 @@
             vertical-align: middle;
             margin-left: 5px;
         }
-        .info-icon {
-            width: 16px;
-            height: 16px;
-            vertical-align: middle;
-            cursor: pointer;
-            margin-left: 5px;
-        }
-        .info-icon:hover {
-            filter: brightness(0.8);
-        }
-        #history-tooltip {
-            display: none;
-            position: absolute;
-            background-color: #34495e;
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-            width: 250px;
-        }
-        #history-tooltip h3 {
-            text-align: center;
-            font-size: 12px;
-            margin-top: 0;
-            margin-bottom: 10px;
-        }
-        #history-tooltip ul {
-            list-style-type: none;
-            padding-left: 0;
-            margin: 0;
-        }
-        #history-tooltip li {
-            margin-bottom: 5px;
-        }
     `);
 
-    let lastKnownCredits = 0;
-    let dailyCredits = 0;
-    let history = JSON.parse(localStorage.getItem("creditHistory")) || [];
-
-    function resetDailyCredits() {
-        const now = new Date();
-        const day = now.toLocaleDateString("de-DE", { weekday: 'short' });
-        const date = now.toLocaleDateString("de-DE");
-        history.push({ day, date, credits: dailyCredits });
-        if (history.length > 7) {
-            history.shift(); // Entfernt den ältesten Eintrag, um Platz zu schaffen
-        }
-        localStorage.setItem("creditHistory", JSON.stringify(history));
-
-        dailyCredits = 0;
-        localStorage.setItem("dailyCredits", dailyCredits);
-        localStorage.setItem("lastReset", now.toISOString());
-    }
-
-    function checkForMidnight() {
-        const lastReset = new Date(localStorage.getItem("lastReset") || 0);
-        const now = new Date();
-        if (now.getDate() !== lastReset.getDate() || now.getTime() - lastReset.getTime() > 24 * 60 * 60 * 1000) {
-            resetDailyCredits();
-        }
-    }
-
-    function updateDailyCredits(currentCredits) {
-        if (lastKnownCredits !== 0) {
-            const creditsEarned = currentCredits - lastKnownCredits;
-            if (creditsEarned > 0) {
-                dailyCredits += creditsEarned;
-                localStorage.setItem("dailyCredits", dailyCredits);
-            }
-        }
-        lastKnownCredits = currentCredits;
-        localStorage.setItem("lastKnownCredits", lastKnownCredits);
-    }
-
-    function fetchStoredData() {
-        lastKnownCredits = parseInt(localStorage.getItem("lastKnownCredits"), 10) || 0;
-        dailyCredits = parseInt(localStorage.getItem("dailyCredits"), 10) || 0;
-    }
-
-    // Funktion zum Erstellen des Tooltips
-    function createHistoryTooltip() {
-        const historyHtml = history.map(entry =>
-            `<li>${entry.day}, ${entry.date}: ${entry.credits.toLocaleString()} Credits</li>`).join("");
-
-        const tooltipHtml = `
-            <div id="history-tooltip">
-                <h3>Credits Historie</h3>
-                <ul>${historyHtml}</ul>
-            </div>
-        `;
-
-        $("body").append(tooltipHtml);
-    }
-
-    // Funktion zum Anzeigen des Tooltips
-    function showTooltip(event) {
-        const tooltip = $("#history-tooltip");
-        tooltip.css({
-            top: event.pageY + "px",
-            left: event.pageX - tooltip.outerWidth() - 20 + "px" // Linke Seite des Menüs
-        });
-        tooltip.show();
-    }
-
-    // Funktion zum Verbergen des Tooltips
-    function hideTooltip() {
-        $("#history-tooltip").hide();
-    }
+    let currentAllianceId = null;
 
     // Funktion zum Abrufen der Verbandsinformationen
     function fetchAllianceInfo() {
-        checkForMidnight();
         GM_xmlhttpRequest({
             method: "GET",
             url: "https://www.leitstellenspiel.de/api/allianceinfo",
@@ -237,25 +129,64 @@
                 if (response.status === 200) {
                     try {
                         const data = JSON.parse(response.responseText);
-                        updateAllianceStatistics(data);
-                        updateAllianceTeam(data.users);
+                        if (data && data.id !== currentAllianceId) {
+                            currentAllianceId = data.id;
+                            updateAllianceStatistics(data);
+                            updateAllianceTeam(data.users);
+                        } else if (!data || !data.id) {
+                            currentAllianceId = null;
+                            displayNoDataAvailable();
+                            clearAllianceTeam();
+                        } else {
+                            updateAllianceStatistics(data);
+                            updateAllianceTeam(data.users);
+                        }
                     } catch (e) {
                         console.error("Fehler beim Parsen der API-Daten:", e);
+                        displayNoDataAvailable();
+                        clearAllianceTeam();
                     }
                 } else {
                     console.error("Fehler beim Abrufen der API-Daten: ", response.status);
+                    displayNoDataAvailable();
+                    clearAllianceTeam();
                 }
             },
             onerror: function () {
                 console.error("Fehler beim Abrufen der API-Daten.");
+                displayNoDataAvailable();
+                clearAllianceTeam();
             },
         });
+    }
+
+    // Funktion zum Anzeigen von "Keine Daten Verfügbar"
+    function displayNoDataAvailable() {
+        let dropdownMenu = $("#alliance-statistics-menu");
+        if (dropdownMenu.length > 0) {
+            dropdownMenu.find(".alliance-name").text("Keine Daten Verfügbar");
+            dropdownMenu.find(".total-credits").text("Keine Daten");
+            dropdownMenu.find(".current-credits").text("Keine Daten");
+            dropdownMenu.find(".total-members").text("Keine Daten");
+            dropdownMenu.find(".rank").text("Keine Daten");
+        } else {
+            console.error("Statistikmenü nicht gefunden.");
+        }
+    }
+
+    // Funktion zum Leeren der Team-Box bei Austritt aus dem Verband
+    function clearAllianceTeam() {
+        let teamBox = $("#alliance-team-box");
+        if (teamBox.length > 0) {
+            teamBox.empty();
+        }
     }
 
     // Funktion zum Aktualisieren der Verbandsstatistiken im Menü
     function updateAllianceStatistics(data) {
         if (!data) {
             console.error("Datenobjekt ist nicht definiert.");
+            displayNoDataAvailable();
             return;
         }
 
@@ -265,8 +196,6 @@
         const currentCredits = data.credits_current || 0;
         const totalMembers = data.user_count || 0;
         const rank = data.rank || "Unbekannt";
-
-        updateDailyCredits(totalCredits);
 
         let dropdownMenu = $("#alliance-statistics-menu");
         if (dropdownMenu.length === 0) {
@@ -302,12 +231,6 @@
                 `<li><a href="#" class="alliance-statistics-item"><strong>Gesamtverdiente Credits:</strong>
                     <span class="alliance-statistics-value total-credits">
                     ${totalCredits.toLocaleString()}</span></a></li>`
-            );
-            dropdownMenu.append(
-                `<li><a href="#" class="alliance-statistics-item"><strong>Gesamtverdiente Credits (24h):</strong>
-                    <span class="alliance-statistics-value credits-last-24-hours">
-                    ${dailyCredits.toLocaleString()}</span>
-                    <img src="https://i.ibb.co/6NQR7Zt/pngwing-com.png" class="info-icon" id="history-icon" alt="Info"></a></li>`
             );
             dropdownMenu.append(
                 `<li><a href="#" class="alliance-statistics-item"><strong>Verbandskasse:</strong>
@@ -365,25 +288,31 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Ersteller: Fabian (Capt.BobbyNash)</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.1 (Close BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.2.1 (Close BETA)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der Verband-Statistiken</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der Gesamtverdienten Credits des Verbandes</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">- Übersicht über Credits, Mitglieder, Rang und Einsätze</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der aktuellen Verbandskasse</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der Credits der letzten 24 Stunden</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der Gesamtanzahl der Mitglieder</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">- Automatische Aktualisierung der Statistiken alle 5 Sekunden</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige des aktuellen Rangs des Verbandes</a></li>`
+            );
+            scriptInfoContainer.append(
+                `<li><a href="#" style="color: white; font-size: 10px;">- Ausklappbare Übersicht der Verbands-Teaminformationen</a></li>`
+            );
+            scriptInfoContainer.append(
+                `<li><a href="#" style="color: white; font-size: 10px;">- Automatische Echtzeit-Aktualisierung der Statistiken alle 1 Sekunde</a></li>`
             );
 
             // Wasserzeichen Logo in der Skript-Info
@@ -413,17 +342,6 @@
                 return false;
             });
 
-            // Maus-Events für das Info-Symbol
-            dropdownMenu.on("mouseenter", "#history-icon", function (e) {
-                showTooltip(e);
-            });
-            dropdownMenu.on("mousemove", "#history-icon", function (e) {
-                showTooltip(e);
-            });
-            dropdownMenu.on("mouseleave", "#history-icon", function () {
-                hideTooltip();
-            });
-
             menuEntry.append(dropdownLink);
             menuEntry.append(dropdownMenu);
 
@@ -441,7 +359,6 @@
             $("#alliance-statistics-menu .current-credits").text(currentCredits.toLocaleString());
             $("#alliance-statistics-menu .total-members").text(totalMembers);
             $("#alliance-statistics-menu .rank").text(rank);
-            $("#alliance-statistics-menu .credits-last-24-hours").text(dailyCredits.toLocaleString());
         }
     }
 
@@ -477,10 +394,8 @@
     }
 
     $(document).ready(function () {
-        fetchStoredData();
-        createHistoryTooltip();
         fetchAllianceInfo();
-        setInterval(fetchAllianceInfo, 5000);
-        setInterval(updateAllianceTeam, 1800000); // Team-Update alle 30 Minuten
+        setInterval(fetchAllianceInfo, 1000); // Echtzeit-Aktualisierung alle 1 Sekunde
+        setInterval(updateAllianceTeam, 600000); // Team-Update alle 10 Minuten
     });
 })();
