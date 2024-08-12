@@ -8,8 +8,8 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
-// @updateURL    https://github.com/CaLaVeRaXGER/LSS-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20CLOSE%20BETA-1.00CloseBETA.user.js
-// @downloadURL  https://github.com/CaLaVeRaXGER/LSS-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20CLOSE%20BETA-1.00CloseBETA.user.js
+// @updateURL    https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js
+// @downloadURL  https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js
 // ==/UserScript==
 
 (function () {
