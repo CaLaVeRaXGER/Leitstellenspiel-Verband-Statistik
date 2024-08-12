@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      2.0 Close BETA
+// @version      2.4 Close BETA
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -116,10 +116,84 @@
             vertical-align: middle;
             margin-left: 5px;
         }
+        .info-icon {
+            width: 16px;
+            height: 16px;
+            vertical-align: middle;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .info-icon:hover {
+            filter: brightness(0.8);
+        }
     `);
+
+    let lastKnownCredits = 0;
+    let dailyCredits = 0;
+    let history = JSON.parse(localStorage.getItem("creditHistory")) || [];
+
+    function resetDailyCredits() {
+        const now = new Date();
+        const day = now.toLocaleDateString("de-DE", { weekday: 'short' });
+        const date = now.toLocaleDateString("de-DE");
+        history.push({ day, date, credits: dailyCredits });
+        if (history.length > 7) {
+            history.shift(); // Entfernt den ältesten Eintrag, um Platz zu schaffen
+        }
+        localStorage.setItem("creditHistory", JSON.stringify(history));
+
+        dailyCredits = 0;
+        localStorage.setItem("dailyCredits", dailyCredits);
+        localStorage.setItem("lastReset", now.toISOString());
+    }
+
+    function checkForMidnight() {
+        const lastReset = new Date(localStorage.getItem("lastReset") || 0);
+        const now = new Date();
+        if (now.getDate() !== lastReset.getDate() || now.getTime() - lastReset.getTime() > 24 * 60 * 60 * 1000) {
+            resetDailyCredits();
+        }
+    }
+
+    function updateDailyCredits(currentCredits) {
+        if (lastKnownCredits !== 0) {
+            const creditsEarned = currentCredits - lastKnownCredits;
+            if (creditsEarned > 0) {
+                dailyCredits += creditsEarned;
+                localStorage.setItem("dailyCredits", dailyCredits);
+            }
+        }
+        lastKnownCredits = currentCredits;
+        localStorage.setItem("lastKnownCredits", lastKnownCredits);
+    }
+
+    function fetchStoredData() {
+        lastKnownCredits = parseInt(localStorage.getItem("lastKnownCredits"), 10) || 0;
+        dailyCredits = parseInt(localStorage.getItem("dailyCredits"), 10) || 0;
+    }
+
+    // Funktion zum Anzeigen der Historie
+    function showHistory() {
+        const historyHtml = history.map(entry =>
+            `<li>${entry.day}, ${entry.date}: ${entry.credits.toLocaleString()} Credits</li>`).join("");
+
+        const historyContainer = $(`
+            <div id="history-container" style="padding: 10px; background-color: #34495e; color: white; border-radius: 8px;">
+                <h3 style="text-align: center; font-weight: bold; text-decoration: underline;">Credits Historie</h3>
+                <ul style="list-style-type:none; padding-left: 0;">${historyHtml}</ul>
+            </div>
+        `);
+
+        if ($("#history-container").length === 0) {
+            $("#alliance-statistics-menu").append(historyContainer);
+        } else {
+            $("#history-container").toggle();
+        }
+    }
 
     // Funktion zum Abrufen der Verbandsinformationen
     function fetchAllianceInfo() {
+        checkForMidnight();
         GM_xmlhttpRequest({
             method: "GET",
             url: "https://www.leitstellenspiel.de/api/allianceinfo",
@@ -156,6 +230,8 @@
         const totalMembers = data.user_count || 0;
         const rank = data.rank || "Unbekannt";
 
+        updateDailyCredits(totalCredits);
+
         let dropdownMenu = $("#alliance-statistics-menu");
         if (dropdownMenu.length === 0) {
             const menuEntry = $('<li class="dropdown"></li>');
@@ -190,6 +266,12 @@
                 `<li><a href="#" class="alliance-statistics-item"><strong>Gesamtverdiente Credits:</strong>
                     <span class="alliance-statistics-value total-credits">
                     ${totalCredits.toLocaleString()}</span></a></li>`
+            );
+            dropdownMenu.append(
+                `<li><a href="#" class="alliance-statistics-item"><strong>Gesamtverdiente Credits (24h):</strong>
+                    <span class="alliance-statistics-value credits-last-24-hours">
+                    ${dailyCredits.toLocaleString()}</span>
+                    <img src="https://i.ibb.co/6NQR7Zt/pngwing-com.png" class="info-icon" id="history-icon" alt="Info"></a></li>`
             );
             dropdownMenu.append(
                 `<li><a href="#" class="alliance-statistics-item"><strong>Verbandskasse:</strong>
@@ -250,7 +332,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.0 (Close BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.4 (Close BETA)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
@@ -295,6 +377,13 @@
                 return false;
             });
 
+            // Klick-Event für das Info-Symbol
+            dropdownMenu.on("click", "#history-icon", function (e) {
+                e.preventDefault();
+                showHistory();
+                return false;
+            });
+
             menuEntry.append(dropdownLink);
             menuEntry.append(dropdownMenu);
 
@@ -312,6 +401,7 @@
             $("#alliance-statistics-menu .current-credits").text(currentCredits.toLocaleString());
             $("#alliance-statistics-menu .total-members").text(totalMembers);
             $("#alliance-statistics-menu .rank").text(rank);
+            $("#alliance-statistics-menu .credits-last-24-hours").text(dailyCredits.toLocaleString());
         }
     }
 
@@ -347,6 +437,7 @@
     }
 
     $(document).ready(function () {
+        fetchStoredData();
         fetchAllianceInfo();
         setInterval(fetchAllianceInfo, 5000);
         setInterval(updateAllianceTeam, 1800000); // Team-Update alle 30 Minuten
