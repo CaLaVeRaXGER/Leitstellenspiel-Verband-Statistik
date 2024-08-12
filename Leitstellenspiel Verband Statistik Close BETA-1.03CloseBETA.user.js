@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      2.0 Close BETA
+// @version      2.0.1 Close BETA
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -15,19 +15,120 @@
 (function () {
     "use strict";
 
+    // Stil für das neue Design hinzufügen
+    GM_addStyle(`
+        #alliance-statistics-menu {
+            padding: 8px;
+            min-width: 450px; /* Kleineres Layout */
+            background-color: #2c3e50;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+            color: white;
+            word-wrap: break-word;
+            border-radius: 8px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Professionelle Schriftart */
+        }
+        #alliance-statistics-menu a {
+            color: #ecf0f1;
+            text-decoration: none;
+            font-size: 14px; /* Kleinere Schrift */
+        }
+        #alliance-statistics-menu a:hover {
+            color: #3498db;
+        }
+        #alliance-statistics-menu .divider {
+            border-bottom: 1px solid #7f8c8d;
+            margin: 4px 0; /* Weniger Abstand zwischen den Elementen */
+        }
+        #alliance-statistics-menu li {
+            margin-bottom: 2px;
+            list-style-type: none;
+        }
+        #script-info-container {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 5px;
+            position: relative;
+        }
+        #script-info-container::after {
+            content: '© 2024 Fabian (Capt.BobbyNash)';
+            font-size: 10px;
+            color: #7f8c8d;
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+        }
+        #alliance-statistics-logo {
+            position: absolute;
+            bottom: 25px;
+            right: 10px;
+            opacity: 0.2;
+            height: 80px;
+        }
+        #header-container {
+            text-align: center;
+            position: relative;
+        }
+        #header-logo-left, #header-logo-right {
+            height: 45px; /* Kleinere Logos */
+            vertical-align: middle;
+        }
+        #header-logo-left {
+            margin-right: 8px;
+        }
+        #header-logo-right {
+            margin-left: 8px;
+        }
+        #header-title {
+            display: inline-block;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            text-decoration: underline;
+            pointer-events: none; /* Keine Interaktion möglich */
+            vertical-align: middle;
+        }
+        #script-info-toggle::after, #team-info-toggle::after {
+            content: '\\25BC'; /* Caret Symbol */
+            margin-left: 5px;
+            font-size: 11px; /* Größe des Caret-Symbols */
+        }
+        #script-info-toggle.caret-up::after, #team-info-toggle.caret-up::after {
+            content: '\\25B2'; /* Caret nach oben */
+        }
+        #alliance-team-box strong {
+            font-size: 12px;
+            color: #ecf0f1;
+        }
+
+        /* Verkleinerte Schrift und Zahlen für die Statistiken */
+        .alliance-statistics-item {
+            font-size: 17px; /* Verkleinerte Schriftgröße */
+            font-weight: bold;
+        }
+        .alliance-statistics-value {
+            font-size: 17px; /* Verkleinerte Schriftgröße */
+            color: #2ecc71; /* Helles Grün */
+            font-weight: bold;
+        }
+        #dropdown-arrow {
+            font-size: 11px; /* Pfeilgröße */
+            color: white;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+    `);
+
     // Funktion zum Abrufen der Verbandsinformationen
     function fetchAllianceInfo() {
-        console.log("Abrufen der API-Daten...");
         GM_xmlhttpRequest({
             method: "GET",
             url: "https://www.leitstellenspiel.de/api/allianceinfo",
             onload: function (response) {
-                console.log("API Antwort erhalten", response);
                 if (response.status === 200) {
                     try {
                         const data = JSON.parse(response.responseText);
-                        console.log("Geparste API-Daten:", data);
-                        updateAllianceStatistics(data); // Statistiken aktualisieren
+                        updateAllianceStatistics(data);
+                        updateAllianceTeam(data.users);
                     } catch (e) {
                         console.error("Fehler beim Parsen der API-Daten:", e);
                     }
@@ -48,153 +149,162 @@
             return;
         }
 
-        const allianceName = data.name || "Unbekannt"; // Name des Verbands
-        const allianceId = data.id || "#"; // ID des Verbands
-        const totalCredits = data.credits_total || 0; // Gesamtverdiente Credits
-        const currentCredits = data.credits_current || 0; // Aktuelle Credits (Verbandskasse)
-        const totalMembers = data.user_count || 0; // Mitgliederanzahl
+        const allianceName = data.name || "Unbekannt";
+        const allianceId = data.id || "#";
+        const totalCredits = data.credits_total || 0;
+        const currentCredits = data.credits_current || 0;
+        const totalMembers = data.user_count || 0;
         const rank = data.rank || "Unbekannt";
-        const totalMissions = data.missions_total || "Daten nicht verfügbar"; // Annahme: API liefert missions_total
-        const creditsLast24h = data.credits_last_24h || "Daten nicht verfügbar"; // Annahme: API liefert credits_last_24h
 
-        console.log("Aktualisierte Statistiken: ", {
-            allianceName,
-            totalCredits,
-            currentCredits,
-            totalMembers,
-            rank,
-            totalMissions,
-            creditsLast24h,
-        });
-
-        // Überprüfen, ob das Dropdown-Menü bereits existiert
         let dropdownMenu = $("#alliance-statistics-menu");
         if (dropdownMenu.length === 0) {
-            // Menüeintrag für die Statistiken erstellen
             const menuEntry = $('<li class="dropdown"></li>');
-
-            // Link für das Dropdown-Menü
             const dropdownLink = $(
-                '<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Verband Statistiken <span class="caret"></span></a>'
+                `<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+                    <img id="header-logo" src="https://i.postimg.cc/hjsm7tQV/LSSS-Logo-fertig.png" alt="Logo" style="height: 20px; width: 35px; vertical-align: middle;">
+                    <span id="dropdown-arrow">&#9660;</span>
+                </a>`
             );
 
-            // Dropdown-Menü-Container erstellen
-            dropdownMenu = $('<ul id="alliance-statistics-menu" class="dropdown-menu" role="menu"></ul>').css({
-                padding: "10px",
-                minWidth: "400px", // Vergrößerte Breite auf 400px
-                backgroundColor: "#000000", // Schwarzer Hintergrund
-                boxShadow: "0 0 10px rgba(0, 0, 0, 0.5)",
-                color: "white", // Weiße Schrift
-                wordWrap: "break-word", // Textumbruch
-            });
+            dropdownMenu = $('<ul id="alliance-statistics-menu" class="dropdown-menu" role="menu"></ul>');
 
-            // Überschrift für die Statistik
+            // Überschrift mit Logos links und rechts
             dropdownMenu.append(
-                `<li><a href="#" style="color: white; text-align: center; font-size: 16px; font-weight: bold; text-decoration: underline;">Verband Statistik</a></li>`
+                `<li id="header-container">
+                    <img id="header-logo-left" src="https://i.postimg.cc/hjsm7tQV/LSSS-Logo-fertig.png" alt="Logo">
+                    <span id="header-title">Verband Statistik</span>
+                    <img id="header-logo-right" src="https://i.postimg.cc/hjsm7tQV/LSSS-Logo-fertig.png" alt="Logo">
+                </li>`
             );
-            dropdownMenu.append(`<li class="divider"></li>`); // Trennlinie
+            dropdownMenu.append(`<li class="divider"></li>`);
 
-            // Name des Verbands hinzufügen, mit Link zur Verbandsseite
+            // Verbandsname und Link
             dropdownMenu.append(
-                `<li><a href="https://www.leitstellenspiel.de/alliances/${allianceId}" style="color: white; font-size: 14px;"><strong>Verband:</strong> <span style="color: green;" class="alliance-name">${allianceName}</span></a></li>`
+                `<li><a href="https://www.leitstellenspiel.de/alliances/${allianceId}" class="alliance-statistics-item">
+                    <strong>Verband:</strong> <span class="alliance-statistics-value alliance-name">${allianceName}</span></a></li>`
             );
-            dropdownMenu.append(`<li class="divider"></li>`); // Trennlinie
+            dropdownMenu.append(`<li class="divider"></li>`);
 
             // Statistiken hinzufügen
             dropdownMenu.append(
-                `<li><a href="#" style="color: white;"><strong>Gesamtverdiente Credits:</strong> <span style="color: green; font-weight: bold;" class="total-credits">${totalCredits.toLocaleString()}</span></a></li>`
+                `<li><a href="#" class="alliance-statistics-item"><strong>Gesamtverdiente Credits:</strong>
+                    <span class="alliance-statistics-value total-credits">
+                    ${totalCredits.toLocaleString()}</span></a></li>`
             );
             dropdownMenu.append(
-                `<li><a href="#" style="color: white;"><strong>Verbandskasse:</strong> <span style="color: green; font-weight: bold;" class="current-credits">${currentCredits.toLocaleString()}</span></a></li>`
+                `<li><a href="#" class="alliance-statistics-item"><strong>Verbandskasse:</strong>
+                    <span class="alliance-statistics-value current-credits">
+                    ${currentCredits.toLocaleString()}</span></a></li>`
             );
             dropdownMenu.append(
-                `<li><a href="#" style="color: white;"><strong>Mitglieder:</strong> <span style="color: green; font-weight: bold;" class="total-members">${totalMembers}</span></a></li>`
+                `<li><a href="#" class="alliance-statistics-item"><strong>Mitglieder:</strong>
+                    <span class="alliance-statistics-value total-members">
+                    ${totalMembers}</span></a></li>`
             );
             dropdownMenu.append(
-                `<li><a href="#" style="color: white;"><strong>Rang:</strong> <span style="color: green; font-weight: bold;" class="rank">${rank}</span></a></li>`
+                `<li><a href="#" class="alliance-statistics-item"><strong>Rang:</strong>
+                    <span class="alliance-statistics-value rank">
+                    ${rank}</span></a></li>`
             );
+
+            dropdownMenu.append(`<li class="divider"></li>`);
+
+            // Verbands-Team, das sich ausklappen lässt
             dropdownMenu.append(
-                `<li><a href="#" style="color: white;"><strong>Gesamteinsätze:</strong> <span style="color: green; font-weight: bold;" class="total-missions">${totalMissions}</span></a></li>`
+                `<li><a href="#" id="team-info-toggle" style="color: white; text-align: center; font-size: 14px; font-weight: bold; text-decoration: underline;">
+                    Verbands-Team <span id="team-caret" class="caret"></span></a></li>`
             );
-            dropdownMenu.append(
-                `<li><a href="#" style="color: white;"><strong>Credits in den letzten 24 Stunden:</strong> <span style="color: green; font-weight: bold;" class="credits-last-24h">${creditsLast24h}</span></a></li>`
-            );
+
+            // Container für das Verbands-Team (anfangs versteckt)
+            const teamInfoContainer = $('<div id="team-info-container"></div>').css({
+                display: "none",
+                marginTop: "8px",
+            });
+
+            teamInfoContainer.append(`<ul id="alliance-team-box" style="list-style-type:none; padding-left: 0;"></ul>`);
+
+            dropdownMenu.append(teamInfoContainer);
 
             // Trennlinie vor der Skript-Info
             dropdownMenu.append(`<li class="divider"></li>`);
 
             // Überschrift für die einklappbare Skript-Info
             dropdownMenu.append(
-                `<li><a href="#" id="script-info-toggle" style="color: white; text-align: center; font-size: 16px; font-weight: bold; text-decoration: underline;">Skript Info</a></li>`
+                `<li><a href="#" id="script-info-toggle" style="color: white; text-align: center; font-size: 14px; font-weight: bold; text-decoration: underline;">
+                    Skript Info <span id="script-caret" class="caret"></span></a></li>`
             );
 
             // Container für die Skript-Info (anfangs versteckt)
             const scriptInfoContainer = $('<div id="script-info-container"></div>').css({
                 display: "none",
-                marginTop: "10px",
+                marginTop: "8px",
+                position: "relative",
             });
 
-            scriptInfoContainer.append(`<li class="divider"></li>`); // Trennlinie innerhalb des Containers
-
-            scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 12px;">Ersteller: Fabian (Capt.BobbyNash)</a></li>`
-            );
-            scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 12px;">Supporter: m75e</a></li>`
-            );
-            scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 12px;">Version: 1.03 (Close BETA Version)</a></li>`
-            );
-            scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 12px;">Funktionen des Skripts:</a></li>`
-            );
-            scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 12px;">- Anzeige der Verband-Statistiken</a></li>`
-            );
-            scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 12px;">- Übersicht über Credits, Mitglieder, Rang und Einsätze</a></li>`
-            );
-            scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 12px;">- Anzeige der Credits der letzten 24 Stunden</a></li>`
-            );
-            scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 12px;">- Automatische Aktualisierung der Statistiken alle 5 Sekunden</a></li>`
-            );
-
-            // Trennlinie nach der Skript-Info
             scriptInfoContainer.append(`<li class="divider"></li>`);
 
-            // Neuer Menüpunkt für das Admin Panel innerhalb des Skript-Info-Containers
             scriptInfoContainer.append(
-                `<li><a href="https://www.leitstellenspiel.de/admin" style="color: white;">Verbands Admin Panel</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Ersteller: Fabian (Capt.BobbyNash)</a></li>`
+            );
+            scriptInfoContainer.append(
+                `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e</a></li>`
+            );
+            scriptInfoContainer.append(
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.0.1 (Close BETA)</a></li>`
+            );
+            scriptInfoContainer.append(
+                `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
+            );
+            scriptInfoContainer.append(
+                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der Verband-Statistiken</a></li>`
+            );
+            scriptInfoContainer.append(
+                `<li><a href="#" style="color: white; font-size: 10px;">- Übersicht über Credits, Mitglieder, Rang und Einsätze</a></li>`
+            );
+            scriptInfoContainer.append(
+                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der Credits der letzten 24 Stunden</a></li>`
+            );
+            scriptInfoContainer.append(
+                `<li><a href="#" style="color: white; font-size: 10px;">- Automatische Aktualisierung der Statistiken alle 5 Sekunden</a></li>`
             );
 
-            // Skript-Info-Container zum Dropdown-Menü hinzufügen
+            // Wasserzeichen Logo in der Skript-Info
+            scriptInfoContainer.append(
+                `<img id="alliance-statistics-logo" src="https://i.postimg.cc/hjsm7tQV/LSSS-Logo-fertig.png" alt="Wasserzeichen">`
+            );
+
             dropdownMenu.append(scriptInfoContainer);
 
             // Klick-Event zum Ein- und Ausklappen der Skript-Info
             dropdownMenu.on("click", "#script-info-toggle", function (e) {
                 e.preventDefault();
-                scriptInfoContainer.slideToggle();
-                // Verhindern, dass das Dropdown-Menü geschlossen wird
+                const caret = $("#script-caret");
+                scriptInfoContainer.slideToggle(function () {
+                    caret.toggleClass("caret caret-up");
+                });
                 return false;
             });
 
-            // Menüeintrag zusammenfügen
+            // Klick-Event zum Ein- und Ausklappen der Team-Info
+            dropdownMenu.on("click", "#team-info-toggle", function (e) {
+                e.preventDefault();
+                const caret = $("#team-caret");
+                teamInfoContainer.slideToggle(function () {
+                    caret.toggleClass("caret caret-up");
+                });
+                return false;
+            });
+
             menuEntry.append(dropdownLink);
             menuEntry.append(dropdownMenu);
 
-            // Menüeintrag zum Hauptmenü hinzufügen
             const navbar = $("#navbar-main-collapse .navbar-nav");
             if (navbar.length) {
                 navbar.append(menuEntry);
-                console.log("Menüeintrag hinzugefügt");
             } else {
                 console.error("Navigationsleiste nicht gefunden");
             }
         } else {
-            // Menü existiert bereits, nur die Statistiken aktualisieren
-            console.log("Aktualisieren des vorhandenen Menüs...");
             $("#alliance-statistics-menu .alliance-name")
                 .text(allianceName)
                 .attr("href", `https://www.leitstellenspiel.de/alliances/${allianceId}`);
@@ -202,17 +312,43 @@
             $("#alliance-statistics-menu .current-credits").text(currentCredits.toLocaleString());
             $("#alliance-statistics-menu .total-members").text(totalMembers);
             $("#alliance-statistics-menu .rank").text(rank);
-            $("#alliance-statistics-menu .total-missions").text(totalMissions);
-            $("#alliance-statistics-menu .credits-last-24h").text(creditsLast24h);
         }
     }
 
-    // Skript ausführen, wenn die Seite vollständig geladen ist
-    $(document).ready(function () {
-        console.log("Skript geladen und bereit");
-        fetchAllianceInfo();
+    // Funktion zum Aktualisieren der Verbands-Teaminformationen im Menü
+    function updateAllianceTeam(users) {
+        const teamBox = $("#alliance-team-box");
 
-        // Automatische Echtzeit-Aktualisierung alle 5 Sekunden (5000 Millisekunden)
+        if (teamBox.length === 0) {
+            console.error("Team-Box nicht gefunden.");
+            return;
+        }
+
+        teamBox.empty();
+
+        // Funktion, um einen Link zum Profil zu erstellen
+        function createProfileLink(user) {
+            return `<a href="https://www.leitstellenspiel.de/profile/${user.id}" style="color: white;" target="_blank">${user.name}</a>`;
+        }
+
+        const owner = users.filter(user => user.role_flags.owner).map(createProfileLink);
+        const admins = users.filter(user => user.role_flags.admin).map(createProfileLink);
+        const coAdmins = users.filter(user => user.role_flags.coadmin).map(createProfileLink);
+
+        if (owner.length > 0) {
+            teamBox.append(`<li style="margin-bottom: 5px;"><strong>Eigentümer:</strong><ul style="list-style-type:none; padding-left: 15px;">${owner.map(user => `<li>${user}</li>`).join("")}</ul></li>`);
+        }
+        if (admins.length > 0) {
+            teamBox.append(`<li style="margin-bottom: 5px;"><strong>Admins:</strong><ul style="list-style-type:none; padding-left: 15px;">${admins.map(user => `<li>${user}</li>`).join("")}</ul></li>`);
+        }
+        if (coAdmins.length > 0) {
+            teamBox.append(`<li style="margin-bottom: 5px;"><strong>Co-Admins:</strong><ul style="list-style-type:none; padding-left: 15px;">${coAdmins.map(user => `<li>${user}</li>`).join("")}</ul></li>`);
+        }
+    }
+
+    $(document).ready(function () {
+        fetchAllianceInfo();
         setInterval(fetchAllianceInfo, 5000);
+        setInterval(updateAllianceTeam, 1800000); // Team-Update alle 30 Minuten
     });
 })();
