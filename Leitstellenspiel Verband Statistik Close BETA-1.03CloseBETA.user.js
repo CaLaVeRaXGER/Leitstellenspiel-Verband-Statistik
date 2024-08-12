@@ -332,7 +332,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.4 (Close BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.1 (Close BETA)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
