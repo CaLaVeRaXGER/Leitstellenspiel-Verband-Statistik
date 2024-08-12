@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      2.1 Close BETA
+// @version      2.6 Close BETA
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -126,6 +126,31 @@
         .info-icon:hover {
             filter: brightness(0.8);
         }
+        #history-tooltip {
+            display: none;
+            position: absolute;
+            background-color: #34495e;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            width: 250px;
+        }
+        #history-tooltip h3 {
+            text-align: center;
+            font-size: 12px;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        #history-tooltip ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        #history-tooltip li {
+            margin-bottom: 5px;
+        }
     `);
 
     let lastKnownCredits = 0;
@@ -172,23 +197,34 @@
         dailyCredits = parseInt(localStorage.getItem("dailyCredits"), 10) || 0;
     }
 
-    // Funktion zum Anzeigen der Historie
-    function showHistory() {
+    // Funktion zum Erstellen des Tooltips
+    function createHistoryTooltip() {
         const historyHtml = history.map(entry =>
             `<li>${entry.day}, ${entry.date}: ${entry.credits.toLocaleString()} Credits</li>`).join("");
 
-        const historyContainer = $(`
-            <div id="history-container" style="padding: 10px; background-color: #34495e; color: white; border-radius: 8px;">
-                <h3 style="text-align: center; font-weight: bold; text-decoration: underline;">Credits Historie</h3>
-                <ul style="list-style-type:none; padding-left: 0;">${historyHtml}</ul>
+        const tooltipHtml = `
+            <div id="history-tooltip">
+                <h3>Credits Historie</h3>
+                <ul>${historyHtml}</ul>
             </div>
-        `);
+        `;
 
-        if ($("#history-container").length === 0) {
-            $("#alliance-statistics-menu").append(historyContainer);
-        } else {
-            $("#history-container").toggle();
-        }
+        $("body").append(tooltipHtml);
+    }
+
+    // Funktion zum Anzeigen des Tooltips
+    function showTooltip(event) {
+        const tooltip = $("#history-tooltip");
+        tooltip.css({
+            top: event.pageY + "px",
+            left: event.pageX - tooltip.outerWidth() - 20 + "px" // Linke Seite des Menüs
+        });
+        tooltip.show();
+    }
+
+    // Funktion zum Verbergen des Tooltips
+    function hideTooltip() {
+        $("#history-tooltip").hide();
     }
 
     // Funktion zum Abrufen der Verbandsinformationen
@@ -332,7 +368,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.1 (Close BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.6 (Close BETA)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
@@ -377,11 +413,15 @@
                 return false;
             });
 
-            // Klick-Event für das Info-Symbol
-            dropdownMenu.on("click", "#history-icon", function (e) {
-                e.preventDefault();
-                showHistory();
-                return false;
+            // Maus-Events für das Info-Symbol
+            dropdownMenu.on("mouseenter", "#history-icon", function (e) {
+                showTooltip(e);
+            });
+            dropdownMenu.on("mousemove", "#history-icon", function (e) {
+                showTooltip(e);
+            });
+            dropdownMenu.on("mouseleave", "#history-icon", function () {
+                hideTooltip();
             });
 
             menuEntry.append(dropdownLink);
@@ -438,6 +478,7 @@
 
     $(document).ready(function () {
         fetchStoredData();
+        createHistoryTooltip();
         fetchAllianceInfo();
         setInterval(fetchAllianceInfo, 5000);
         setInterval(updateAllianceTeam, 1800000); // Team-Update alle 30 Minuten
