@@ -1,13 +1,15 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      1.03 Close BETA
+// @version      2.0 Close BETA
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
+// @updateURL    https://github.com/CaLaVeRaXGER/LSS-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20CLOSE%20BETA-1.00CloseBETA.user.js
+// @downloadURL  https://github.com/CaLaVeRaXGER/LSS-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20CLOSE%20BETA-1.00CloseBETA.user.js
 // ==/UserScript==
 
 (function () {
