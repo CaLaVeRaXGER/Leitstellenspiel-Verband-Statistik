@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.6
+// @version      3.0.7
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -15,7 +15,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.6"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.7"; // Aktuelle Version des Skripts
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
@@ -144,20 +144,10 @@
     function notifyUpdate(newVersion) {
         const notificationHtml = `
             <div id="update-notification">
-                Ein neues Update (Version ${newVersion}) ist verfügbar. <a id="update-now">Jetzt aktualisieren</a>.
+                Ein neues Update (Version ${newVersion}) ist verfügbar. <a id="update-now" href="https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js">Jetzt aktualisieren</a>.
             </div>
         `;
         $("body").append(notificationHtml);
-
-        $("#update-now").on("click", function () {
-            // Simulieren des Klicks auf den Tampermonkey-Update-Button
-            const updateButton = document.querySelector("input[name='start_update_button']");
-            if (updateButton) {
-                updateButton.click();
-            } else {
-                alert("Update-Button nicht gefunden. Bitte manuell aktualisieren.");
-            }
-        });
     }
 
     // Funktion zum Überprüfen auf Updates
@@ -349,7 +339,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.6 (Close BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.7 (Close BETA)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
