@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      2.1.2
-// @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
+// @version      3.0.0
+// @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
 // @grant        GM_xmlhttpRequest
@@ -15,31 +15,33 @@
 (function () {
     "use strict";
 
-    const currentVersion = "2.1.2"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.0"; // Aktuelle Version des Skripts
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
+
         #alliance-statistics-menu {
             padding: 8px;
-            min-width: 450px; /* Kleineres Layout */
+            min-width: 450px;
             background-color: #2c3e50;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
             color: white;
             word-wrap: break-word;
             border-radius: 8px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Professionelle Schriftart */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         #alliance-statistics-menu a {
             color: #ecf0f1;
             text-decoration: none;
-            font-size: 14px; /* Kleinere Schrift */
+            font-size: 14px;
         }
         #alliance-statistics-menu a:hover {
             color: #3498db;
         }
         #alliance-statistics-menu .divider {
             border-bottom: 1px solid #7f8c8d;
-            margin: 4px 0; /* Weniger Abstand zwischen den Elementen */
+            margin: 4px 0;
         }
         #alliance-statistics-menu li {
             margin-bottom: 2px;
@@ -71,7 +73,7 @@
             position: relative;
         }
         #header-logo-left, #header-logo-right {
-            height: 45px; /* Kleinere Logos */
+            height: 45px;
             vertical-align: middle;
         }
         #header-logo-left {
@@ -86,16 +88,8 @@
             font-weight: bold;
             color: white;
             text-decoration: underline;
-            pointer-events: none; /* Keine Interaktion möglich */
+            pointer-events: none;
             vertical-align: middle;
-        }
-        #script-info-toggle::after, #team-info-toggle::after {
-            content: '\\25BC'; /* Caret Symbol */
-            margin-left: 5px;
-            font-size: 11px; /* Größe des Caret-Symbols */
-        }
-        #script-info-toggle.caret-up::after, #team-info-toggle.caret-up::after {
-            content: '\\25B2'; /* Caret nach oben */
         }
         #alliance-team-box strong {
             font-size: 12px;
@@ -104,70 +98,176 @@
 
         /* Verkleinerte Schrift und Zahlen für die Statistiken */
         .alliance-statistics-item {
-            font-size: 17px; /* Verkleinerte Schriftgröße */
+            font-size: 17px;
             font-weight: bold;
         }
         .alliance-statistics-value {
-            font-size: 17px; /* Verkleinerte Schriftgröße */
-            color: #2ecc71; /* Helles Grün */
+            font-size: 17px;
+            color: #2ecc71;
             font-weight: bold;
         }
         #dropdown-arrow {
-            font-size: 11px; /* Pfeilgröße */
+            font-size: 11px;
             color: white;
             vertical-align: middle;
             margin-left: 5px;
         }
-        #update-notification {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #3498db;
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
-            z-index: 10000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        #playtime-container {
+            padding: 2px 5px;
+            font-size: 12px;
+            text-align: left;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        #update-notification a {
+        #playtime {
+            font-size: 14px;
+            font-weight: bold;
+            font-family: 'Orbitron', monospace;
+            color: #2ecc71;
+            letter-spacing: 2px;
+        }
+        #separator {
+            margin: 0 10px;
+            border-left: 2px solid #ecf0f1;
+            height: 100%;
+        }
+        #current-datetime {
+            font-size: 12px;
+            font-weight: bold;
             color: #ecf0f1;
+        }
+        #patch-notes-container {
+            display: none;
+            margin-top: 8px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            color: white;
+        }
+        #patch-notes-container h3 {
+            text-align: center;
             text-decoration: underline;
-            cursor: pointer;
+            font-weight: bold;
+            margin-top: 0;
+        }
+        #patch-notes-container ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        #patch-notes-container li {
+            margin-bottom: 5px;
         }
     `);
 
-    // Funktion zur Benachrichtigung über ein Update
-    function notifyUpdate(newVersion) {
-        const notificationHtml = `
-            <div id="update-notification">
-                Ein neues Update (Version ${newVersion}) ist verfügbar. <a id="update-now" href="https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js">Jetzt aktualisieren</a>.
-            </div>
-        `;
-        $("body").append(notificationHtml);
+    // Spielzeit-Timer Variablen
+    let playtime = 0;
+    let lastTimestamp = Date.now();
+
+    // Variablen für den Tagesverdienst
+    let initialTotalCredits = parseInt(localStorage.getItem("initialTotalCredits"), 10) || 0;
+    let dailyEarnings = parseInt(localStorage.getItem("dailyEarnings"), 10) || 0;
+    let lastCheckedDate = localStorage.getItem("lastCheckedDate") || new Date().toISOString().split('T')[0];
+
+    // Funktion zum Formatieren der Zeit in HH:MM:SS
+    function formatTime(seconds) {
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
-    // Funktion zum Überprüfen auf Updates
-    function checkForUpdate() {
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: GM_info.scriptUpdateURL,
-            onload: function (response) {
-                const remoteScript = response.responseText;
-                const remoteVersionMatch = remoteScript.match(/@version\s+([\d.]+)/);
-                if (remoteVersionMatch) {
-                    const remoteVersion = remoteVersionMatch[1];
-                    if (remoteVersion !== currentVersion) {
-                        notifyUpdate(remoteVersion);
-                    }
-                }
-            },
-        });
+    // Funktion zum Formatieren des Datums und der Uhrzeit
+    function formatDateTime() {
+        const now = new Date();
+        const options = {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        };
+        const formattedDateTime = now.toLocaleDateString('de-DE', options);
+        return formattedDateTime.replace(',', '');
     }
 
-    // Restlicher Code für das Skript
+    // Funktion zum Speichern der Spielzeit und Credits in localStorage
+    function savePlaytimeAndCredits() {
+        localStorage.setItem("dailyPlaytime", playtime);
+        localStorage.setItem("lastTimestamp", lastTimestamp);
+        localStorage.setItem("initialTotalCredits", initialTotalCredits);
+        localStorage.setItem("dailyEarnings", dailyEarnings);
+        localStorage.setItem("lastCheckedDate", lastCheckedDate);
+    }
 
+    // Funktion zum Laden der Spielzeit und Credits aus localStorage
+    function loadPlaytimeAndCredits() {
+        playtime = parseInt(localStorage.getItem("dailyPlaytime"), 10) || 0;
+        lastTimestamp = parseInt(localStorage.getItem("lastTimestamp"), 10) || Date.now();
+        initialTotalCredits = parseInt(localStorage.getItem("initialTotalCredits"), 10) || 0;
+        dailyEarnings = parseInt(localStorage.getItem("dailyEarnings"), 10) || 0;
+        lastCheckedDate = localStorage.getItem("lastCheckedDate") || new Date().toISOString().split('T')[0];
+    }
+
+    // Funktion zum Aktualisieren der Spielzeit
+    function updatePlaytime() {
+        const now = Date.now();
+        const elapsed = Math.floor((now - lastTimestamp) / 1000);
+
+        if (elapsed > 0) {  // Nur aktualisieren, wenn Zeit vergangen ist
+            playtime += elapsed;
+            lastTimestamp = now;
+
+            $("#playtime").text(formatTime(playtime));
+            savePlaytimeAndCredits();
+        }
+    }
+
+    // Funktion zum Aktualisieren des Datums und der Uhrzeit
+    function updateDateTime() {
+        $("#current-datetime").text(formatDateTime());
+    }
+
+    // Funktion zum Starten des Spielzeit-Timers
+    function startPlaytimeTimer() {
+        lastTimestamp = Date.now(); // Zeitstempel aktualisieren
+        setInterval(updatePlaytime, 1000); // Timer aktualisieren
+    }
+
+    // Funktion zum Starten des Datums- und Uhrzeit-Timers
+    function startDateTimeTimer() {
+        setInterval(updateDateTime, 1000); // Datum und Uhrzeit jede Sekunde aktualisieren
+    }
+
+    // Funktion zum Zurücksetzen der Spielzeit und Tagesverdienst um 0:00 Uhr
+    function checkForMidnight() {
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+
+        if (today !== lastCheckedDate) {
+            playtime = 0;
+            initialTotalCredits = 0;
+            dailyEarnings = 0;
+            lastCheckedDate = today;
+            savePlaytimeAndCredits();
+        }
+    }
+
+    // Funktion zum Berechnen des Tagesverdienstes
+    function calculateDailyEarnings(currentTotalCredits) {
+        if (initialTotalCredits === 0) {
+            initialTotalCredits = currentTotalCredits;
+        } else {
+            dailyEarnings = currentTotalCredits - initialTotalCredits;
+        }
+        savePlaytimeAndCredits();
+    }
+
+    // Funktion zum Abrufen der Verbandsinformationen
     function fetchAllianceInfo() {
         GM_xmlhttpRequest({
             method: "GET",
@@ -205,6 +305,8 @@
         const totalMembers = data.user_count || 0;
         const rank = data.rank || "Unbekannt";
 
+        calculateDailyEarnings(totalCredits);
+
         let dropdownMenu = $("#alliance-statistics-menu");
         if (dropdownMenu.length === 0) {
             const menuEntry = $('<li class="dropdown"></li>');
@@ -225,6 +327,16 @@
                     <img id="header-logo-right" src="https://i.postimg.cc/hjsm7tQV/LSSS-Logo-fertig.png" alt="Logo">
                 </li>`
             );
+
+            // Spielzeit-Timer und aktuelles Datum/Uhrzeit
+            dropdownMenu.append(
+                `<li id="playtime-container">
+                    <div><strong>Heutige Spielzeit:</strong> <span id="playtime">00:00:00</span></div>
+                    <div id="separator"></div>
+                    <div id="current-datetime">${formatDateTime()}</div>
+                </li>`
+            );
+
             dropdownMenu.append(`<li class="divider"></li>`);
 
             // Verbandsname und Link
@@ -258,10 +370,19 @@
 
             dropdownMenu.append(`<li class="divider"></li>`);
 
+            // Gesamttagesverdienst
+            dropdownMenu.append(
+                `<li><a href="#" class="alliance-statistics-item"><strong>Gesamttagesverdienst:</strong>
+                    <span class="alliance-statistics-value daily-earnings">
+                    ${dailyEarnings.toLocaleString()}</span></a></li>`
+            );
+
+            dropdownMenu.append(`<li class="divider"></li>`);
+
             // Verbands-Team, das sich ausklappen lässt
             dropdownMenu.append(
                 `<li><a href="#" id="team-info-toggle" style="color: white; text-align: center; font-size: 14px; font-weight: bold; text-decoration: underline;">
-                    Verbands-Team <span id="team-caret" class="caret"></span></a></li>`
+                    Verbands-Team</a></li>`
             );
 
             // Container für das Verbands-Team (anfangs versteckt)
@@ -274,13 +395,37 @@
 
             dropdownMenu.append(teamInfoContainer);
 
-            // Trennlinie vor der Skript-Info
             dropdownMenu.append(`<li class="divider"></li>`);
 
-            // Überschrift für die einklappbare Skript-Info
+            // Patch-Notes
+            dropdownMenu.append(
+                `<li><a href="#" id="patch-notes-toggle" style="color: white; text-align: center; font-size: 14px; font-weight: bold; text-decoration: underline;">
+                    Patch-Notes</a></li>`
+            );
+
+            const patchNotesContainer = $('<div id="patch-notes-container"></div>').css({
+                display: "none",
+                marginTop: "8px",
+            });
+
+            patchNotesContainer.append(`
+                <h3>Patch-Notes 1.3.0</h3>
+                <ul>
+                    <li>- Gesamtspielzeit des Tages hinzugefügt.</li>
+                    <li>- Tagesdatum mit Wochentag hinzugefügt.</li>
+                    <li>- Fehlerbehebung bei den Pfeilen, die das Ausklappen des Menüs anzeigen, diese Symbole wurden entfernt.</li>
+                    <li>- Gesamt-Tagesverdienst wieder hinzugefügt, jedoch ohne Historie aufgrund von Leistungsproblemen (wird nachträglich hinzugefügt).</li>
+                </ul>
+            `);
+
+            dropdownMenu.append(patchNotesContainer);
+
+            dropdownMenu.append(`<li class="divider"></li>`);
+
+            // Informationen
             dropdownMenu.append(
                 `<li><a href="#" id="script-info-toggle" style="color: white; text-align: center; font-size: 14px; font-weight: bold; text-decoration: underline;">
-                    Skript Info <span id="script-caret" class="caret"></span></a></li>`
+                    Informationen</a></li>`
             );
 
             // Container für die Skript-Info (anfangs versteckt)
@@ -299,7 +444,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.1.2 (Close BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.0 </a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
@@ -317,7 +462,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige des aktuellen Rangs des Verbandes</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">- Ausklappbare Übersicht der Verbands-Teaminformationen</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige des Gesamttagesverdiensts</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">- Automatische Echtzeit-Aktualisierung der Statistiken alle 1 Sekunde</a></li>`
@@ -333,20 +478,21 @@
             // Klick-Event zum Ein- und Ausklappen der Skript-Info
             dropdownMenu.on("click", "#script-info-toggle", function (e) {
                 e.preventDefault();
-                const caret = $("#script-caret");
-                scriptInfoContainer.slideToggle(function () {
-                    caret.toggleClass("caret caret-up");
-                });
+                scriptInfoContainer.slideToggle();
+                return false;
+            });
+
+            // Klick-Event zum Ein- und Ausklappen der Patch-Notes
+            dropdownMenu.on("click", "#patch-notes-toggle", function (e) {
+                e.preventDefault();
+                patchNotesContainer.slideToggle();
                 return false;
             });
 
             // Klick-Event zum Ein- und Ausklappen der Team-Info
             dropdownMenu.on("click", "#team-info-toggle", function (e) {
                 e.preventDefault();
-                const caret = $("#team-caret");
-                teamInfoContainer.slideToggle(function () {
-                    caret.toggleClass("caret caret-up");
-                });
+                teamInfoContainer.slideToggle();
                 return false;
             });
 
@@ -367,6 +513,8 @@
             $("#alliance-statistics-menu .current-credits").text(currentCredits.toLocaleString());
             $("#alliance-statistics-menu .total-members").text(totalMembers);
             $("#alliance-statistics-menu .rank").text(rank);
+            $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
+            $("#current-datetime").text(formatDateTime());
         }
     }
 
@@ -402,9 +550,14 @@
     }
 
     $(document).ready(function () {
+        loadPlaytimeAndCredits();
         fetchAllianceInfo();
         setInterval(fetchAllianceInfo, 1000); // Echtzeit-Aktualisierung alle 1 Sekunde
         setInterval(updateAllianceTeam, 600000); // Team-Update alle 10 Minuten
-        checkForUpdate(); // Überprüfen auf Updates beim Start
+        startPlaytimeTimer();
+        startDateTimeTimer();
+        setInterval(checkForMidnight, 60000); // Überprüfung auf Mitternacht alle 60 Sekunden
     });
+
+    window.addEventListener("beforeunload", savePlaytimeAndCredits); // Spielzeit beim Schließen der Seite speichern
 })();
