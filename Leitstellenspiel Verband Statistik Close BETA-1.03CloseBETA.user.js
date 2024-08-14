@@ -463,12 +463,11 @@
             });
 
             patchNotesContainer.append(`
-                <h3>Patch-Notes 1.3.0</h3>
+                <h3>Patch-Notes 3.0.1</h3>
                 <ul>
-                    <li>- Gesamtspielzeit des Tages hinzugefügt.</li>
-                    <li>- Tagesdatum mit Wochentag hinzugefügt.</li>
-                    <li>- Fehlerbehebung bei den Pfeilen, die das Ausklappen des Menüs anzeigen, diese Symbole wurden entfernt.</li>
-                    <li>- Gesamt-Tagesverdienst wieder hinzugefügt, jedoch ohne Historie aufgrund von Leistungsproblemen (wird nachträglich hinzugefügt).</li>
+                    <li>- Einige Fehler mit dem heutigen Spielzeit-Timer und dem Gesamttagesverdienst wurden behoben.</li>
+                    <li>- Ein neuer Menüpunkt "Einstellungen" wurde hinzugefügt, mit dem der Timer und der Gesamttagesverdienst manuell zurückgesetzt werden können.</li>
+                    <li>- Aktualisiert am ${new Date().toLocaleDateString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit' })} um ${new Date().toLocaleTimeString('de-DE')}</li>
                 </ul>
             `);
 
