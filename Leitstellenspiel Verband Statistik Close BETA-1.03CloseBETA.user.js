@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.9 
+// @version      3.1.0
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -15,7 +15,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.9"; // Aktuelle Version des Skripts
+    const currentVersion = "3.1.0"; // Aktuelle Version des Skripts
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
@@ -138,8 +138,6 @@
         }
     `);
 
-    let currentAllianceId = null;
-
     // Funktion zur Benachrichtigung über ein Update
     function notifyUpdate(newVersion) {
         const notificationHtml = `
@@ -168,7 +166,8 @@
         });
     }
 
-    // Funktion zum Abrufen der Verbandsinformationen
+    // Restlicher Code für das Skript
+
     function fetchAllianceInfo() {
         GM_xmlhttpRequest({
             method: "GET",
@@ -177,64 +176,25 @@
                 if (response.status === 200) {
                     try {
                         const data = JSON.parse(response.responseText);
-                        if (data && data.id !== currentAllianceId) {
-                            currentAllianceId = data.id;
-                            updateAllianceStatistics(data);
-                            updateAllianceTeam(data.users);
-                        } else if (!data || !data.id) {
-                            currentAllianceId = null;
-                            displayNoDataAvailable();
-                            clearAllianceTeam();
-                        } else {
-                            updateAllianceStatistics(data);
-                            updateAllianceTeam(data.users);
-                        }
+                        updateAllianceStatistics(data);
+                        updateAllianceTeam(data.users);
                     } catch (e) {
                         console.error("Fehler beim Parsen der API-Daten:", e);
-                        displayNoDataAvailable();
-                        clearAllianceTeam();
                     }
                 } else {
                     console.error("Fehler beim Abrufen der API-Daten: ", response.status);
-                    displayNoDataAvailable();
-                    clearAllianceTeam();
                 }
             },
             onerror: function () {
                 console.error("Fehler beim Abrufen der API-Daten.");
-                displayNoDataAvailable();
-                clearAllianceTeam();
             },
         });
-    }
-
-    // Funktion zum Anzeigen von "Keine Daten Verfügbar"
-    function displayNoDataAvailable() {
-        let dropdownMenu = $("#alliance-statistics-menu");
-        if (dropdownMenu.length > 0) {
-            dropdownMenu.find(".alliance-name").text("Keine Daten Verfügbar");
-            dropdownMenu.find(".total-credits").text("Keine Daten");
-            dropdownMenu.find(".current-credits").text("Keine Daten");
-            dropdownMenu.find(".total-members").text("Keine Daten");
-            dropdownMenu.find(".rank").text("Keine Daten");
-        } else {
-            console.error("Statistikmenü nicht gefunden.");
-        }
-    }
-
-    // Funktion zum Leeren der Team-Box bei Austritt aus dem Verband
-    function clearAllianceTeam() {
-        let teamBox = $("#alliance-team-box");
-        if (teamBox.length > 0) {
-            teamBox.empty();
-        }
     }
 
     // Funktion zum Aktualisieren der Verbandsstatistiken im Menü
     function updateAllianceStatistics(data) {
         if (!data) {
             console.error("Datenobjekt ist nicht definiert.");
-            displayNoDataAvailable();
             return;
         }
 
@@ -339,7 +299,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.9 (Close BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.1.0 (Close BETA)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
