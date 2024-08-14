@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.5 Close BETA
+// @version      3.0.6
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -15,7 +15,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.5"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.6"; // Aktuelle Version des Skripts
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
@@ -118,9 +118,65 @@
             vertical-align: middle;
             margin-left: 5px;
         }
+        #update-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #3498db;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #update-notification a {
+            color: #ecf0f1;
+            text-decoration: underline;
+            cursor: pointer;
+        }
     `);
 
     let currentAllianceId = null;
+
+    // Funktion zur Benachrichtigung über ein Update
+    function notifyUpdate(newVersion) {
+        const notificationHtml = `
+            <div id="update-notification">
+                Ein neues Update (Version ${newVersion}) ist verfügbar. <a id="update-now">Jetzt aktualisieren</a>.
+            </div>
+        `;
+        $("body").append(notificationHtml);
+
+        $("#update-now").on("click", function () {
+            // Simulieren des Klicks auf den Tampermonkey-Update-Button
+            const updateButton = document.querySelector("input[name='start_update_button']");
+            if (updateButton) {
+                updateButton.click();
+            } else {
+                alert("Update-Button nicht gefunden. Bitte manuell aktualisieren.");
+            }
+        });
+    }
+
+    // Funktion zum Überprüfen auf Updates
+    function checkForUpdate() {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: GM_info.scriptUpdateURL,
+            onload: function (response) {
+                const remoteScript = response.responseText;
+                const remoteVersionMatch = remoteScript.match(/@version\s+([\d.]+)/);
+                if (remoteVersionMatch) {
+                    const remoteVersion = remoteVersionMatch[1];
+                    if (remoteVersion !== currentVersion) {
+                        notifyUpdate(remoteVersion);
+                    }
+                }
+            },
+        });
+    }
 
     // Funktion zum Abrufen der Verbandsinformationen
     function fetchAllianceInfo() {
@@ -293,7 +349,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.5 (Close BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.6 (Close BETA)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
