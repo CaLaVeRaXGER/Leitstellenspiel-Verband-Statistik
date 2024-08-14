@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.0 Close BETA
+// @version      3.0.1 Close BETA
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -15,7 +15,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.0"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.1"; // Aktuelle Version des Skripts
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
@@ -131,6 +131,11 @@
             z-index: 10000;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+        #update-notification a {
+            color: #ecf0f1;
+            text-decoration: underline;
+            cursor: pointer;
+        }
     `);
 
     let currentAllianceId = null;
@@ -139,13 +144,23 @@
     function notifyUpdate(newVersion) {
         const notificationHtml = `
             <div id="update-notification">
-                Das Skript wurde auf Version ${newVersion} aktualisiert.
+                Ein neues Update (Version ${newVersion}) ist verfügbar. <a id="update-now">Jetzt aktualisieren</a>.
             </div>
         `;
         $("body").append(notificationHtml);
+
+        $("#update-now").on("click", function () {
+            // Simulieren des Klicks auf den Tampermonkey-Update-Button
+            const updateButton = document.querySelector("input[name='start_update_button']");
+            if (updateButton) {
+                updateButton.click();
+            } else {
+                alert("Update-Button nicht gefunden. Bitte manuell aktualisieren.");
+            }
+        });
     }
 
-    // Funktion zum Überprüfen auf Updates und automatisches Ausführen des Updates
+    // Funktion zum Überprüfen auf Updates
     function checkForUpdate() {
         GM_xmlhttpRequest({
             method: "GET",
@@ -157,7 +172,6 @@
                     const remoteVersion = remoteVersionMatch[1];
                     if (remoteVersion !== currentVersion) {
                         notifyUpdate(remoteVersion);
-                        eval(remoteScript); // Führt den aktualisierten Code aus
                     }
                 }
             },
@@ -335,7 +349,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.0 (Close BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.1 (Close BETA)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
