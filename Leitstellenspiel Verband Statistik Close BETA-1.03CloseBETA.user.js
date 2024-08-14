@@ -15,7 +15,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "2.12"; // Aktuelle Version des Skripts
+    const currentVersion = "2.15"; // Aktuelle Version des Skripts
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
