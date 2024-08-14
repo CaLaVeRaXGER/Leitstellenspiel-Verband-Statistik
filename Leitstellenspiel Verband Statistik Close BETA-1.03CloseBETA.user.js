@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.0
+// @version      3.0.1
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -15,7 +15,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.0"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.1"; // Aktuelle Version des Skripts
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
@@ -159,6 +159,43 @@
         #patch-notes-container li {
             margin-bottom: 5px;
         }
+        #settings-container {
+            display: none;
+            margin-top: 8px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            color: white;
+        }
+        #settings-container h3 {
+            text-align: center;
+            text-decoration: underline;
+            font-weight: bold;
+            margin-top: 0;
+        }
+        #settings-container ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        #settings-container li {
+            margin-bottom: 5px;
+        }
+        .settings-button {
+            display: inline-block;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            background-color: #3498db;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+        }
+        .settings-button:hover {
+            background-color: #2980b9;
+        }
     `);
 
     // Spielzeit-Timer Variablen
@@ -254,6 +291,8 @@
             dailyEarnings = 0;
             lastCheckedDate = today;
             savePlaytimeAndCredits();
+            $("#playtime").text(formatTime(playtime));
+            $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
         }
     }
 
@@ -265,6 +304,21 @@
             dailyEarnings = currentTotalCredits - initialTotalCredits;
         }
         savePlaytimeAndCredits();
+    }
+
+    // Funktion zum Zurücksetzen der Spielzeit (manuell)
+    function resetPlaytime() {
+        playtime = 0;
+        savePlaytimeAndCredits();
+        $("#playtime").text(formatTime(playtime));
+    }
+
+    // Funktion zum Zurücksetzen des Tagesverdienstes (manuell)
+    function resetDailyEarnings() {
+        initialTotalCredits = 0;
+        dailyEarnings = 0;
+        savePlaytimeAndCredits();
+        $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
     }
 
     // Funktion zum Abrufen der Verbandsinformationen
@@ -422,6 +476,29 @@
 
             dropdownMenu.append(`<li class="divider"></li>`);
 
+            // Einstellungen
+            dropdownMenu.append(
+                `<li><a href="#" id="settings-toggle" style="color: white; text-align: center; font-size: 14px; font-weight: bold; text-decoration: underline;">
+                    Einstellungen</a></li>`
+            );
+
+            const settingsContainer = $('<div id="settings-container"></div>').css({
+                display: "none",
+                marginTop: "8px",
+            });
+
+            settingsContainer.append(`
+                <h3>Einstellungen</h3>
+                <ul>
+                    <li><button id="reset-playtime-button" class="settings-button">Spielzeit zurücksetzen</button></li>
+                    <li><button id="reset-daily-earnings-button" class="settings-button">Tagesverdienst zurücksetzen</button></li>
+                </ul>
+            `);
+
+            dropdownMenu.append(settingsContainer);
+
+            dropdownMenu.append(`<li class="divider"></li>`);
+
             // Informationen
             dropdownMenu.append(
                 `<li><a href="#" id="script-info-toggle" style="color: white; text-align: center; font-size: 14px; font-weight: bold; text-decoration: underline;">
@@ -444,7 +521,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.0 </a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.1 </a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
@@ -489,11 +566,23 @@
                 return false;
             });
 
-            // Klick-Event zum Ein- und Ausklappen der Team-Info
-            dropdownMenu.on("click", "#team-info-toggle", function (e) {
+            // Klick-Event zum Ein- und Ausklappen der Einstellungen
+            dropdownMenu.on("click", "#settings-toggle", function (e) {
                 e.preventDefault();
-                teamInfoContainer.slideToggle();
+                settingsContainer.slideToggle();
                 return false;
+            });
+
+            // Klick-Event zum Zurücksetzen der Spielzeit
+            dropdownMenu.on("click", "#reset-playtime-button", function (e) {
+                e.preventDefault();
+                resetPlaytime();
+            });
+
+            // Klick-Event zum Zurücksetzen des Tagesverdienstes
+            dropdownMenu.on("click", "#reset-daily-earnings-button", function (e) {
+                e.preventDefault();
+                resetDailyEarnings();
             });
 
             menuEntry.append(dropdownLink);
