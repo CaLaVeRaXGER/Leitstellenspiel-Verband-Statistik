@@ -7,6 +7,7 @@
 // @match        https://www.leitstellenspiel.de/
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
+// @grant        GM_notification
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @updateURL    https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js
 // @downloadURL  https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js
@@ -16,6 +17,7 @@
     "use strict";
 
     const currentVersion = "3.0.1"; // Aktuelle Version des Skripts
+    const updateUrl = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
@@ -319,6 +321,30 @@
         dailyEarnings = 0;
         savePlaytimeAndCredits();
         $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
+    }
+
+    // Funktion zum Überprüfen auf ein Update
+    function checkForUpdate() {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: updateUrl,
+            onload: function(response) {
+                if (response.status === 200) {
+                    const remoteScript = response.responseText;
+                    const remoteVersion = remoteScript.match(/@version\s+(\d+\.\d+\.\d+)/)[1];
+                    if (remoteVersion && remoteVersion !== currentVersion) {
+                        GM_notification({
+                            title: "Verband Statistik Update",
+                            text: `Eine neue Version (${remoteVersion}) ist verfügbar.`,
+                            timeout: 10000,
+                            onclick: () => {
+                                window.open(updateUrl, "_blank");
+                            }
+                        });
+                    }
+                }
+            }
+        });
     }
 
     // Funktion zum Abrufen der Verbandsinformationen
@@ -645,6 +671,9 @@
         startPlaytimeTimer();
         startDateTimeTimer();
         setInterval(checkForMidnight, 60000); // Überprüfung auf Mitternacht alle 60 Sekunden
+
+        // Überprüfe beim Laden der Seite auf Updates
+        checkForUpdate();
     });
 
     window.addEventListener("beforeunload", savePlaytimeAndCredits); // Spielzeit beim Schließen der Seite speichern
