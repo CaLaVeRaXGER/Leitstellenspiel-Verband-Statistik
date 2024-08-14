@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      2.2.8 Close BETA
+// @version      2.2.9 Close BETA
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -15,7 +15,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "2.2.8"; // Aktuelle Version des Skripts
+    const currentVersion = "2.2.9"; // Aktuelle Version des Skripts
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
@@ -139,7 +139,7 @@
     function notifyUpdate(newVersion) {
         const notificationHtml = `
             <div id="update-notification">
-                Das Skript wurde auf Version ${newVersion} aktualisiert und wird jetzt neu geladen...
+                Das Skript wurde auf Version ${newVersion} aktualisiert.
             </div>
         `;
         $("body").append(notificationHtml);
@@ -156,16 +156,14 @@
                 if (remoteVersionMatch) {
                     const remoteVersion = remoteVersionMatch[1];
                     if (remoteVersion !== currentVersion) {
-                        notifyUpdate(remoteVersion);
-                        setTimeout(() => {
-                            GM_xmlhttpRequest({
-                                method: "GET",
-                                url: GM_info.scriptUpdateURL,
-                                onload: function () {
-                                    window.location.reload(); // Seite neu laden, um das Update anzuwenden
-                                },
-                            });
-                        }, 3000); // 3 Sekunden Verzögerung für die Anzeige der Benachrichtigung
+                        GM_xmlhttpRequest({
+                            method: "GET",
+                            url: GM_info.downloadURL,
+                            onload: function () {
+                                notifyUpdate(remoteVersion);
+                                eval(response.responseText); // Führt den aktualisierten Code aus
+                            },
+                        });
                     }
                 }
             },
@@ -343,7 +341,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.2.8 (Close BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.2.9 (Close BETA)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
