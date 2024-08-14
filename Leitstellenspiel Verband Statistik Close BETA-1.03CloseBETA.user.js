@@ -1,19 +1,21 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      2.1.1 Close BETA
+// @version      2.1.2 Close BETA
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, mit hervorgehobenen Zahlen und strukturierter, einklappbarer Skript-Info, ohne das Menü zu schließen.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
-// @updateURL    https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js
-// @downloadURL  https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js
+// @updateURL    https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA.user.js
+// @downloadURL  https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA.user.js
 // ==/UserScript==
 
 (function () {
     "use strict";
+
+    const currentVersion = "2.12"; // Aktuelle Version des Skripts
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
@@ -116,9 +118,72 @@
             vertical-align: middle;
             margin-left: 5px;
         }
+        #update-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #e74c3c;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #update-notification button {
+            background-color: #c0392b;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin-left: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #update-notification button:hover {
+            background-color: #a93226;
+        }
     `);
 
     let currentAllianceId = null;
+
+    // Funktion zur Benachrichtigung über ein Update
+    function notifyUpdate(newVersion) {
+        const notificationHtml = `
+            <div id="update-notification">
+                Eine neue Version (${newVersion}) des Skripts ist verfügbar.
+                <button id="update-now">Jetzt aktualisieren</button>
+                <button id="dismiss-update">Später</button>
+            </div>
+        `;
+        $("body").append(notificationHtml);
+
+        $("#update-now").on("click", function () {
+            window.location.href = GM_info.scriptUpdateURL;
+        });
+
+        $("#dismiss-update").on("click", function () {
+            $("#update-notification").remove();
+        });
+    }
+
+    // Funktion zum Überprüfen auf Updates
+    function checkForUpdate() {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: GM_info.scriptUpdateURL,
+            onload: function (response) {
+                const remoteScript = response.responseText;
+                const remoteVersionMatch = remoteScript.match(/@version\s+([\d.]+)/);
+                if (remoteVersionMatch) {
+                    const remoteVersion = remoteVersionMatch[1];
+                    if (remoteVersion !== currentVersion) {
+                        notifyUpdate(remoteVersion);
+                    }
+                }
+            },
+        });
+    }
 
     // Funktion zum Abrufen der Verbandsinformationen
     function fetchAllianceInfo() {
@@ -291,7 +356,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.1.1 (Close BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 2.1.2 (Close BETA)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
@@ -397,5 +462,6 @@
         fetchAllianceInfo();
         setInterval(fetchAllianceInfo, 1000); // Echtzeit-Aktualisierung alle 1 Sekunde
         setInterval(updateAllianceTeam, 600000); // Team-Update alle 10 Minuten
+        checkForUpdate(); // Überprüfen auf Updates beim Start
     });
 })();
