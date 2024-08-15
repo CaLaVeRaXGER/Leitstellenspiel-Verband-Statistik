@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.6
+// @version      3.0.5
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird. Zeigt auch das Verbandsteam mit Verlinkungen zu den Profilen an.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -16,7 +16,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.6"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.5"; // Aktuelle Version des Skripts
     const updateUrl = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
 
     // Stil für das neue Design hinzufügen
@@ -353,6 +353,7 @@
                     const remoteVersion = remoteScript.match(/@version\s+(\d+\.\d+\.\d+)/)[1];
                     console.log("Remote version:", remoteVersion); // Debug-Ausgabe
                     if (remoteVersion && remoteVersion !== currentVersion) {
+                        alert(`Eine neue Version (${remoteVersion}) ist verfügbar.`);
                         GM_notification({
                             title: "Verband Statistik Update",
                             text: `Eine neue Version (${remoteVersion}) ist verfügbar.`,
@@ -569,7 +570,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.6 </a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.5 </a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
@@ -702,6 +703,16 @@
     }
 
     $(document).ready(function () {
+        // Test-Benachrichtigung zur Überprüfung der GM_notification-Funktion
+        GM_notification({
+            title: "Test-Benachrichtigung",
+            text: "Das ist eine Testnachricht zur Überprüfung der GM_notification-Funktion.",
+            timeout: 5000,
+            onclick: () => {
+                window.open("https://www.leitstellenspiel.de/", "_blank");
+            }
+        });
+
         loadPlaytimeAndCredits();
         fetchAllianceInfo();
         setInterval(fetchAllianceInfo, 1000); // Echtzeit-Aktualisierung alle 1 Sekunde
