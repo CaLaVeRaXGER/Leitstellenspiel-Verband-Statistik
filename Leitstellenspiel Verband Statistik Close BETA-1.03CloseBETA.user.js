@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.8
+// @version      3.0.1
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -16,7 +16,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.8"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.1"; // Aktuelle Version des Skripts
     const updateUrl = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
 
     // Stil für das neue Design hinzufügen
@@ -43,7 +43,7 @@
         }
         #alliance-statistics-menu .divider {
             border-bottom: 1px solid #7f8c8d;
-            margin: 4px 0.
+            margin: 4px 0;
         }
         #alliance-statistics-menu li {
             margin-bottom: 2px;
@@ -76,13 +76,13 @@
         }
         #header-logo-left, #header-logo-right {
             height: 45px;
-            vertical-align: middle.
+            vertical-align: middle;
         }
         #header-logo-left {
             margin-right: 8px;
         }
         #header-logo-right {
-            margin-left: 8px.
+            margin-left: 8px;
         }
         #header-title {
             display: inline-block;
@@ -91,7 +91,7 @@
             color: white;
             text-decoration: underline;
             pointer-events: none;
-            vertical-align: middle.
+            vertical-align: middle;
         }
         #alliance-team-box strong {
             font-size: 12px;
@@ -101,18 +101,18 @@
         /* Verkleinerte Schrift und Zahlen für die Statistiken */
         .alliance-statistics-item {
             font-size: 17px;
-            font-weight: bold.
+            font-weight: bold;
         }
         .alliance-statistics-value {
             font-size: 17px;
             color: #2ecc71;
-            font-weight: bold.
+            font-weight: bold;
         }
         #dropdown-arrow {
             font-size: 11px;
             color: white;
             vertical-align: middle;
-            margin-left: 5px.
+            margin-left: 5px;
         }
         #playtime-container {
             padding: 2px 5px;
@@ -121,24 +121,24 @@
             margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
-            align-items: center.
+            align-items: center;
         }
         #playtime {
             font-size: 14px;
-            font-weight: bold.
+            font-weight: bold;
             font-family: 'Orbitron', monospace;
             color: #2ecc71;
-            letter-spacing: 2px.
+            letter-spacing: 2px;
         }
         #separator {
             margin: 0 10px;
             border-left: 2px solid #ecf0f1;
-            height: 100%.
+            height: 100%;
         }
         #current-datetime {
             font-size: 12px;
-            font-weight: bold.
-            color: #ecf0f1.
+            font-weight: bold;
+            color: #ecf0f1;
         }
         #patch-notes-container {
             display: none;
@@ -146,20 +146,20 @@
             padding: 10px;
             background-color: rgba(0, 0, 0, 0.5);
             border-radius: 5px;
-            color: white.
+            color: white;
         }
         #patch-notes-container h3 {
             text-align: center;
             text-decoration: underline;
-            font-weight: bold.
-            margin-top: 0.
+            font-weight: bold;
+            margin-top: 0;
         }
         #patch-notes-container ul {
             list-style-type: none;
-            padding-left: 0.
+            padding-left: 0;
         }
         #patch-notes-container li {
-            margin-bottom: 5px.
+            margin-bottom: 5px;
         }
         #settings-container {
             display: none;
@@ -167,36 +167,36 @@
             padding: 10px;
             background-color: rgba(0, 0, 0, 0.5);
             border-radius: 5px;
-            color: white.
+            color: white;
         }
         #settings-container h3 {
             text-align: center;
             text-decoration: underline;
-            font-weight: bold.
-            margin-top: 0.
+            font-weight: bold;
+            margin-top: 0;
         }
         #settings-container ul {
             list-style-type: none;
-            padding-left: 0.
+            padding-left: 0;
         }
         #settings-container li {
-            margin-bottom: 5px.
+            margin-bottom: 5px;
         }
         .settings-button {
             display: inline-block;
             padding: 5px 10px;
             font-size: 12px;
-            font-weight: bold.
+            font-weight: bold;
             color: white;
             background-color: #3498db;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             text-align: center;
-            text-decoration: none.
+            text-decoration: none;
         }
         .settings-button:hover {
-            background-color: #2980b9.
+            background-color: #2980b9;
         }
     `);
 
@@ -324,26 +324,15 @@
     }
 
     // Funktion zum Überprüfen auf ein Update
-    async function checkForUpdate() {
-        console.log("Prüfe auf Updates...");
-        try {
-            const response = await new Promise((resolve, reject) => {
-                GM_xmlhttpRequest({
-                    method: "GET",
-                    url: updateUrl,
-                    onload: resolve,
-                    onerror: reject
-                });
-            });
-
-            if (response.status === 200) {
-                const remoteScript = response.responseText;
-                const remoteVersion = remoteScript.match(/@version\s+(\d+\.\d+\.\d+)/)[1];
-                console.log("Gefundene Remote-Version: ", remoteVersion);
-                if (remoteVersion && remoteVersion !== currentVersion) {
-                    console.log("Versuche, Benachrichtigung anzuzeigen...");
-
-                    if (typeof GM_notification !== "undefined") {
+    function checkForUpdate() {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: updateUrl,
+            onload: function(response) {
+                if (response.status === 200) {
+                    const remoteScript = response.responseText;
+                    const remoteVersion = remoteScript.match(/@version\s+(\d+\.\d+\.\d+)/)[1];
+                    if (remoteVersion && remoteVersion !== currentVersion) {
                         GM_notification({
                             title: "Verband Statistik Update",
                             text: `Eine neue Version (${remoteVersion}) ist verfügbar.`,
@@ -352,25 +341,11 @@
                                 window.open(updateUrl, "_blank");
                             }
                         });
-                    } else {
-                        alert(`Eine neue Version (${remoteVersion}) ist verfügbar. Klicken Sie hier, um zu aktualisieren.`);
                     }
                 }
             }
-        } catch (error) {
-            console.error("Fehler beim Überprüfen auf Updates:", error);
-        }
+        });
     }
-
-    // Testbenachrichtigung, um sicherzustellen, dass GM_notification funktioniert
-    GM_notification({
-        title: "Testbenachrichtigung",
-        text: "Das ist eine Testbenachrichtigung, um sicherzustellen, dass GM_notification funktioniert.",
-        timeout: 5000,
-        onclick: () => {
-            console.log("Benachrichtigung wurde angeklickt.");
-        }
-    });
 
     // Funktion zum Abrufen der Verbandsinformationen
     function fetchAllianceInfo() {
@@ -571,7 +546,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.8 </a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.1 </a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
