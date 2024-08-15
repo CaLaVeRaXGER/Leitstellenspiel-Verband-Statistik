@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.1
+// @version      3.0.2
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -16,7 +16,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.1"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.2"; // Aktuelle Version des Skripts
     const updateUrl = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
 
     // Stil für das neue Design hinzufügen
@@ -289,8 +289,6 @@
 
         if (today !== lastCheckedDate) {
             playtime = 0;
-            initialTotalCredits = 0;
-            dailyEarnings = 0;
             lastCheckedDate = today;
             savePlaytimeAndCredits();
             $("#playtime").text(formatTime(playtime));
@@ -300,8 +298,12 @@
 
     // Funktion zum Berechnen des Tagesverdienstes
     function calculateDailyEarnings(currentTotalCredits) {
-        if (initialTotalCredits === 0) {
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+
+        if (initialTotalCredits === 0 || lastCheckedDate !== today) {
             initialTotalCredits = currentTotalCredits;
+            dailyEarnings = 0;
         } else {
             dailyEarnings = currentTotalCredits - initialTotalCredits;
         }
@@ -546,7 +548,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.1 </a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.2 </a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
