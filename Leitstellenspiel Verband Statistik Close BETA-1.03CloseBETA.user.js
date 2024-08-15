@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.5
+// @version      3.0.9
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird. Zeigt auch das Verbandsteam mit Verlinkungen zu den Profilen an.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -16,13 +16,13 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.5"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.9"; // Aktuelle Version des Skripts
     const updateUrl = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
-
+        
         #alliance-statistics-menu {
             padding: 8px;
             min-width: 450px;
@@ -214,6 +214,43 @@
             font-size: 14px;
             color: #ecf0f1;
         }
+
+        /* Stil für das Update-Popup */
+        #update-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background-color: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+            color: white;
+            text-align: center;
+            width: 300px;
+        }
+        #update-popup h2 {
+            margin-top: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        #update-popup p {
+            font-size: 14px;
+            margin: 15px 0;
+        }
+        #update-popup a {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #e74c3c;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        #update-popup a:hover {
+            background-color: #c0392b;
+        }
     `);
 
     // Spielzeit-Timer Variablen
@@ -341,6 +378,18 @@
         $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
     }
 
+    // Funktion zum Anzeigen des Update-Popups
+    function showUpdatePopup(version) {
+        const popupHtml = `
+            <div id="update-popup">
+                <h2>Update Verfügbar</h2>
+                <p>Verbands Statistik Update Verfügbar <strong>${version}</strong></p>
+                <a href="${updateUrl}" target="_blank">Jetzt Aktualisieren</a>
+            </div>
+        `;
+        $("body").append(popupHtml);
+    }
+
     // Funktion zum Überprüfen auf ein Update
     function checkForUpdate() {
         GM_xmlhttpRequest({
@@ -353,15 +402,7 @@
                     const remoteVersion = remoteScript.match(/@version\s+(\d+\.\d+\.\d+)/)[1];
                     console.log("Remote version:", remoteVersion); // Debug-Ausgabe
                     if (remoteVersion && remoteVersion !== currentVersion) {
-                        alert(`Eine neue Version (${remoteVersion}) ist verfügbar.`);
-                        GM_notification({
-                            title: "Verband Statistik Update",
-                            text: `Eine neue Version (${remoteVersion}) ist verfügbar.`,
-                            timeout: 10000,
-                            onclick: () => {
-                                window.open(updateUrl, "_blank");
-                            }
-                        });
+                        showUpdatePopup(remoteVersion); // Zeige das Ingame-Popup
                     }
                 }
             },
@@ -570,7 +611,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.5 </a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.9 </a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
@@ -703,16 +744,6 @@
     }
 
     $(document).ready(function () {
-        // Test-Benachrichtigung zur Überprüfung der GM_notification-Funktion
-        GM_notification({
-            title: "Test-Benachrichtigung",
-            text: "Das ist eine Testnachricht zur Überprüfung der GM_notification-Funktion.",
-            timeout: 5000,
-            onclick: () => {
-                window.open("https://www.leitstellenspiel.de/", "_blank");
-            }
-        });
-
         loadPlaytimeAndCredits();
         fetchAllianceInfo();
         setInterval(fetchAllianceInfo, 1000); // Echtzeit-Aktualisierung alle 1 Sekunde
