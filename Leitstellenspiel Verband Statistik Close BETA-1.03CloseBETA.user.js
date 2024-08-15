@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.5
+// @version      3.0.6
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -16,7 +16,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.5"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.6"; // Aktuelle Version des Skripts
     const updateUrl = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
 
     // Stil für das neue Design hinzufügen
@@ -324,33 +324,36 @@
     }
 
     // Funktion zum Überprüfen auf ein Update
-    function checkForUpdate() {
+    async function checkForUpdate() {
         console.log("Prüfe auf Updates...");
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: updateUrl,
-            onload: function(response) {
-                console.log("Antwort erhalten: ", response.status);
-                if (response.status === 200) {
-                    const remoteScript = response.responseText;
-                    const remoteVersion = remoteScript.match(/@version\s+(\d+\.\d+\.\d+)/)[1];
-                    console.log("Gefundene Remote-Version: ", remoteVersion);
-                    if (remoteVersion && remoteVersion !== currentVersion) {
-                        GM_notification({
-                            title: "Verband Statistik Update",
-                            text: `Eine neue Version (${remoteVersion}) ist verfügbar.`,
-                            timeout: 10000,
-                            onclick: () => {
-                                window.open(updateUrl, "_blank");
-                            }
-                        });
-                    }
+        try {
+            const response = await new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method: "GET",
+                    url: updateUrl,
+                    onload: resolve,
+                    onerror: reject
+                });
+            });
+
+            if (response.status === 200) {
+                const remoteScript = response.responseText;
+                const remoteVersion = remoteScript.match(/@version\s+(\d+\.\d+\.\d+)/)[1];
+                console.log("Gefundene Remote-Version: ", remoteVersion);
+                if (remoteVersion && remoteVersion !== currentVersion) {
+                    GM_notification({
+                        title: "Verband Statistik Update",
+                        text: `Eine neue Version (${remoteVersion}) ist verfügbar.`,
+                        timeout: 10000,
+                        onclick: () => {
+                            window.open(updateUrl, "_blank");
+                        }
+                    });
                 }
-            },
-            onerror: function(error) {
-                console.error("Fehler beim Überprüfen auf Updates:", error);
             }
-        });
+        } catch (error) {
+            console.error("Fehler beim Überprüfen auf Updates:", error);
+        }
     }
 
     // Funktion zum Abrufen der Verbandsinformationen
@@ -552,7 +555,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.5 </a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.6 </a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
