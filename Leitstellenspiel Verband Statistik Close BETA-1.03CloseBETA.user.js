@@ -617,7 +617,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Entwickelt mit dem Verband Team von Wir in Baden-Württemberg</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der Gesamtverdienten Credits des Verbandes</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der Gesamtverdienten Credits des Verbandes (BETA)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der aktuellen Verbandskasse</a></li>`
