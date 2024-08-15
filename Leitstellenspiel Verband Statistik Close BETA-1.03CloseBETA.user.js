@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.2
-// @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird.
+// @version      3.0.3
+// @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird. Zeigt auch das Verbandsteam mit Verlinkungen zu den Profilen an.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
 // @grant        GM_xmlhttpRequest
@@ -16,7 +16,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.2"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.3"; // Aktuelle Version des Skripts
     const updateUrl = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
 
     // Stil für das neue Design hinzufügen
@@ -197,6 +197,22 @@
         }
         .settings-button:hover {
             background-color: #2980b9;
+        }
+
+        /* Zusätzlicher Stil für die Teamübersicht */
+        #alliance-team-box ul {
+            padding-left: 15px;
+            list-style-type: none;
+        }
+        #alliance-team-box li {
+            margin-bottom: 2px;
+        }
+        #alliance-team-box .role-title {
+            margin-top: 10px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 14px;
+            color: #ecf0f1;
         }
     `);
 
@@ -548,7 +564,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.2 </a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.3 </a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
@@ -612,6 +628,13 @@
                 resetDailyEarnings();
             });
 
+            // Klick-Event zum Ein- und Ausklappen des Verbandsteams
+            dropdownMenu.on("click", "#team-info-toggle", function (e) {
+                e.preventDefault();
+                $("#team-info-container").slideToggle();
+                return false;
+            });
+
             menuEntry.append(dropdownLink);
             menuEntry.append(dropdownMenu);
 
@@ -647,21 +670,29 @@
 
         // Funktion, um einen Link zum Profil zu erstellen
         function createProfileLink(user) {
-            return `<a href="https://www.leitstellenspiel.de/profile/${user.id}" style="color: white;" target="_blank">${user.name}</a>`;
+            return `<li><a href="https://www.leitstellenspiel.de/profile/${user.id}" style="color: white;" target="_blank">${user.name}</a></li>`;
         }
 
-        const owner = users.filter(user => user.role_flags.owner).map(createProfileLink);
+        // Filtere die Benutzer nach ihren Rollen
+        const owners = users.filter(user => user.role_flags.owner).map(createProfileLink);
         const admins = users.filter(user => user.role_flags.admin).map(createProfileLink);
         const coAdmins = users.filter(user => user.role_flags.coadmin).map(createProfileLink);
 
-        if (owner.length > 0) {
-            teamBox.append(`<li style="margin-bottom: 5px;"><strong>Eigentümer:</strong><ul style="list-style-type:none; padding-left: 15px;">${owner.map(user => `<li>${user}</li>`).join("")}</ul></li>`);
+        // Füge die Benutzer zur Team-Box hinzu
+        if (owners.length > 0) {
+            teamBox.append('<div class="role-title">Verbandseigentümer:</div>');
+            teamBox.append('<ul></ul>');
+            owners.forEach(owner => teamBox.find('ul:last').append(owner));
         }
         if (admins.length > 0) {
-            teamBox.append(`<li style="margin-bottom: 5px;"><strong>Admins:</strong><ul style="list-style-type:none; padding-left: 15px;">${admins.map(user => `<li>${user}</li>`).join("")}</ul></li>`);
+            teamBox.append('<div class="role-title">Verbands Admins:</div>');
+            teamBox.append('<ul></ul>');
+            admins.forEach(admin => teamBox.find('ul:last').append(admin));
         }
         if (coAdmins.length > 0) {
-            teamBox.append(`<li style="margin-bottom: 5px;"><strong>Co-Admins:</strong><ul style="list-style-type:none; padding-left: 15px;">${coAdmins.map(user => `<li>${user}</li>`).join("")}</ul></li>`);
+            teamBox.append('<div class="role-title">Verbands Co-Admins:</div>');
+            teamBox.append('<ul></ul>');
+            coAdmins.forEach(coAdmin => teamBox.find('ul:last').append(coAdmin));
         }
     }
 
