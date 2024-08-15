@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.0.4
+// @version      3.0.5
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird. Zeigt auch das Verbandsteam mit Verlinkungen zu den Profilen an.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -16,7 +16,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.0.4"; // Aktuelle Version des Skripts
+    const currentVersion = "3.0.5"; // Aktuelle Version des Skripts
     const updateUrl = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
 
     // Stil für das neue Design hinzufügen
@@ -347,9 +347,11 @@
             method: "GET",
             url: updateUrl,
             onload: function(response) {
+                console.log("Update URL response:", response.status); // Debug-Ausgabe
                 if (response.status === 200) {
                     const remoteScript = response.responseText;
                     const remoteVersion = remoteScript.match(/@version\s+(\d+\.\d+\.\d+)/)[1];
+                    console.log("Remote version:", remoteVersion); // Debug-Ausgabe
                     if (remoteVersion && remoteVersion !== currentVersion) {
                         GM_notification({
                             title: "Verband Statistik Update",
@@ -361,6 +363,9 @@
                         });
                     }
                 }
+            },
+            onerror: function(error) {
+                console.error("Fehler beim Abrufen des Updates:", error); // Debug-Ausgabe
             }
         });
     }
@@ -564,7 +569,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.4 </a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.0.5 </a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
