@@ -614,7 +614,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.1.0 </a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Entwickelt mit dem Verband Team von Wir in Baden-Württemberg</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der Gesamtverdienten Credits des Verbandes</a></li>`
