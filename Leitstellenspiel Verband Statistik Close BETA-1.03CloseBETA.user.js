@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.1.0
+// @version      3.1.1
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird. Zeigt auch das Verbandsteam mit Verlinkungen zu den Profilen an.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -16,7 +16,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.1.0"; // Aktuelle Version des Skripts
+    const currentVersion = "3.1.1"; // Aktuelle Version des Skripts
     const updateUrl = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
 
     // Stil für das neue Design hinzufügen
@@ -258,8 +258,9 @@
     let lastTimestamp = Date.now();
 
     // Variablen für den Tagesverdienst
-    let initialTotalCredits = parseInt(localStorage.getItem("initialTotalCredits"), 10) || 0;
-    let dailyEarnings = parseInt(localStorage.getItem("dailyEarnings"), 10) || 0;
+    let initialTotalCredits = 0;
+    let lastTotalCredits = 0;
+    let dailyEarnings = 0;
     let lastCheckedDate = localStorage.getItem("lastCheckedDate") || new Date().toISOString().split('T')[0];
 
     // Funktion zum Formatieren der Zeit in HH:MM:SS
@@ -291,7 +292,7 @@
     function savePlaytimeAndCredits() {
         localStorage.setItem("dailyPlaytime", playtime);
         localStorage.setItem("lastTimestamp", lastTimestamp);
-        localStorage.setItem("initialTotalCredits", initialTotalCredits);
+        localStorage.setItem("lastTotalCredits", lastTotalCredits);
         localStorage.setItem("dailyEarnings", dailyEarnings);
         localStorage.setItem("lastCheckedDate", lastCheckedDate);
     }
@@ -300,9 +301,46 @@
     function loadPlaytimeAndCredits() {
         playtime = parseInt(localStorage.getItem("dailyPlaytime"), 10) || 0;
         lastTimestamp = parseInt(localStorage.getItem("lastTimestamp"), 10) || Date.now();
-        initialTotalCredits = parseInt(localStorage.getItem("initialTotalCredits"), 10) || 0;
+        lastTotalCredits = parseInt(localStorage.getItem("lastTotalCredits"), 10) || 0;
         dailyEarnings = parseInt(localStorage.getItem("dailyEarnings"), 10) || 0;
         lastCheckedDate = localStorage.getItem("lastCheckedDate") || new Date().toISOString().split('T')[0];
+    }
+
+    // Funktion zum Zurücksetzen der Spielzeit und Tagesverdienst um 0:00 Uhr
+    function resetDailyValues() {
+        playtime = 0;
+        dailyEarnings = 0;
+        lastTotalCredits = 0;  // Setzt den Startpunkt für die Berechnung des Tagesverdienstes zurück
+        lastCheckedDate = new Date().toISOString().split('T')[0]; // Setzt das Datum auf den aktuellen Tag
+        savePlaytimeAndCredits();
+        $("#playtime").text(formatTime(playtime));
+        $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
+    }
+
+    // Funktion zum Überprüfen des aktuellen Datums beim Laden der Seite
+    function checkForMidnight() {
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+
+        if (today !== lastCheckedDate) {
+            resetDailyValues();  // Zurücksetzen, wenn ein neuer Tag beginnt
+        }
+    }
+
+    // Funktion zum Berechnen des Tagesverdienstes
+    function calculateDailyEarnings(currentTotalCredits) {
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+
+        if (lastTotalCredits === 0 || lastCheckedDate !== today) {
+            lastTotalCredits = currentTotalCredits;  // Initiale Credits festlegen, wenn die Speicherung fehlt
+            dailyEarnings = 0;
+        } else {
+            dailyEarnings += currentTotalCredits - lastTotalCredits;
+        }
+
+        lastTotalCredits = currentTotalCredits;
+        savePlaytimeAndCredits();
     }
 
     // Funktion zum Aktualisieren der Spielzeit
@@ -333,49 +371,6 @@
     // Funktion zum Starten des Datums- und Uhrzeit-Timers
     function startDateTimeTimer() {
         setInterval(updateDateTime, 1000); // Datum und Uhrzeit jede Sekunde aktualisieren
-    }
-
-    // Funktion zum Zurücksetzen der Spielzeit und Tagesverdienst um 0:00 Uhr
-    function checkForMidnight() {
-        const now = new Date();
-        const today = now.toISOString().split('T')[0];
-
-        if (today !== lastCheckedDate) {
-            playtime = 0;
-            lastCheckedDate = today;
-            savePlaytimeAndCredits();
-            $("#playtime").text(formatTime(playtime));
-            $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
-        }
-    }
-
-    // Funktion zum Berechnen des Tagesverdienstes
-    function calculateDailyEarnings(currentTotalCredits) {
-        const now = new Date();
-        const today = now.toISOString().split('T')[0];
-
-        if (initialTotalCredits === 0 || lastCheckedDate !== today) {
-            initialTotalCredits = currentTotalCredits;
-            dailyEarnings = 0;
-        } else {
-            dailyEarnings = currentTotalCredits - initialTotalCredits;
-        }
-        savePlaytimeAndCredits();
-    }
-
-    // Funktion zum Zurücksetzen der Spielzeit (manuell)
-    function resetPlaytime() {
-        playtime = 0;
-        savePlaytimeAndCredits();
-        $("#playtime").text(formatTime(playtime));
-    }
-
-    // Funktion zum Zurücksetzen des Tagesverdienstes (manuell)
-    function resetDailyEarnings() {
-        initialTotalCredits = 0;
-        dailyEarnings = 0;
-        savePlaytimeAndCredits();
-        $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
     }
 
     // Funktion zum Anzeigen des Update-Popups
@@ -421,6 +416,7 @@
                 if (response.status === 200) {
                     try {
                         const data = JSON.parse(response.responseText);
+                        calculateDailyEarnings(data.credits_total);  // Berechne den Tagesverdienst
                         updateAllianceStatistics(data);
                         updateAllianceTeam(data.users);
                     } catch (e) {
@@ -449,8 +445,6 @@
         const currentCredits = data.credits_current || 0;
         const totalMembers = data.user_count || 0;
         const rank = data.rank || "Unbekannt";
-
-        calculateDailyEarnings(totalCredits);
 
         let dropdownMenu = $("#alliance-statistics-menu");
         if (dropdownMenu.length === 0) {
@@ -554,10 +548,11 @@
             });
 
             patchNotesContainer.append(`
-                <h3>Patch-Notes 3.0.1</h3>
+                <h3>Patch-Notes 3.1.1</h3>
                 <ul>
-                    <li>- Einige Fehler mit dem heutigen Spielzeit-Timer und dem Gesamttagesverdienst wurden behoben.</li>
-                    <li>- Ein neuer Menüpunkt "Einstellungen" wurde hinzugefügt, mit dem der Timer und der Gesamttagesverdienst manuell zurückgesetzt werden können.</li>
+                    <li>- Die Aktualisierungsintervalle für alle Statistiken wurden auf 1 Minute gesetzt, um die Serverlast zu reduzieren. Diese Änderung wurde auf Wunsch der Entwickler von Leitstellenspiel vorgenommen.</li>
+                    <li>- Es gibt bekannte Probleme mit dem Zurücksetzen der heutigen Spielzeit und des Tagesverdienstes des Verbands.</li>
+                    <li>- Das Zurücksetzen der Spielzeit und des Tagesverdienstes um Mitternacht sollte jetzt korrekt funktionieren, auch wenn die Seite neu geladen wird.</li>
                     <li>- Aktualisiert am ${new Date().toLocaleDateString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit' })} um ${new Date().toLocaleTimeString('de-DE')}</li>
                 </ul>
             `);
@@ -611,13 +606,13 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.1.0 </a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.1.1 </a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Entwickelt mit dem Verband Team von Wir in Baden-Württemberg</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der Gesamtverdienten Credits des Verbandes (BETA)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der Gesamtverdienten Credits des Verbandes</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige der aktuellen Verbandskasse</a></li>`
@@ -632,7 +627,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">- Anzeige des Gesamttagesverdiensts</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">- Automatische Echtzeit-Aktualisierung der Statistiken alle 1 Sekunde</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">- Automatische Echtzeit-Aktualisierung der Statistiken alle 1 Minute</a></li>`
             );
 
             // Wasserzeichen Logo in der Skript-Info
@@ -745,8 +740,9 @@
 
     $(document).ready(function () {
         loadPlaytimeAndCredits();
+        checkForMidnight();  // Überprüfen und Zurücksetzen beim Laden der Seite
         fetchAllianceInfo();
-        setInterval(fetchAllianceInfo, 1000); // Echtzeit-Aktualisierung alle 1 Sekunde
+        setInterval(fetchAllianceInfo, 60000); // Echtzeit-Aktualisierung alle 1 Minute
         setInterval(updateAllianceTeam, 600000); // Team-Update alle 10 Minuten
         startPlaytimeTimer();
         startDateTimeTimer();
