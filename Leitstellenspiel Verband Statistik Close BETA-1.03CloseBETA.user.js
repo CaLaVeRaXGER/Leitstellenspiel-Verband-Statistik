@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.2.2 (Hotfix)
+// @version      3.2.3 (Hotfix)
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird. Zeigt auch das Verbandsteam mit Verlinkungen zu den Profilen an.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -16,7 +16,7 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.2.2 (Hotfix)"; // Aktuelle Version des Skripts
+    const currentVersion = "3.2.3 (Hotfix)"; // Aktuelle Version des Skripts
     const updateUrl = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
     const updateKey = `lss_update_notice_shown_${currentVersion}`; // Key für localStorage, um anzuzeigen, dass das Popup für diese Version bereits gezeigt wurde
 
@@ -384,25 +384,15 @@
         `;
         $("body").append(popupHtml);
 
-        // Schließen des Popups nach Klick auf den Link und prüfen, ob die Version aktualisiert wurde
+        // Klick-Event zum Schließen des Popups und Öffnen des Update-Links
         $("#update-link").on("click", function () {
-            // Öffnen des Update-Links in einem neuen Tab
-            window.open(updateUrl, "_blank");
-
-            // Schließen des Popups
-            $("#update-popup").remove();
-
-            // Speichern, dass das Popup angezeigt wurde
-            localStorage.setItem(updateKey, "true");
-
-            // Neu laden der Seite nach 2 Sekunden
-            setTimeout(() => {
-                location.reload();
-            }, 2000);
+            localStorage.setItem(updateKey, "true"); // Popup als angezeigt markieren
+            window.open(updateUrl, "_blank"); // Update-URL in neuem Tab öffnen
+            $("#update-popup").remove(); // Popup schließen
         });
     }
 
-    // Funktion zum Überprüfen auf ein Update
+    // Funktion zum Überprüfen auf ein Update und Anzeigen des Popups
     function checkForUpdate() {
         const updateNoticeShown = localStorage.getItem(updateKey);
 
@@ -415,7 +405,7 @@
                         const remoteScript = response.responseText;
                         const remoteVersion = remoteScript.match(/@version\s+(\d+\.\d+\.\d+)/)[1];
                         if (remoteVersion && remoteVersion !== currentVersion) {
-                            showUpdatePopup(remoteVersion); // Zeige das Ingame-Popup
+                            showUpdatePopup(remoteVersion); // Zeige das neue Popup
                         }
                     }
                 }
@@ -564,7 +554,7 @@
             });
 
             patchNotesContainer.append(`
-                <h3>Patch-Notes 3.2.1 (Hotfix)</h3>
+                <h3>Patch-Notes 3.2.3 (Hotfix)</h3>
                 <ul>
                     <li>- Behoben: Das automatische Zurücksetzen der Spielzeit und des Tagesverdiensts um Mitternacht (Ortszeit) funktioniert jetzt korrekt.</li>
                     <li>- Behoben: Die Buttons zum manuellen Zurücksetzen der Spielzeit und des Tagesverdiensts funktionieren jetzt ordnungsgemäß.</li>
@@ -624,7 +614,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.2.1 (Hotfix)</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.2.3 (Hotfix)</a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Dieses Skript wurde in Zusammenarbeit mit dem Team "Wir in Baden-Württemberg" erstellt.</a></li>`
