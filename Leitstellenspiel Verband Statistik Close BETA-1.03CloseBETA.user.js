@@ -378,10 +378,15 @@
             <div id="update-popup">
                 <h2>Update Verfügbar</h2>
                 <p>Verbands Statistik Update Verfügbar <strong>${version}</strong></p>
-                <a href="${updateUrl}" target="_blank">Jetzt Aktualisieren</a>
+                <a href="${updateUrl}" id="update-link" target="_blank">Jetzt Aktualisieren</a>
             </div>
         `;
         $("body").append(popupHtml);
+
+        // Schließen des Popups nach Klick auf den Link
+        $("#update-link").on("click", function () {
+            $("#update-popup").remove();
+        });
     }
 
     // Funktion zum Überprüfen auf ein Update
