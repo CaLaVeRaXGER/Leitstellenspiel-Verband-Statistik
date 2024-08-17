@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Close BETA
 // @namespace    http://tampermonkey.net/
-// @version      3.2.4 (Hotfix)
+// @version      3.1.1
 // @description  Zeigt Statistiken des Verbandes im Leitstellenspiel als ausklappbares Menü an, inklusive eines Spielzeit-Timers und der Berechnung des Gesamttagesverdiensts, der täglich um 0:00 Uhr zurückgesetzt wird. Zeigt auch das Verbandsteam mit Verlinkungen zu den Profilen an.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -16,14 +16,13 @@
 (function () {
     "use strict";
 
-    const currentVersion = "3.2.4 (Hotfix)"; // Aktuelle Version des Skripts
+    const currentVersion = "3.1.1"; // Aktuelle Version des Skripts
     const updateUrl = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
-    const updateKey = `lss_update_notice_shown_${currentVersion}`; // Key für localStorage, um anzuzeigen, dass das Popup für diese Version bereits gezeigt wurde
 
     // Stil für das neue Design hinzufügen
     GM_addStyle(`
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
-
+        
         #alliance-statistics-menu {
             padding: 8px;
             min-width: 450px;
@@ -142,6 +141,7 @@
             color: #ecf0f1;
         }
         #patch-notes-container {
+            display: none;
             margin-top: 8px;
             padding: 10px;
             background-color: rgba(0, 0, 0, 0.5);
@@ -306,43 +306,6 @@
         lastCheckedDate = localStorage.getItem("lastCheckedDate") || new Date().toISOString().split('T')[0];
     }
 
-    // Funktion zum Zurücksetzen der Spielzeit und Tagesverdienst um 0:00 Uhr (Ortszeit)
-    function resetDailyValues() {
-        playtime = 0;
-        dailyEarnings = 0;
-        lastTotalCredits = 0;  // Setzt den Startpunkt für die Berechnung des Tagesverdienstes zurück
-        lastCheckedDate = new Date().toISOString().split('T')[0]; // Setzt das Datum auf den aktuellen Tag
-        savePlaytimeAndCredits();
-        $("#playtime").text(formatTime(playtime));
-        $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
-    }
-
-    // Funktion zum Überprüfen des aktuellen Datums und Zurücksetzen um Mitternacht (Ortszeit)
-    function checkForMidnight() {
-        const now = new Date();
-        const today = now.toISOString().split('T')[0];
-
-        if (today !== lastCheckedDate) {
-            resetDailyValues();  // Zurücksetzen, wenn ein neuer Tag beginnt
-        }
-    }
-
-    // Funktion zum Berechnen des Tagesverdienstes
-    function calculateDailyEarnings(currentTotalCredits) {
-        const now = new Date();
-        const today = now.toISOString().split('T')[0];
-
-        if (lastTotalCredits === 0 || lastCheckedDate !== today) {
-            lastTotalCredits = currentTotalCredits;  // Initiale Credits festlegen, wenn die Speicherung fehlt
-            dailyEarnings = 0;
-        } else {
-            dailyEarnings += currentTotalCredits - lastTotalCredits;
-        }
-
-        lastTotalCredits = currentTotalCredits;
-        savePlaytimeAndCredits();
-    }
-
     // Funktion zum Aktualisieren der Spielzeit
     function updatePlaytime() {
         const now = Date.now();
@@ -373,44 +336,84 @@
         setInterval(updateDateTime, 1000); // Datum und Uhrzeit jede Sekunde aktualisieren
     }
 
+    // Funktion zum Zurücksetzen der Spielzeit und Tagesverdienst um 0:00 Uhr
+    function checkForMidnight() {
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+
+        if (today !== lastCheckedDate) {
+            playtime = 0;
+            dailyEarnings = 0;  // Zurücksetzen des Tagesverdienstes um Mitternacht
+            lastCheckedDate = today;
+            savePlaytimeAndCredits();
+            $("#playtime").text(formatTime(playtime));
+            $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
+        }
+    }
+
+    // Funktion zum Berechnen des Tagesverdienstes
+    function calculateDailyEarnings(currentTotalCredits) {
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+
+        if (lastTotalCredits === 0 || lastCheckedDate !== today) {
+            lastTotalCredits = currentTotalCredits;  // Initiale Credits festlegen, wenn die Speicherung fehlt
+            dailyEarnings = 0;
+        } else {
+            dailyEarnings += currentTotalCredits - lastTotalCredits;
+        }
+
+        lastTotalCredits = currentTotalCredits;
+        savePlaytimeAndCredits();
+    }
+
+    // Funktion zum Zurücksetzen der Spielzeit (manuell)
+    function resetPlaytime() {
+        playtime = 0;
+        savePlaytimeAndCredits();
+        $("#playtime").text(formatTime(playtime));
+    }
+
+    // Funktion zum Zurücksetzen des Tagesverdienstes (manuell)
+    function resetDailyEarnings() {
+        lastTotalCredits = 0;
+        dailyEarnings = 0;
+        savePlaytimeAndCredits();
+        $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
+    }
+
     // Funktion zum Anzeigen des Update-Popups
     function showUpdatePopup(version) {
         const popupHtml = `
             <div id="update-popup">
                 <h2>Update Verfügbar</h2>
                 <p>Verbands Statistik Update Verfügbar <strong>${version}</strong></p>
-                <a href="${updateUrl}" id="update-link" target="_blank">Jetzt Aktualisieren</a>
+                <a href="${updateUrl}" target="_blank">Jetzt Aktualisieren</a>
             </div>
         `;
         $("body").append(popupHtml);
-
-        // Klick-Event zum Schließen des Popups und Öffnen des Update-Links
-        $("#update-link").on("click", function () {
-            localStorage.setItem(updateKey, "true"); // Popup als angezeigt markieren
-            window.open(updateUrl, "_blank"); // Update-URL in neuem Tab öffnen
-            $("#update-popup").remove(); // Popup schließen
-        });
     }
 
-    // Funktion zum Überprüfen auf ein Update und Anzeigen des Popups
+    // Funktion zum Überprüfen auf ein Update
     function checkForUpdate() {
-        const updateNoticeShown = localStorage.getItem(updateKey);
-
-        if (!updateNoticeShown) {
-            GM_xmlhttpRequest({
-                method: "GET",
-                url: updateUrl,
-                onload: function(response) {
-                    if (response.status === 200) {
-                        const remoteScript = response.responseText;
-                        const remoteVersion = remoteScript.match(/@version\s+(\d+\.\d+\.\d+)/)[1];
-                        if (remoteVersion && remoteVersion !== currentVersion) {
-                            showUpdatePopup(remoteVersion); // Zeige das neue Popup
-                        }
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: updateUrl,
+            onload: function(response) {
+                console.log("Update URL response:", response.status); // Debug-Ausgabe
+                if (response.status === 200) {
+                    const remoteScript = response.responseText;
+                    const remoteVersion = remoteScript.match(/@version\s+(\d+\.\d+\.\d+)/)[1];
+                    console.log("Remote version:", remoteVersion); // Debug-Ausgabe
+                    if (remoteVersion && remoteVersion !== currentVersion) {
+                        showUpdatePopup(remoteVersion); // Zeige das Ingame-Popup
                     }
                 }
-            });
-        }
+            },
+            onerror: function(error) {
+                console.error("Fehler beim Abrufen des Updates:", error); // Debug-Ausgabe
+            }
+        });
     }
 
     // Funktion zum Abrufen der Verbandsinformationen
@@ -554,13 +557,10 @@
             });
 
             patchNotesContainer.append(`
-                <h3>Patch-Notes 3.2.4 (Hotfix)</h3>
+                <h3>Patch-Notes 3.1.1</h3>
                 <ul>
-                    <li>- Behoben: Das automatische Zurücksetzen der Spielzeit und des Tagesverdiensts um Mitternacht (Ortszeit) funktioniert jetzt korrekt.</li>
-                    <li>- Behoben: Die Buttons zum manuellen Zurücksetzen der Spielzeit und des Tagesverdiensts funktionieren jetzt ordnungsgemäß.</li>
                     <li>- Die Aktualisierungsintervalle für alle Statistiken wurden auf 1 Minute gesetzt, um die Serverlast zu reduzieren. Diese Änderung wurde auf Wunsch der Entwickler von Leitstellenspiel vorgenommen.</li>
                     <li>- Es gibt bekannte Probleme mit dem Zurücksetzen der heutigen Spielzeit und des Tagesverdienstes des Verbands.</li>
-                    <li>- Das Zurücksetzen der Spielzeit und des Tagesverdienstes um Mitternacht sollte jetzt korrekt funktionieren, auch wenn die Seite neu geladen wird.</li>
                     <li>- Aktualisiert am ${new Date().toLocaleDateString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit' })} um ${new Date().toLocaleTimeString('de-DE')}</li>
                 </ul>
             `);
@@ -614,10 +614,7 @@
                 `<li><a href="#" style="color: white; font-size: 10px;">Supporter: m75e, twoyears</a></li>`
             );
             scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.2.4 (Hotfix)</a></li>`
-            );
-            scriptInfoContainer.append(
-                `<li><a href="#" style="color: white; font-size: 10px;">Dieses Skript wurde in Zusammenarbeit mit dem Team "Wir in Baden-Württemberg" erstellt.</a></li>`
+                `<li><a href="#" style="color: white; font-size: 10px;">Version: 3.1.1 </a></li>`
             );
             scriptInfoContainer.append(
                 `<li><a href="#" style="color: white; font-size: 10px;">Funktionen des Skripts:</a></li>`
@@ -672,15 +669,13 @@
             // Klick-Event zum Zurücksetzen der Spielzeit
             dropdownMenu.on("click", "#reset-playtime-button", function (e) {
                 e.preventDefault();
-                resetDailyValues();
-                $("#playtime").text(formatTime(0));
+                resetPlaytime();
             });
 
             // Klick-Event zum Zurücksetzen des Tagesverdienstes
             dropdownMenu.on("click", "#reset-daily-earnings-button", function (e) {
                 e.preventDefault();
-                resetDailyValues();
-                $("#alliance-statistics-menu .daily-earnings").text(dailyEarnings.toLocaleString());
+                resetDailyEarnings();
             });
 
             // Klick-Event zum Ein- und Ausklappen des Verbandsteams
@@ -753,7 +748,6 @@
 
     $(document).ready(function () {
         loadPlaytimeAndCredits();
-        checkForMidnight();  // Überprüfen und Zurücksetzen beim Laden der Seite
         fetchAllianceInfo();
         setInterval(fetchAllianceInfo, 60000); // Echtzeit-Aktualisierung alle 1 Minute
         setInterval(updateAllianceTeam, 600000); // Team-Update alle 10 Minuten
