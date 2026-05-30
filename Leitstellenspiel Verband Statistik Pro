@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
-// @version      5.1.0
+// @version      5.1.1
 // @description  Professionelles Dashboard für den Verband: Live-Statistiken, Fahrzeugstatus, Kreditverlauf, Spielzeit-Tracking, Team-Übersicht und mehr. Nutzt mehrere LSS-APIs gleichzeitig.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -20,7 +20,7 @@
     // ═══════════════════════════════════════════════════════════════════════════
     //  KONSTANTEN
     // ═══════════════════════════════════════════════════════════════════════════
-    const VERSION        = "5.1.0";
+    const VERSION        = "5.1.1";
     const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
     const BASE           = "https://www.leitstellenspiel.de";
 
