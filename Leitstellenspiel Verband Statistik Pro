@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Leitstellenspiel Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
-// @version      5.0.2
+// @version      5.1.0
 // @description  Professionelles Dashboard für den Verband: Live-Statistiken, Fahrzeugstatus, Kreditverlauf, Spielzeit-Tracking, Team-Übersicht und mehr. Nutzt mehrere LSS-APIs gleichzeitig.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -10,8 +10,8 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
-// @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js
-// @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js
+// @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
+// @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
 // ==/UserScript==
 
 (function () {
@@ -20,8 +20,8 @@
     // ═══════════════════════════════════════════════════════════════════════════
     //  KONSTANTEN
     // ═══════════════════════════════════════════════════════════════════════════
-    const VERSION        = "5.0.0";
-    const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
+    const VERSION        = "5.1.0";
+    const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
     const BASE           = "https://www.leitstellenspiel.de";
 
     const API = {
