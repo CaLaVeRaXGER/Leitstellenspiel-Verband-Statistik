@@ -20,7 +20,7 @@
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  KONFIGURATION                                               ║
 // ╚══════════════════════════════════════════════════════════════╝
-const V   = "7.0.0";
+const V   = "5.2.0";
 const BASE = "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
 
