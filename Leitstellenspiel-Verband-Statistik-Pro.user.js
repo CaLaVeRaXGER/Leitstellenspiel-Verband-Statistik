@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      6.0.3
+// @version      6.0.4
 // @description  Ultimate Premium Dashboard: Floating Panel, 8 APIs, Live-Charts, Fahrzeugstatus-Donut, Kilometerstand, ARR-Ãœbersicht, GebÃ¤ude, Schulungen, Verlaufshistorie, Team, Dark-Design.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -23,7 +23,7 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "6.0.3";
+const V   = "6.0.4";
 const BASE = "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 
@@ -1459,7 +1459,7 @@ function fetchAAOs(){
 
 function fetchAllData(){
   fetchAlliance(); fetchUserinfo(); fetchVehicleStates();
-  fetchBuildings(); fetchSchoolings(); fetchVehicleDistances(); fetchAAOs();
+  fetchSchoolings(); fetchAAOs();
   fetchDailyEarnFromOverview();
   fetchWeather();
 }
@@ -1782,9 +1782,7 @@ function buildUI(){
   const TABS=[
     {id:"tp-overview",  icon:"", label:"Uebersicht"},
     {id:"tp-vehicles",  icon:"", label:"Fahrzeuge"},
-    {id:"tp-buildings", icon:"", label:"Gebaeude"},
     {id:"tp-schoolings",icon:"", label:"Schulungen"},
-    {id:"tp-km",        icon:"", label:"Kilometer"},
     {id:"tp-aao",       icon:"", label:"AAO"},
     {id:"tp-history",   icon:"", label:"Verlauf"},
     {id:"tp-team",      icon:"", label:"Team"},
@@ -1866,20 +1864,10 @@ function buildUI(){
     <div class="vb-wrap" id="lss7-vbars"><div class="lss7-empty"><span class="lspin"></span> Lade...</div></div>`);
   body.append(tVeh);
 
-  // TAB: GebÃ¤ude â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const tBld=$(`<div id="tp-buildings" class="lpanel"></div>`);
-  tBld.append(`<div id="lss7-bld"><div class="lss7-empty"><span class="lspin"></span> Lade Gebaeude...</div></div>`);
-  body.append(tBld);
-
   // TAB: Schulungen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tSch=$(`<div id="tp-schoolings" class="lpanel"></div>`);
   tSch.append(`<div id="lss7-sch"><div class="lss7-empty"><span class="lspin"></span> Lade Schulungen...</div></div>`);
   body.append(tSch);
-
-  // TAB: Kilometer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const tKm=$(`<div id="tp-km" class="lpanel"></div>`);
-  tKm.append(`<div id="lss7-km"><div class="lss7-empty"><span class="lspin"></span> Lade Kilometerdaten...</div></div>`);
-  body.append(tKm);
 
   // TAB: AAO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tAAO=$(`<div id="tp-aao" class="lpanel"></div>`);
@@ -2025,9 +2013,7 @@ function buildUI(){
 
     // Lazy fetch beim ersten Ã–ffnen
     if(id==="tp-vehicles"  && !panel.data("lv")){panel.data("lv",1);fetchVehicleStates();}
-    if(id==="tp-buildings" && !panel.data("lb")){panel.data("lb",1);fetchBuildings();}
     if(id==="tp-schoolings"&& !panel.data("ls")){panel.data("ls",1);fetchSchoolings();}
-    if(id==="tp-km"        && !panel.data("lk")){panel.data("lk",1);fetchVehicleDistances();}
     if(id==="tp-aao"       && !panel.data("la")){panel.data("la",1);fetchAAOs();}
     if(id==="tp-history"){renderHistTab();}
     if(id==="tp-overview"){setTimeout(drawChart,50);}
@@ -2513,7 +2499,6 @@ $(document).ready(()=>{
   setInterval(fetchUserinfo,      ITV.userinfo);
   setInterval(fetchProfileCard,   ITV.profile);
   setInterval(fetchVehicleStates, ITV.vstates);
-  setInterval(fetchBuildings,     ITV.buildings);
   setInterval(fetchSchoolings,    ITV.schools);
   setInterval(fetchDailyEarnFromOverview, ITV.dailyEarn);
   setInterval(fetchWeather,       ITV.weather);
