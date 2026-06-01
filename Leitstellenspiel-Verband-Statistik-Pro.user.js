@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      5.9.1
+// @version      5.9.0
 // @description  Ultimate Premium Dashboard: Floating Panel, 8 APIs, Live-Charts, Fahrzeugstatus-Donut, Kilometerstand, ARR-Ãœbersicht, GebÃ¤ude, Schulungen, Verlaufshistorie, Team, Dark-Design.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -21,7 +21,7 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "5.9.1";
+const V   = "5.9.0";
 const BASE = "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 
@@ -2400,12 +2400,23 @@ $(document).on("click.lss7",function(e){
 // â•‘  UPDATE CHECK                                                â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function checkUpdate(){
+  const cmpVer=(a,b)=>{
+    const pa=String(a||"0").split(".").map(x=>parseInt(x,10)||0);
+    const pb=String(b||"0").split(".").map(x=>parseInt(x,10)||0);
+    const n=Math.max(pa.length,pb.length);
+    for(let i=0;i<n;i++){
+      const da=pa[i]||0, db=pb[i]||0;
+      if(da>db) return 1;
+      if(da<db) return -1;
+    }
+    return 0;
+  };
   GM_xmlhttpRequest({
-    method:"GET",url:UPDATE_URL,
+    method:"GET",url:`${UPDATE_URL}?t=${Date.now()}`,
     onload(r){
       if(r.status!==200)return;
       const m=r.responseText.match(/@version\s+([\d.]+)/);
-      if(m&&m[1]!==V)showUpdate(m[1]);
+      if(m && cmpVer(m[1],V)>0) showUpdate(m[1]);
     }
   });
 }
