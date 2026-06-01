@@ -11,8 +11,8 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
-// @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/LSS-Verband-Statistik-Pro.user.js
-// @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/LSS-Verband-Statistik-Pro.user.js
+// @updateURL    https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
+// @downloadURL  https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
 // ==/UserScript==
 
 (function () {
@@ -23,7 +23,7 @@
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const V   = "5.9.0";
 const BASE = "https://www.leitstellenspiel.de";
-const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/LSS-Verband-Statistik-Pro.user.js";
+const UPDATE_URL = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Leitstellenspiel-Verband-Statistik-Pro.user.js;
 
 const API = {
   alliance:    `${BASE}/api/allianceinfo`,
