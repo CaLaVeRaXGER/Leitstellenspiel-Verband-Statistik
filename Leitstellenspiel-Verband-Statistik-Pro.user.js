@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      5.9.2
+// @version      5.9.0
 // @description  Ultimate Premium Dashboard: Floating Panel, 8 APIs, Live-Charts, Fahrzeugstatus-Donut, Kilometerstand, ARR-Ãœbersicht, GebÃ¤ude, Schulungen, Verlaufshistorie, Team, Dark-Design.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -10,6 +10,8 @@
 // @grant        GM_addStyle
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @connect      raw.githubusercontent.com
+// @connect      github.com
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
 // @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
@@ -21,7 +23,7 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "5.9.2";
+const V   = "5.9.0";
 const BASE = "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 
@@ -1953,14 +1955,14 @@ function buildUI(){
   setWrap.append(grpContact);
 
   const grpPn=$(`<div class="set-group"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v5.9.0</b><br>Layout-Einbindung in den Einstellungen hinzugefügt, Banner im Layout ein-/ausklappbar, Profil-Informationen ergänzt, Wettervorhersage von 4 auf 7 Stunden erweitert, mehrere Fehler behoben inkl. Update-Überschreiben.</div>`);
+  grpPn.append(`<div class="set-note"><b>v5.8.3</b><br>Layout-Einbindung in den Einstellungen hinzugefügt, Banner im Layout ein-/ausklappbar, Profil-Informationen ergänzt, Wettervorhersage von 4 auf 7 Stunden erweitert, mehrere Fehler behoben inkl. Update-Überschreiben.</div>`);
   setWrap.append(grpPn);
 
   tSet.append(setWrap);
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v5.9.0",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v5.8.3",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -2339,7 +2341,7 @@ function patchHTML(){
     "Falls Update weiterhin nicht korrekt überschreibt: bitte Feedback über Kontakt senden.",
   ];
   return `<div style="color:var(--blue);font-weight:700;font-size:11px;margin-bottom:10px">
-    v5.9.0 — Layout, Profil, Wetter & Update Fix</div>
+    v5.8.3 — Layout, Profil, Wetter & Update Fix</div>
     ${items.map(t=>`<div class="patch-i"><span class="patch-b">→</span><span>${t}</span></div>`).join("")}`;
 }
 function infoHTML(){
