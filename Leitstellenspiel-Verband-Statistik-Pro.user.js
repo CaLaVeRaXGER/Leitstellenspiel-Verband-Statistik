@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      6.0.2
+// @version      6.0.3
 // @description  Ultimate Premium Dashboard: Floating Panel, 8 APIs, Live-Charts, Fahrzeugstatus-Donut, Kilometerstand, ARR-Ãœbersicht, GebÃ¤ude, Schulungen, Verlaufshistorie, Team, Dark-Design.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -23,7 +23,7 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "6.0.2";
+const V   = "6.0.3";
 const BASE = "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 
@@ -223,6 +223,7 @@ GM_addStyle(`
 .bd-red   {color:var(--red);   background:var(--red3);   border:1px solid rgba(239,68,68,.3);}
 .bd-purple{color:var(--purple);background:var(--purple3);border:1px solid rgba(168,85,247,.3);}
 .bd-cyan  {color:var(--cyan);  background:var(--cyan3);  border:1px solid rgba(34,211,238,.3);}
+.bd-gold  {color:#f9e6a2;background:linear-gradient(180deg,rgba(201,146,36,.28),rgba(122,82,16,.24));border:1px solid rgba(245,195,92,.45);}
 
 /* Close */
 #lss7-x {
@@ -576,6 +577,19 @@ GM_addStyle(`
   --bgh:#223043; --bgc:#1b2737;
   --blue:#60a5fa; --blueh:#93c5fd; --cyan:#22d3ee; --cyanh:#67e8f9;
 }
+#lss7.theme-premium{
+  --bg0:#0e0a04; --bg1:#171107; --bg2:#1e1609; --bg3:#281c0b; --bg4:#33240e;
+  --bgh:#2f220d; --bgc:#261c0c;
+  --b1:rgba(248,199,101,.16); --b2:rgba(248,199,101,.26); --b3:rgba(248,199,101,.38);
+  --blue:#d9a441; --blueh:#f1c76a; --cyan:#f59e0b; --cyanh:#f8b84a;
+  --green:#f6d377; --greenh:#ffe5a8;
+  box-shadow:0 0 0 1px rgba(248,199,101,.18) inset, 0 20px 60px rgba(0,0,0,.65);
+}
+#lss7.theme-premium #lss7-hd{
+  background:radial-gradient(120% 140% at 100% 0%, rgba(245,190,75,.22), transparent 60%),linear-gradient(180deg, rgba(255,219,130,.09), rgba(255,219,130,0));
+}
+#lss7.theme-premium .prof-fill{background:linear-gradient(90deg,#d9a441,#f6d377,#ffe5a8);}
+#lss7.theme-premium .kpi-val,#lss7.theme-premium .stat-num{text-shadow:0 0 18px rgba(245,196,88,.18);}
 
 /* Accordion */
 .lacc{border-top:1px solid var(--b1);}
@@ -612,8 +626,9 @@ GM_addStyle(`
   display:flex;align-items:center;justify-content:center;
 }
 #lss7-ub{
-  background:var(--bg2);border:1px solid var(--b3);border-radius:16px;
-  padding:24px 22px;width:360px;text-align:center;
+  background:linear-gradient(180deg, rgba(8,16,34,.96), rgba(7,13,27,.96));
+  border:1px solid rgba(88,122,201,.28);border-radius:14px;
+  padding:18px 18px 14px;width:380px;text-align:left;
   box-shadow:0 40px 100px rgba(0,0,0,.85);font-family:var(--font);color:var(--t1);
   animation:popin .22s cubic-bezier(.34,1.56,.64,1) both;
   position:relative;
@@ -629,21 +644,28 @@ GM_addStyle(`
   display:inline-flex;align-items:center;gap:6px;padding:4px 9px;
   border:1px solid rgba(65,122,255,.35);background:rgba(65,122,255,.12);
   color:#9fc0ff;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.4px;
-  margin-bottom:10px;
+  margin-bottom:10px;text-transform:uppercase;
 }
-.ub-icon{font-size:34px;margin-bottom:8px;}
-#lss7-ub h2{font-size:20px;font-weight:700;margin:0 0 8px;}
-#lss7-ub p {font-size:13px;color:var(--t4);line-height:1.6;margin:0 0 18px;}
+.ub-icon{display:none;}
+#lss7-ub h2{font-size:25px;font-weight:800;margin:0 0 8px;letter-spacing:0;}
+#lss7-ub p {font-size:14px;color:var(--t3);line-height:1.55;margin:0 0 14px;}
+.ub-vers{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin:0 0 14px;padding:10px 12px;border:1px solid var(--b2);
+  border-radius:10px;background:rgba(255,255,255,.03);font-size:12px;color:var(--t3);
+}
+.ub-vers strong{color:var(--t1);}
 .ub-row{display:flex;gap:8px;}
 .ub-btn{
-  flex:1;padding:11px;font-size:12px;font-weight:700;
-  border-radius:var(--rsm);border:none;cursor:pointer;
+  flex:1;padding:10px;font-size:12px;font-weight:700;
+  border-radius:10px;border:none;cursor:pointer;
   font-family:var(--font);transition:all .15s;text-decoration:none;display:block;
+  text-align:center;
 }
-.ub-ok{background:var(--blue);color:#fff;}
-.ub-ok:hover{background:var(--blueh);}
-.ub-sk{background:rgba(255,255,255,.06);color:var(--t3);border:1px solid var(--b2);}
-.ub-sk:hover{background:rgba(255,255,255,.1);color:var(--t1);}
+.ub-ok{background:linear-gradient(180deg,#2f6fff,#2358d6);color:#fff;}
+.ub-ok:hover{filter:brightness(1.07);}
+.ub-sk{background:rgba(255,255,255,.04);color:var(--t3);border:1px solid var(--b2);}
+.ub-sk:hover{background:rgba(255,255,255,.08);color:var(--t1);}
 
 /* Shared */
 .lss7-div{height:1px;background:var(--b1);}
@@ -749,7 +771,7 @@ function load(){
   if(typeof S.settings.panelCollapsed!=="boolean") S.settings.panelCollapsed=false;
   const validSizes=["small","normal","large"];
   if(!validSizes.includes(S.settings.panelSize)) S.settings.panelSize="normal";
-  const validThemes=["dark","light","midnight","emerald","sunset","slate"];
+  const validThemes=["dark","light","midnight","emerald","sunset","slate","premium"];
   if(!validThemes.includes(S.settings.panelTheme)) S.settings.panelTheme="dark";
   const validWeatherModes=["off","settings","overview"];
   if(!validWeatherModes.includes(S.settings.weatherMode)) S.settings.weatherMode="off";
@@ -1711,6 +1733,7 @@ function buildUI(){
         <div class="hd-meta">
           <div id="lss7-live" title="Live-Daten aktiv"></div>
           <span class="bd bd-blue">v${V}</span>
+          <span id="lss7-premium" class="bd bd-gold" style="display:${S.settings.panelTheme==="premium"?"inline-flex":"none"}">PREMIUM</span>
           <button id="lss7-col" title="Ein-/Ausklappen">Ausgeklappt</button>
           <button id="lss7-x" title="Schliessen">×</button>
         </div>
@@ -1919,6 +1942,7 @@ function buildUI(){
       <option value="emerald"${S.settings.panelTheme==="emerald"?" selected":""}>Emerald Ops</option>
       <option value="sunset"${S.settings.panelTheme==="sunset"?" selected":""}>Sunset Neon</option>
       <option value="slate"${S.settings.panelTheme==="slate"?" selected":""}>Slate Pro</option>
+      <option value="premium"${S.settings.panelTheme==="premium"?" selected":""}>Premium Gold</option>
     </select>
   </label>`);
   setWrap.append(grpOpt);
@@ -2147,9 +2171,10 @@ function applyPanelMode(){
     const sm=sizeMap[sz]||sizeMap.normal;
     panel.css({top,bottom,right,left,width:`${sm.w}px`,height:`min(${sm.h}px, calc(100vh - 68px))`});
   }
-  panel.removeClass("theme-dark theme-light theme-midnight theme-emerald theme-sunset theme-slate");
+  panel.removeClass("theme-dark theme-light theme-midnight theme-emerald theme-sunset theme-slate theme-premium");
   const th=String(S.settings.panelTheme||"dark");
   panel.addClass(`theme-${th}`);
+  $("#lss7-premium").toggle(th==="premium");
   $("#lss7-col").text(S.settings.panelCollapsed?"Eingeklappt":"Ausgeklappt");
   renderWeather();
 }
@@ -2441,9 +2466,12 @@ function showUpdate(nv){
       <div id="lss7-ub">
         <button class="ub-x" id="ub-x" title="Schliessen">×</button>
         <div class="ub-tag">NEUES UPDATE</div>
-        <div class="ub-icon">UPD</div>
         <h2>Update verfuegbar</h2>
-        <p>Version <strong>${nv}</strong> ist bereit.<br>Du nutzt aktuell v${V}.</p>
+        <p>Es ist eine neue Version verfuegbar.</p>
+        <div class="ub-vers">
+          <span>Neu: <strong>v${nv}</strong></span>
+          <span>Aktuell: <strong>v${V}</strong></span>
+        </div>
         <div class="ub-row">
           <button class="ub-btn ub-sk" id="ub-skip">Spaeter</button>
           <a class="ub-btn ub-ok" id="ub-update" href="${UPDATE_URL}" target="_blank">Aktualisieren</a>
