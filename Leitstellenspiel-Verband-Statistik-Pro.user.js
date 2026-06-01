@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      5.5.6
+// @version      5.9.0
 // @description  Ultimate Premium Dashboard: Floating Panel, 8 APIs, Live-Charts, Fahrzeugstatus-Donut, Kilometerstand, ARR-Ãœbersicht, GebÃ¤ude, Schulungen, Verlaufshistorie, Team, Dark-Design.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -11,8 +11,8 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
-// @updateURL    https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js
-// @downloadURL  https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js
+// @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/LSS-Verband-Statistik-Pro.user.js
+// @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/LSS-Verband-Statistik-Pro.user.js
 // ==/UserScript==
 
 (function () {
@@ -21,9 +21,9 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "5.5.6";
+const V   = "5.9.0";
 const BASE = "https://www.leitstellenspiel.de";
-const UPDATE_URL = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/main/Leitstellenspiel%20Verband%20Statistik%20Close%20BETA-1.03CloseBETA.user.js";
+const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/LSS-Verband-Statistik-Pro.user.js";
 
 const API = {
   alliance:    `${BASE}/api/allianceinfo`,
@@ -42,6 +42,28 @@ const API = {
   dwdWarnings: "https://www.dwd.de/DWD/warnungen/warnapp/json/warnings.json",
 };
 
+const LEVELS = [
+  {rank:"Anwärter(in)", need:0, reward:"10 Coins"},
+  {rank:"Feuerwehrmann/-frau", need:200, reward:"10 Coins"},
+  {rank:"Oberfeuerwehrmann/-frau", need:10000, reward:"10 Coins"},
+  {rank:"Hauptfeuerwehrmann/-frau", need:100000, reward:"10 Coins"},
+  {rank:"Stv. Gruppenführer(in)", need:1000000, reward:"10 Coins"},
+  {rank:"Gruppenführer(in)", need:5000000, reward:"10 Coins"},
+  {rank:"Stv. Zugführer(in)", need:10000000, reward:"10 Coins"},
+  {rank:"Zugführer(in)", need:20000000, reward:"10 Coins"},
+  {rank:"Stv. Wehrführer(in)", need:50000000, reward:"10 Coins"},
+  {rank:"Wehrführer(in)", need:100000000, reward:"10 Coins"},
+  {rank:"Stv. Kreisbrandmeister(in)", need:200000000, reward:"10 Coins"},
+  {rank:"Kreisbrandmeister(in)", need:500000000, reward:"10 Coins"},
+  {rank:"Stv. Landesbrandmeister(in)", need:1000000000, reward:"10 Coins"},
+  {rank:"Landesbrandmeister(in)", need:2000000000, reward:"10 Coins"},
+  {rank:"Ehrenmitglied", need:5000000000, reward:"10 Coins"},
+  {rank:"Stv. Bundesbranddirektor", need:10000000000, reward:"10 Coins"},
+  {rank:"Bundesbranddirektor(in)", need:20000000000, reward:"10 Coins"},
+  {rank:"Stv. Internationale(r) Branddirektor(in)", need:50000000000, reward:"10 Coins"},
+  {rank:"Internationaler Branddirektor(in)", need:100000000000, reward:"10 Coins"}
+];
+
 const ITV = {
   clock:    1000,
   timer:    1000,
@@ -53,6 +75,7 @@ const ITV = {
   vehicles: 300000,
   dailyEarn:300000,
   weather: 900000,
+  profile: 600000,
   footer:   10000,
   midnight: 60000,
 };
@@ -124,12 +147,12 @@ GM_addStyle(`
 #lss7.open { display:flex; }
 #lss7.layout{
   position:relative; top:auto; right:auto; left:auto;
-  width:min(100%, 620px); max-width:100%;
+  width:100%; max-width:100%;
   height:auto; max-height:none; min-height:0;
-  margin:12px 0;
-  border-radius:12px;
+  margin:8px 0 12px;
+  border-radius:10px;
   z-index:20;
-  resize:none;
+  resize:both;
 }
 #lss7.layout #lss7-body{max-height:68vh;}
 #lss7.layout #lss7-x{display:none;}
@@ -208,6 +231,22 @@ GM_addStyle(`
   transition:all .15s;
 }
 #lss7-x:hover{background:var(--red3);color:var(--red);border-color:rgba(239,68,68,.4);}
+#lss7-col{
+  min-width:108px;height:26px;padding:0 8px;border-radius:7px;flex-shrink:0;
+  background:rgba(255,255,255,.04);border:1px solid var(--b1);
+  color:var(--t3);font-size:11px;font-weight:600;cursor:pointer;
+  display:none;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+#lss7-col:hover{background:var(--blue3);color:var(--blueh);border-color:rgba(59,130,246,.35);}
+#lss7.layout #lss7-col{display:flex;}
+#lss7.layout.emb-collapsed .prof-strip,
+#lss7.layout.emb-collapsed #lss7-qs,
+#lss7.layout.emb-collapsed #lss7-tabs,
+#lss7.layout.emb-collapsed #lss7-body,
+#lss7.layout.emb-collapsed #lss7-changelog,
+#lss7.layout.emb-collapsed .lacc,
+#lss7.layout.emb-collapsed #lss7-ft{display:none !important;}
 
 /* â”€â”€ Quick-Stats Strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #lss7-qs {
@@ -221,6 +260,29 @@ GM_addStyle(`
 .qs-val{font-size:12px;font-weight:700;color:var(--t1);}
 .qs-val.mono{font-family:var(--mono);font-size:12px;letter-spacing:1.2px;color:var(--green);}
 .qs-val.sm  {font-size:10px;font-weight:500;color:var(--t3);}
+.prof-strip{
+  flex-shrink:0;
+  margin:0;
+  border-top:1px solid var(--b1);
+  border-bottom:1px solid var(--b1);
+  border-left:none;
+  border-right:none;
+  border-radius:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));
+  padding:8px 10px;
+}
+.prof-row{display:flex;align-items:center;gap:10px;min-width:0;}
+.prof-av{
+  width:54px;height:38px;border-radius:6px;
+  object-fit:cover;border:1px solid var(--b2);background:var(--bg3);flex-shrink:0;
+}
+.prof-meta{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.prof-name{font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.prof-sub{font-size:10px;color:var(--t4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.prof-rank{font-size:10px;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.prof-reward{font-size:10px;color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;}
+.prof-bar{height:5px;border-radius:5px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:3px;}
+.prof-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--cyan));}
 
 /* â”€â”€ Notification Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #lss7-notif{flex-shrink:0;display:none;}
@@ -452,7 +514,8 @@ GM_addStyle(`
 }
 .set-note b{color:var(--t1);}
 
-.weather-mini{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.weather-mini{display:block;}
+.weather-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
 .weather-mini .w-l{font-size:11px;color:var(--t2);}
 .weather-mini .w-r{font-size:11px;color:var(--cyan);font-family:var(--mono);}
 .weather-forecast{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
@@ -469,7 +532,7 @@ GM_addStyle(`
 .wx-warn.lvl3{background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.35);color:#fb923c;}
 .wx-warn.lvl4{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#f87171;}
 .wx-warn.lvl5{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.35);color:#c084fc;}
-.wx-src{margin-top:4px;font-size:9px;color:var(--t4);text-align:right;}
+.wx-src{margin-top:2px;font-size:9px;color:var(--t4);text-align:left;opacity:.66;}
 
 #lss7-changelog{
   flex-shrink:0;border-top:1px solid var(--b1);
@@ -487,6 +550,29 @@ GM_addStyle(`
   --t1:#0f172a; --t2:#1e293b; --t3:#475569; --t4:#64748b;
   color-scheme:light;
   box-shadow:0 0 0 1px rgba(15,23,42,.06) inset,0 10px 40px rgba(15,23,42,.18);
+}
+
+#lss7.theme-midnight{
+  --bg0:#050913; --bg1:#0b1324; --bg2:#101a30; --bg3:#16233d; --bg4:#1b2b48;
+  --bgh:#1a2a45; --bgc:#13213a;
+  --blue:#4f8cff; --blueh:#77a5ff; --cyan:#2dd4bf; --cyanh:#5eead4;
+}
+#lss7.theme-emerald{
+  --bg0:#07110f; --bg1:#0d1a17; --bg2:#12221e; --bg3:#163029; --bg4:#1b3a32;
+  --bgh:#1d3b33; --bgc:#163028;
+  --blue:#10b981; --blueh:#34d399; --cyan:#2dd4bf; --cyanh:#5eead4;
+  --green:#34d399; --greenh:#6ee7b7;
+}
+#lss7.theme-sunset{
+  --bg0:#14090a; --bg1:#1f0f12; --bg2:#2a1418; --bg3:#361920; --bg4:#40202a;
+  --bgh:#42222d; --bgc:#331a22;
+  --blue:#f97316; --blueh:#fb923c; --cyan:#f59e0b; --cyanh:#fbbf24;
+  --green:#f59e0b; --greenh:#fbbf24;
+}
+#lss7.theme-slate{
+  --bg0:#0b0f14; --bg1:#11161d; --bg2:#171d26; --bg3:#1d2632; --bg4:#243042;
+  --bgh:#223043; --bgc:#1b2737;
+  --blue:#60a5fa; --blueh:#93c5fd; --cyan:#22d3ee; --cyanh:#67e8f9;
 }
 
 /* Accordion */
@@ -595,9 +681,10 @@ const S = {
   lastAlliCreds:0, dailyEarn:0,
   lastDate:todayStr(),
   creditHist:[],     // [{ts,v}]
-  userCredits:0, userCoins:0,
+  userCredits:0, userCoins:0, userId:null,
   allianceId:null, allianceName:"", allianceRank:null, allianceCredits:0,
   weather:null,
+  profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:""},
   weatherAlertKey:"",
   lastApiTs:null,
   settings:{
@@ -605,6 +692,8 @@ const S = {
     coins:true,
     compact:false,
     panelPlacement:"top-right",
+    panelMode:"floating",
+    panelCollapsed:false,
     panelSize:"normal",
     panelTheme:"dark",
     weatherLocation:"",
@@ -640,9 +729,12 @@ function load(){
   try{Object.assign(S.settings,JSON.parse(GM_getValue("v7_set","{}"))||{});}catch{}
   const validPlacements=["default","top-left","top-right","bottom-left","bottom-right"];
   if(!validPlacements.includes(S.settings.panelPlacement)) S.settings.panelPlacement="default";
+  const validModes=["floating","embedded"];
+  if(!validModes.includes(S.settings.panelMode)) S.settings.panelMode="floating";
+  if(typeof S.settings.panelCollapsed!=="boolean") S.settings.panelCollapsed=false;
   const validSizes=["small","normal","large"];
   if(!validSizes.includes(S.settings.panelSize)) S.settings.panelSize="normal";
-  const validThemes=["dark","light"];
+  const validThemes=["dark","light","midnight","emerald","sunset","slate"];
   if(!validThemes.includes(S.settings.panelTheme)) S.settings.panelTheme="dark";
   const validWeatherModes=["off","settings","overview"];
   if(!validWeatherModes.includes(S.settings.weatherMode)) S.settings.weatherMode="off";
@@ -750,6 +842,20 @@ function readOwnCoinsFromNavbar(){
   if(!root.length) return null;
   const t=root.clone().children().remove().end().text().trim();
   return parseCreditsValue(t);
+}
+function readOwnProfileFromDom(){
+  const name=(
+    $("#navbar_profile_link .navbar-text").first().text().trim() ||
+    $("#navbar_profile_link").first().text().trim() ||
+    $(".navbar .dropdown-toggle .hidden-xs").first().text().trim() ||
+    ""
+  );
+  const avatar=(
+    $("#navbar_profile_link img").first().attr("src") ||
+    $(".navbar img.avatar").first().attr("src") ||
+    ""
+  );
+  return {name,avatar};
 }
 function readAllianceIdFromDom(){
   const links=[
@@ -885,14 +991,14 @@ function renderWeather(){
     elSet.html(h);elOv.html(h);return;
   }
   const icon=weatherCodeToIcon(S.weather.code);
-  const headline=`<span class="w-l">${icon} ${S.weather.place}: ${weatherCodeToText(S.weather.code)}</span>
-    <span class="w-r">${S.weather.temp}°C · ${S.weather.wind} km/h</span>`;
+  const headline=`<div class="weather-head"><span class="w-l">${icon} ${S.weather.place}: ${weatherCodeToText(S.weather.code)}</span>
+    <span class="w-r">${S.weather.temp}°C · ${S.weather.wind} km/h</span></div>`;
   const fc=(S.weather.forecast||[]).map(x=>`<span class="wx-chip">${x.t}: ${weatherCodeToIcon(x.c)} ${x.temp}°</span>`).join("");
   const warn=S.weather.warn||{level:0,title:"Keine Warnung",desc:"Aktuell liegt keine DWD-Warnung für den Ort vor.",src:"DWD"};
   const alert=`<div class="wx-warn lvl${warn.level}">
     <b>${warn.title}</b><br>${warn.desc}
   </div>`;
-  const full=`${headline}<div class="weather-forecast">${fc}</div>${alert}<div class="wx-src">Quelle: DWD</div>`;
+  const full=`${headline}<div class="wx-src">Quelle: DWD</div><div class="weather-forecast">${fc}</div>${alert}`;
   elSet.html(full);elOv.html(full);
 }
 function fetchWeather(){
@@ -910,7 +1016,7 @@ function fetchWeather(){
       const nowTs=new Date(c.time||Date.now()).getTime();
       const idx=hTimes.findIndex(t=>new Date(t).getTime()>nowTs);
       const start=idx>=0?idx:0;
-      const fc=hTimes.slice(start,start+4).map((t,i)=>({
+      const fc=hTimes.slice(start,start+7).map((t,i)=>({
         t:(new Date(t)).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),
         c:Number(hCodes[start+i]||0),
         temp:Math.round(Number(hTemps[start+i]||0))
@@ -1141,6 +1247,7 @@ function fetchDailyEarnFromOverview(){
 
 function fetchUserinfo(){
   apiGet(API.userinfo,d=>{
+    S.userId=Number(d.id)||S.userId||null;
     const domCredits=readOwnCreditsFromNavbar();
     const domCoins=readOwnCoinsFromNavbar();
     S.userCredits=(domCredits!==null?domCredits:(d.credits||0));
@@ -1148,6 +1255,146 @@ function fetchUserinfo(){
     setV("#qs-credits",fmtMoney(S.userCredits));
     setV("#sv-mycoins",fmt(S.userCoins));
   });
+}
+
+function renderProfileQuick(){
+  $("#prof-name").text(S.profile.name||"-");
+  $("#prof-rank").text(`Dienstgrad: ${S.profile.rank||"-"}`);
+  if(S.profile.reward){
+    $("#prof-reward").text(`Level-Up: ${S.profile.reward}`).show();
+  }else{
+    $("#prof-reward").hide().text("");
+  }
+  const pct=Math.max(0,Math.min(100,Number(S.profile.progress)||0));
+  $("#prof-progress").text(`${S.profile.progressText||"-"} (${Math.round(pct)}%)`);
+  $("#prof-fill").css("width",`${pct}%`);
+  if(S.profile.avatar){
+    const src=String(S.profile.avatar);
+    const abs=src.startsWith("http")?src:(src.startsWith("/")?`${BASE}${src}`:src);
+    $("#prof-av").attr("src",abs);
+  }
+}
+
+function profileFieldFromText(text,label){
+  const t=String(text||"").replace(/\s+/g," ").trim();
+  const rx=new RegExp(`${label}\\s*:?\\s*(.+?)(?=\\s+(?:Dienstgrad|Anmeldedatum|verdiente Credits|Verband|$))`,"i");
+  const m=t.match(rx);
+  return m&&m[1]?m[1].trim():"";
+}
+function pickLevelByCredits(credits){
+  let current=LEVELS[0];
+  for(const lv of LEVELS){
+    if(credits>=lv.need) current=lv;
+    else break;
+  }
+  return current;
+}
+
+function fetchProfileCard(){
+  const nav=readOwnProfileFromDom();
+  if(nav.name) S.profile.name=nav.name;
+  if(nav.avatar) S.profile.avatar=nav.avatar;
+  renderProfileQuick();
+
+  const profileUrl=S.userId?`${BASE}/profile/${S.userId}`:`${BASE}/profile`;
+  pageGet(profileUrl, html=>{
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const name=(doc.querySelector(".user_name, .profile-header h1, h1, .navbar-profile-name, .username")?.textContent||"").trim() || S.profile.name || "-";
+    const avatarDom=(
+      doc.querySelector(".profile-image, .profile-avatar img, .user_image img, img.img-rounded, .panel img, .navbar-avatar img, .avatar img")?.getAttribute("src") ||
+      doc.querySelector(".profile-image, .profile-avatar img, .user_image img, img.img-rounded, .panel img, .navbar-avatar img, .avatar img")?.getAttribute("data-src") ||
+      ""
+    ).trim();
+    const mAvatar=html.match(/<img[^>]*class=["'][^"']*profile-image[^"']*["'][^>]*src=["']([^"']+)["']/i);
+    const avatar=((mAvatar&&mAvatar[1])||avatarDom||"").trim();
+    let since=S.profile.since||"-";
+    let grade=S.profile.rank||"-";
+    const infoWell=Array.from(doc.querySelectorAll(".well div, .well li, .profile-info div, .well"));
+    infoWell.forEach(div=>{
+      const label=(div.querySelector("b")?.textContent||"").trim().toLowerCase();
+      const txt=(div.textContent||"").replace(/\s+/g," ").trim();
+      if(label.includes("anmeldedatum")){
+        const v=txt.split(":").slice(1).join(":").trim();
+        if(v) since=v;
+      }
+      if(label.includes("dienstgrad")){
+        const v=txt.split(":").slice(1).join(":").trim();
+        if(v) grade=v;
+      }
+    });
+    // Robust fallback: b-label + sibling text
+    doc.querySelectorAll("b").forEach(b=>{
+      const label=(b.textContent||"").toLowerCase().trim();
+      const block=((b.parentElement?.textContent)||"").replace(/\s+/g," ").trim();
+      if((!grade || grade==="-" || grade==="Level") && label.includes("dienstgrad")){
+        const v=block.split(":").slice(1).join(":").trim();
+        if(v) grade=v;
+      }
+      if((!since || since==="-" ) && label.includes("anmeldedatum")){
+        const v=block.split(":").slice(1).join(":").trim();
+        if(v) since=v;
+      }
+    });
+    const plain=(doc.body?.innerText||doc.body?.textContent||"").replace(/\s+/g," ").trim();
+    if(since==="-" || !since){
+      const mSince=plain.match(/Anmeldedatum\s*:\s*(.+?)(?=\s+(?:verdiente\s+Credits|Verband|Dienstgrad|Spielerprofil)\b|$)/i);
+      if(mSince && mSince[1]) since=mSince[1].trim();
+    }
+    if(grade==="-" || !grade){
+      const mGrade=plain.match(/Dienstgrad\s*:\s*(.+?)(?=\s+(?:Anmeldedatum|verdiente\s+Credits|Verband|Spielerprofil)\b|$)/i);
+      if(mGrade && mGrade[1]) grade=mGrade[1].trim();
+    }
+    if(since==="-" || !since){
+      const s2=profileFieldFromText((doc.body?.innerText||doc.body?.textContent||""),"Anmeldedatum");
+      if(s2) since=s2;
+    }
+    if(grade==="-" || !grade){
+      const g2=profileFieldFromText((doc.body?.innerText||doc.body?.textContent||""),"Dienstgrad");
+      if(g2) grade=g2;
+    }
+    if((!avatar || avatar==="") && nav.avatar) S.profile.avatar=nav.avatar;
+    S.profile.name=name;
+    S.profile.since=since;
+    S.profile.rank=grade||S.profile.rank;
+    if(avatar) S.profile.avatar=avatar;
+    renderProfileQuick();
+  },()=>renderProfileQuick());
+
+  pageGet(`${BASE}/level`, html=>{
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const rank=(doc.querySelector(".page-header h1, h2, h3, .panel-title")?.textContent||"").replace(/\s+/g," ").trim() || S.profile.rank || "-";
+    const bar=doc.querySelector(".progress-bar");
+    const style=bar?.getAttribute("style")||"";
+    const mPct=style.match(/width:\s*([\d.]+)%/i);
+    const ariaNow=bar?.getAttribute("aria-valuenow");
+    const pctText=(doc.querySelector(".progress-bar-rank-percentage")?.textContent||"").replace(/\s+/g," ").trim();
+    const txt=(bar?.textContent||doc.body?.textContent||"").replace(/\s+/g," ").trim();
+    const mTxtPct=txt.match(/(\d{1,3}(?:[.,]\d+)?)\s*%/);
+    const mAbs=pctText.match(/([\d\.\,]+)\s*\\\s*([\d\.\,]+)/);
+    const curAbs=mAbs?parseDeNum(mAbs[1]):null;
+    const maxAbs=mAbs?parseDeNum(mAbs[2]):null;
+    const calcAbs=(curAbs!==null && maxAbs && maxAbs>0)?(curAbs/maxAbs*100):null;
+    const progress=Math.max(0,Math.min(100,
+      Number((mPct&&mPct[1])||(mTxtPct&&mTxtPct[1].replace(",", "."))||calcAbs||ariaNow||0)
+    ));
+    const progressText=(mAbs&&`${mAbs[1]} / ${mAbs[2]}`) || (mTxtPct&&`${mTxtPct[1]}%`) || (Number.isFinite(progress)?`${Math.round(progress)}%`:"-");
+    const rewardNode=doc.querySelector(".alert.alert-success, .level_reward, .reward, .panel-success .panel-body");
+    const rewardTxt=(rewardNode?.textContent||"").replace(/\s+/g," ").trim();
+    const mReward=rewardTxt.match(/(?:Belohnung|Reward|Level.?Up)\s*:?\s*(.+)$/i);
+    const reward=(mReward&&mReward[1]?mReward[1].trim():(rewardTxt.length>0 && rewardTxt.length<120 ? rewardTxt : ""));
+    const creditsFromLevel=curAbs!==null?curAbs:null;
+    if(creditsFromLevel!==null){
+      const lv=pickLevelByCredits(creditsFromLevel);
+      if(!S.profile.rank || S.profile.rank==="-" || /^(level|rang)$/i.test(S.profile.rank)) S.profile.rank=lv.rank;
+      S.profile.reward=lv.reward;
+    } else if(rank && !/^(level|rang)$/i.test(rank)) {
+      S.profile.rank=rank;
+    }
+    S.profile.progress=progress;
+    S.profile.progressText=progressText;
+    if(!S.profile.reward) S.profile.reward=reward||"";
+    renderProfileQuick();
+  },()=>renderProfileQuick());
 }
 
 function fetchVehicleStates(){
@@ -1449,7 +1696,22 @@ function buildUI(){
         <div class="hd-meta">
           <div id="lss7-live" title="Live-Daten aktiv"></div>
           <span class="bd bd-blue">v${V}</span>
+          <button id="lss7-col" title="Ein-/Ausklappen">Ausgeklappt</button>
           <button id="lss7-x" title="Schliessen">×</button>
+        </div>
+      </div>
+    </div>`);
+
+  panel.append(`
+    <div class="prof-strip">
+      <div class="prof-row">
+        <img id="prof-av" class="prof-av" src="${S.profile.avatar||"https://www.leitstellenspiel.de/images/user.png"}" alt="Profil">
+        <div class="prof-meta">
+          <span id="prof-name" class="prof-name">${S.profile.name}</span>
+          <span id="prof-rank" class="prof-rank">Dienstgrad: ${S.profile.rank}</span>
+          <span id="prof-reward" class="prof-reward"></span>
+          <span id="prof-progress" class="prof-sub">${S.profile.progressText}</span>
+          <div class="prof-bar"><div id="prof-fill" class="prof-fill" style="width:${S.profile.progress}%"></div></div>
         </div>
       </div>
     </div>`);
@@ -1619,6 +1881,13 @@ function buildUI(){
   grpOpt.append(mkToggle("tog-coins","Coins anzeigen","coins"));
   grpOpt.append(mkPlacementSelect());
   grpOpt.append(`<label class="tog-row" style="justify-content:space-between;">
+    <span class="tog-lbl">Menü-Modus</span>
+    <select id="sb-panel-mode" class="lss7-select">
+      <option value="floating"${S.settings.panelMode==="floating"?" selected":""}>Floating</option>
+      <option value="embedded"${S.settings.panelMode==="embedded"?" selected":""}>Layout-Box</option>
+    </select>
+  </label>`);
+  grpOpt.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Panel-Größe</span>
     <select id="sb-size" class="lss7-select">
       <option value="small"${S.settings.panelSize==="small"?" selected":""}>Klein</option>
@@ -1631,6 +1900,10 @@ function buildUI(){
     <select id="sb-theme" class="lss7-select">
       <option value="dark"${S.settings.panelTheme==="dark"?" selected":""}>Dark</option>
       <option value="light"${S.settings.panelTheme==="light"?" selected":""}>Light</option>
+      <option value="midnight"${S.settings.panelTheme==="midnight"?" selected":""}>Midnight Blue</option>
+      <option value="emerald"${S.settings.panelTheme==="emerald"?" selected":""}>Emerald Ops</option>
+      <option value="sunset"${S.settings.panelTheme==="sunset"?" selected":""}>Sunset Neon</option>
+      <option value="slate"${S.settings.panelTheme==="slate"?" selected":""}>Slate Pro</option>
     </select>
   </label>`);
   setWrap.append(grpOpt);
@@ -1670,15 +1943,24 @@ function buildUI(){
   grpInfo.append(`<div class="set-note">${infoHTML()}</div>`);
   setWrap.append(grpInfo);
 
+  const grpContact=$(`<div class="set-group"><div class="set-head">Kontakt</div></div>`);
+  grpContact.append(`<div class="set-note">
+    Bug gefunden, Feedback oder Verbesserungsvorschlag? Dann melde dich gern direkt im Spiel.
+    <div style="margin-top:8px">
+      <a class="lbtn prime" href="https://www.leitstellenspiel.de/profile/687089" target="_blank" rel="noopener">Kontakt aufnehmen</a>
+    </div>
+  </div>`);
+  setWrap.append(grpContact);
+
   const grpPn=$(`<div class="set-group"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v5.5.6</b><br>Header-Text angepasst, Vorhersagezeiten korrigiert, Warnbox unter Forecast positioniert.</div>`);
+  grpPn.append(`<div class="set-note"><b>v5.9.0</b><br>Layout-Einbindung in den Einstellungen hinzugefügt, Banner im Layout ein-/ausklappbar, Profil-Informationen ergänzt, Wettervorhersage von 4 auf 7 Stunden erweitert, mehrere Fehler behoben inkl. Update-Überschreiben.</div>`);
   setWrap.append(grpPn);
 
   tSet.append(setWrap);
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v5.5.6",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v5.9.0",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -1721,12 +2003,21 @@ function buildUI(){
     save();
     applyPanelMode();
   });
+  panel.on("change","#sb-panel-mode",e=>{
+    S.settings.panelMode=String($(e.currentTarget).val()||"floating");
+    save();applyPanelMode();
+  });
   panel.on("change","#sb-size",e=>{
     S.settings.panelSize=String($(e.currentTarget).val()||"normal");
     save();applyPanelMode();
   });
   panel.on("change","#sb-theme",e=>{
     S.settings.panelTheme=String($(e.currentTarget).val()||"dark");
+    save();applyPanelMode();
+  });
+  panel.on("click","#lss7-col",e=>{
+    e.stopPropagation();e.preventDefault();
+    S.settings.panelCollapsed=!S.settings.panelCollapsed;
     save();applyPanelMode();
   });
   panel.on("change","#sb-weather-mode",e=>{
@@ -1802,24 +2093,49 @@ function mkPlacementSelect(){
     </select>
   </label>`;
 }
+function getLayoutAnchor(){
+  const rowMain=$("#row-main-template").first();
+  const mapOuter=$("#map_outer").first();
+  if(rowMain.length) return {el:rowMain, where:"before"};
+  if(mapOuter.length) return {el:mapOuter, where:"before"};
+  return {el:$("body"), where:"prepend"};
+}
 function applyPanelMode(){
   const panel=$("#lss7");
   const btnLi=$("#lss7-btn").closest("li");
   if(!panel.length) return;
   if(!panel.parent().is("body")) $("body").append(panel);
-  panel.removeClass("layout align-right align-left");
+  panel.removeClass("layout align-right align-left emb-collapsed");
   btnLi.show();
 
-  const p=S.settings.panelPlacement||"default";
-  const top=(p==="default"||p.startsWith("top")) ? "52px" : "auto";
-  const bottom=(p.startsWith("bottom")) ? "14px" : "auto";
-  const right=(p==="default"||p.endsWith("right")) ? "14px" : "auto";
-  const left=(p.endsWith("left")) ? "14px" : "auto";
-  const sz=S.settings.panelSize||"normal";
-  const sizeMap={small:{w:440,h:620},normal:{w:500,h:760},large:{w:620,h:860}};
-  const sm=sizeMap[sz]||sizeMap.normal;
-  panel.css({top,bottom,right,left,width:`${sm.w}px`,height:`min(${sm.h}px, calc(100vh - 68px))`});
-  panel.removeClass("theme-dark theme-light").addClass(S.settings.panelTheme==="light"?"theme-light":"theme-dark");
+  const mode=S.settings.panelMode||"floating";
+  if(mode==="embedded"){
+    const p=getLayoutAnchor();
+    if(p.el && p.el.length){
+      if(p.where==="before") p.el.before(panel);
+      else if(p.where==="after") p.el.after(panel);
+      else if(p.where==="prepend") p.el.prepend(panel);
+      else p.el.append(panel);
+    }
+    panel.addClass("layout");
+    if(S.settings.panelCollapsed) panel.addClass("emb-collapsed");
+    panel.css({top:"auto",bottom:"auto",right:"auto",left:"auto",width:"100%",height:"auto"});
+  } else {
+    if(!panel.parent().is("body")) $("body").append(panel);
+    const p=S.settings.panelPlacement||"default";
+    const top=(p==="default"||p.startsWith("top")) ? "52px" : "auto";
+    const bottom=(p.startsWith("bottom")) ? "14px" : "auto";
+    const right=(p==="default"||p.endsWith("right")) ? "14px" : "auto";
+    const left=(p.endsWith("left")) ? "14px" : "auto";
+    const sz=S.settings.panelSize||"normal";
+    const sizeMap={small:{w:440,h:620},normal:{w:500,h:760},large:{w:620,h:860}};
+    const sm=sizeMap[sz]||sizeMap.normal;
+    panel.css({top,bottom,right,left,width:`${sm.w}px`,height:`min(${sm.h}px, calc(100vh - 68px))`});
+  }
+  panel.removeClass("theme-dark theme-light theme-midnight theme-emerald theme-sunset theme-slate");
+  const th=String(S.settings.panelTheme||"dark");
+  panel.addClass(`theme-${th}`);
+  $("#lss7-col").text(S.settings.panelCollapsed?"Eingeklappt":"Ausgeklappt");
   renderWeather();
 }
 function parseAllianceRankingHtml(html,pageHint=1,pageSizeHint=25){
@@ -2015,34 +2331,15 @@ function mkAccordion(icon,title,body){
 }
 function patchHTML(){
   const items=[
-    "Wetter-Vorhersage auf 4 Stunden erweitert (stündliche Chips).",
-    "DWD-Warnungen integriert inkl. Warntext/Beschreibung im Panel.",
-    "Warnstufen als farbige Boxen: Grün (keine), Gelb, Orange, Rot, Lila.",
-    "Warnsound optional schaltbar + Tonauswahl (Beep/Alarm/Chime).",
-    "PLZ-Eingabe verbessert (5-stellige DE-PLZ über separaten Geo-Fallback).",
-    "Dropdown/Input-Farben für Dark/Light robuster gesetzt (!important).",
-    "Header-Subline geändert: 'Dein Dashboard für dein Verband!'.",
-    "Rang-Box als grosse Doppel-Box unter Coins/Tagesverdienst integriert.",
-    "Gebaeude-Box entfernt und durch Ranking-Umfeld ersetzt.",
-    "Ranking-Umfeld zeigt 2 ueber euch, euren Verband, 2 unter euch.",
-    "Parser auf echte /alliances-Tabellenstruktur umgestellt (ohne Popup).",
-    "Neu: Anzeige der fehlenden Credits bis zum naechsten Rang direkt im Overview.",
-    "Ranking-Daten werden aus /alliances geladen und mit eurem Verband abgeglichen.",
-    "Tagesverdienst direkt aus /credits/overview (heutige Einnahmen).",
-    "Eigene Credits aus Navbar (.credits-value) mit API-Fallback.",
-    "Tab-Leiste scrollbar und stabil (ohne Klick-Konflikte).",
-    "Fenster weiterhin frei skalierbar (Resizable Panel).",
-    "Dropdown für Menü-Position: Standard, oben links/rechts, unten links/rechts.",
-    "Rückkehr zum normalen Menü als Standardoption im Dropdown.",
-    "Layout-Artefakte bereinigt und Positionierung konsolidiert.",
-    "Mehrere Darstellungs-/Text-Bugs und Event-Kollisionen behoben.",
-    "Header-Logo im Panel wiederhergestellt.",
-    "Menü-Button im Spiel-Header optisch veredelt.",
-    "Eigene Coins aus Navbar (.coins-value) mit API-Fallback.",
-    "Credits-Format mit Symbol statt Textkürzel.",
+    "Neu: Menü kann in den Einstellungen als Layout-Box eingebunden werden (unter dem Header).",
+    "Layout-Box kann per sichtbarem Banner-Button ein- und ausgeklappt werden.",
+    "Profil-Informationen ergänzt und Darstellung verbessert.",
+    "Wettervorhersage von 4 auf 7 Stunden erweitert.",
+    "Mehrere Fehler behoben, inklusive Update-Problem beim Überschreiben der alten Version.",
+    "Falls Update weiterhin nicht korrekt überschreibt: bitte Feedback über Kontakt senden.",
   ];
   return `<div style="color:var(--blue);font-weight:700;font-size:11px;margin-bottom:10px">
-    v5.5.6 — Forecast Time & Weather Layout Fix</div>
+    v5.9.0 — Layout, Profil, Wetter & Update Fix</div>
     ${items.map(t=>`<div class="patch-i"><span class="patch-b">→</span><span>${t}</span></div>`).join("")}`;
 }
 function infoHTML(){
@@ -2093,6 +2390,7 @@ function togglePanel(force){
 
 // AuÃŸerhalb klicken â†’ schlieÃŸen
 $(document).on("click.lss7",function(e){
+  if((S.settings.panelMode||"floating")==="embedded") return;
   if(panelOpen && !$(e.target).closest("#lss7,#lss7-btn").length){
     togglePanel(false);
   }
@@ -2141,6 +2439,7 @@ $(document).ready(()=>{
   // Initialer Fetch
   fetchAlliance();
   fetchUserinfo();
+  fetchProfileCard();
   fetchDailyEarnFromOverview();
   fetchWeather();
   renderWeather();
@@ -2151,6 +2450,7 @@ $(document).ready(()=>{
   setInterval(checkMidnight,      ITV.midnight);
   setInterval(fetchAlliance,      ITV.alliance);
   setInterval(fetchUserinfo,      ITV.userinfo);
+  setInterval(fetchProfileCard,   ITV.profile);
   setInterval(fetchVehicleStates, ITV.vstates);
   setInterval(fetchBuildings,     ITV.buildings);
   setInterval(fetchSchoolings,    ITV.schools);
