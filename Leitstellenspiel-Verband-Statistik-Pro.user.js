@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      6.0.0
+// @version      5.9.0
 // @description  Ultimate Premium Dashboard: Floating Panel, 8 APIs, Live-Charts, Fahrzeugstatus-Donut, Kilometerstand, ARR-Ãœbersicht, GebÃ¤ude, Schulungen, Verlaufshistorie, Team, Dark-Design.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -23,7 +23,7 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "6.0.0";
+const V   = "5.9.0";
 const BASE = "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 
@@ -613,17 +613,30 @@ GM_addStyle(`
 }
 #lss7-ub{
   background:var(--bg2);border:1px solid var(--b3);border-radius:16px;
-  padding:30px 26px;width:330px;text-align:center;
+  padding:24px 22px;width:360px;text-align:center;
   box-shadow:0 40px 100px rgba(0,0,0,.85);font-family:var(--font);color:var(--t1);
   animation:popin .22s cubic-bezier(.34,1.56,.64,1) both;
+  position:relative;
 }
 @keyframes popin{from{opacity:0;transform:scale(.86) translateY(-10px)}}
-.ub-icon{font-size:42px;margin-bottom:14px;}
-#lss7-ub h2{font-size:19px;font-weight:700;margin:0 0 8px;}
-#lss7-ub p {font-size:13px;color:var(--t4);line-height:1.6;margin:0 0 22px;}
+.ub-x{
+  position:absolute;top:10px;right:10px;width:26px;height:26px;
+  border-radius:9px;border:1px solid var(--b2);background:rgba(255,255,255,.04);
+  color:var(--t3);font-size:15px;line-height:1;cursor:pointer;
+}
+.ub-x:hover{background:rgba(255,255,255,.1);color:var(--t1);}
+.ub-tag{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 9px;
+  border:1px solid rgba(65,122,255,.35);background:rgba(65,122,255,.12);
+  color:#9fc0ff;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.4px;
+  margin-bottom:10px;
+}
+.ub-icon{font-size:34px;margin-bottom:8px;}
+#lss7-ub h2{font-size:20px;font-weight:700;margin:0 0 8px;}
+#lss7-ub p {font-size:13px;color:var(--t4);line-height:1.6;margin:0 0 18px;}
 .ub-row{display:flex;gap:8px;}
 .ub-btn{
-  flex:1;padding:10px;font-size:12px;font-weight:700;
+  flex:1;padding:11px;font-size:12px;font-weight:700;
   border-radius:var(--rsm);border:none;cursor:pointer;
   font-family:var(--font);transition:all .15s;text-decoration:none;display:block;
 }
@@ -2426,17 +2439,24 @@ function showUpdate(nv){
   const o=$(`
     <div id="lss7-uo">
       <div id="lss7-ub">
+        <button class="ub-x" id="ub-x" title="Schliessen">×</button>
+        <div class="ub-tag">NEUES UPDATE</div>
         <div class="ub-icon">UPD</div>
         <h2>Update verfuegbar</h2>
         <p>Version <strong>${nv}</strong> ist bereit.<br>Du nutzt aktuell v${V}.</p>
         <div class="ub-row">
           <button class="ub-btn ub-sk" id="ub-skip">Spaeter</button>
-          <a class="ub-btn ub-ok" href="${UPDATE_URL}" target="_blank">Jetzt aktualisieren</a>
+          <a class="ub-btn ub-ok" id="ub-update" href="${UPDATE_URL}" target="_blank">Aktualisieren</a>
         </div>
       </div>
     </div>`);
   $("body").append(o);
   o.on("click","#ub-skip",()=>o.remove());
+  o.on("click","#ub-x",()=>o.remove());
+  o.on("click","#ub-update",()=>{
+    o.remove();
+    setTimeout(()=>window.location.reload(),450);
+  });
   o.on("click",e=>{if($(e.target).is(o))o.remove();});
 }
 
