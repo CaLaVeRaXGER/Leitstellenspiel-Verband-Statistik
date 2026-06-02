@@ -1373,7 +1373,7 @@ function wmRowHtml(g,mini=false){
 }
 function renderWmHeader(){
   const active=isWmActive();
-  const txt=active?"EVENT LIVE":"EVENT 11.06";
+  const txt=active?"EVENT LIVE":"EVENT ab dem 11.06";
   $("#lss7-event-live").text(txt).toggle(true);
   $("#lss7-nav-event").text(txt);
 }
@@ -2037,7 +2037,7 @@ function buildUI(){
         </div>
         <div class="hd-meta">
           <div id="lss7-live" title="Live-Daten aktiv"></div>
-          <span id="lss7-event-live" class="bd bd-gold">EVENT 11.06</span>
+          <span id="lss7-event-live" class="bd bd-gold">EVENT ab dem 11.06</span>
           <span class="bd bd-blue">v${V}</span>
           <span id="lss7-premium" class="bd bd-gold" style="display:${S.settings.panelTheme==="premium"?"inline-flex":"none"}">PREMIUM</span>
           <button id="lss7-col" title="Ein-/Ausklappen">Ausgeklappt</button>
@@ -2759,7 +2759,7 @@ function buildTrigger(){
       <img src="https://i.postimg.cc/hjsm7tQV/LSSS-Logo-fertig.png" alt="LSS">
       <span class="lss7-nav-copy">
         <span class="lss7-nav-lbl">Dein Verband</span>
-        <span class="lss7-nav-event" id="lss7-nav-event">Event 11.06</span>
+        <span class="lss7-nav-event" id="lss7-nav-event">Event Aab dem 11.06</span>
       </span>
       <div id="lss7-live"></div>
       <span class="lss7-nav-arr">v</span>
