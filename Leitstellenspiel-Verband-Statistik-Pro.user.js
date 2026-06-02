@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      6.0.5
+// @version      6.0.5.1
 // @description  Ultimate Premium Dashboard: Floating Panel, 8 APIs, Live-Charts, Fahrzeugstatus-Donut, Kilometerstand, ARR-Ãœbersicht, GebÃ¤ude, Schulungen, Verlaufshistorie, Team, Dark-Design.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -24,7 +24,7 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "6.0.5";
+const V   = "6.0.5.1";
 const BASE = "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 
@@ -54,6 +54,19 @@ const WM_STADIUM_OFFSETS = {
   4:-5,5:-5,6:-5,
   7:-4,8:-4,9:-4,10:-4,11:-4,12:-4,
   13:-7,14:-7,15:-7,16:-7
+};
+const WM_TEAM_DE = {
+  "Algeria":"Algerien","Argentina":"Argentinien","Australia":"Australien","Austria":"Österreich","Belgium":"Belgien",
+  "Bosnia and Herzegovina":"Bosnien und Herzegowina","Brazil":"Brasilien","Canada":"Kanada","Cape Verde":"Kap Verde",
+  "Colombia":"Kolumbien","Croatia":"Kroatien","Curaçao":"Curaçao","Czech Republic":"Tschechien",
+  "Democratic Republic of the Congo":"DR Kongo","Ecuador":"Ecuador","Egypt":"Ägypten",
+  "England":"England","France":"Frankreich","Germany":"Deutschland","Ghana":"Ghana","Haiti":"Haiti",
+  "Iran":"Iran","Iraq":"Irak","Ivory Coast":"Elfenbeinküste","Japan":"Japan","Jordan":"Jordanien",
+  "Mexico":"Mexiko","Morocco":"Marokko","Netherlands":"Niederlande","New Zealand":"Neuseeland",
+  "Norway":"Norwegen","Panama":"Panama","Paraguay":"Paraguay","Portugal":"Portugal","Qatar":"Katar",
+  "Saudi Arabia":"Saudi-Arabien","Scotland":"Schottland","Senegal":"Senegal","South Africa":"Südafrika",
+  "South Korea":"Südkorea","Spain":"Spanien","Sweden":"Schweden","Switzerland":"Schweiz","Tunisia":"Tunesien",
+  "Turkey":"Türkei","United States":"USA","Uruguay":"Uruguay","Uzbekistan":"Usbekistan"
 };
 
 const LEVELS = [
@@ -564,7 +577,7 @@ GM_addStyle(`
 .wm-source{font-size:10px;color:var(--t3);text-align:right;}
 .wm-list{display:flex;flex-direction:column;gap:7px;}
 .wm-row{
-  display:grid;grid-template-columns:92px 1fr 74px;gap:10px;align-items:center;
+  display:grid;grid-template-columns:92px minmax(0,1fr) minmax(190px,230px);gap:10px;align-items:center;
   padding:9px 10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.025);
 }
 .wm-row.live{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08);}
@@ -572,17 +585,71 @@ GM_addStyle(`
 .wm-main{min-width:0;}
 .wm-teams{font-size:12px;color:var(--t1);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .wm-meta{font-size:10px;color:var(--t3);margin-top:3px;line-height:1.4;}
-.wm-score{font-size:13px;color:var(--green);font-weight:800;text-align:right;font-family:var(--mono);}
-.wm-tip{display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-top:5px;font-size:10px;color:var(--t3);}
-.wm-tip input{
-  width:28px;height:22px;text-align:center;background:rgba(255,255,255,.04);
-  border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-family:var(--mono);font-size:11px;
+.wm-score{
+  display:inline-flex;justify-content:center;align-items:center;min-width:48px;
+  margin-left:auto;padding:4px 7px;border-radius:7px;
+  color:#7cffb2;background:rgba(34,197,94,.16);border:1px solid rgba(34,197,94,.36);
+  font-size:14px;font-weight:900;text-align:center;font-family:var(--mono);
+  text-shadow:0 0 12px rgba(34,197,94,.35);
 }
+.wm-score.pending{
+  color:#f9e6a2;background:rgba(201,146,36,.18);border-color:rgba(245,195,92,.42);
+  text-shadow:0 0 12px rgba(245,195,92,.25);
+}
+.wm-result-tip{
+  display:grid;grid-template-columns:auto 1fr;gap:9px;align-items:start;justify-items:end;
+}
+.wm-result-box{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.wm-result-label{
+  font-size:9px;color:#fff;font-weight:900;text-transform:uppercase;
+  letter-spacing:.55px;opacity:.95;white-space:nowrap;
+}
+.wm-tip{display:flex;justify-content:flex-end;align-items:center;gap:5px;margin-top:5px;font-size:10px;color:#fff;font-weight:900;flex-wrap:wrap;}
+.wm-result-tip .wm-tip{margin-top:0;min-width:104px;}
+.wm-tip span{color:#fff;font-weight:900;}
+.wm-tip-label{
+  flex-basis:100%;text-align:right;font-size:9px;color:#fff;font-weight:900;
+  text-transform:uppercase;letter-spacing:.6px;opacity:.95;
+}
+.wm-tip input{
+  width:34px;height:26px;text-align:center;
+  background:rgba(248,251,255,.12);
+  border:1px solid rgba(216,225,236,.34);
+  border-radius:7px;color:#ffffff;font-family:var(--mono);font-size:12px;font-weight:900;
+  box-shadow:0 0 0 1px rgba(255,255,255,.04) inset;
+}
+.wm-tip input::placeholder{color:rgba(255,255,255,.64);}
+.wm-tip input:hover{
+  background:rgba(248,251,255,.18);
+  border-color:rgba(249,230,162,.48);
+}
+.wm-tip input:focus{
+  outline:none;
+  background:rgba(249,230,162,.16);
+  border-color:#f9e6a2;
+  box-shadow:0 0 0 2px rgba(245,195,92,.22),0 0 14px rgba(245,195,92,.18);
+}
+.wm-tip-chip{
+  display:inline-flex;align-items:center;justify-content:center;min-width:46px;
+  padding:4px 8px;border-radius:7px;color:#fff;background:rgba(59,130,246,.22);
+  border:1px solid rgba(96,165,250,.42);font-size:12px;font-weight:900;font-family:var(--mono);
+}
+.wm-tip button{
+  height:26px;padding:0 8px;border-radius:7px;border:1px solid rgba(245,195,92,.42);
+  background:rgba(201,146,36,.18);color:#f9e6a2;font-size:10px;font-weight:900;
+  font-family:var(--font);cursor:pointer;
+}
+.wm-tip button:hover{background:rgba(201,146,36,.28);color:#fff;}
 .wm-mini{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
-.wm-mini-row{display:grid;grid-template-columns:82px 1fr 52px;gap:8px;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.025);}
+.wm-mini-row{display:grid;grid-template-columns:82px 1fr 58px;gap:8px;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);}
 .wm-mini-t{font-size:10px;color:var(--t2);font-family:var(--mono);}
 .wm-mini-n{font-size:11px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wm-mini-s{font-size:11px;color:var(--green);font-weight:800;text-align:right;font-family:var(--mono);}
+.wm-mini-s{
+  display:inline-flex;align-items:center;justify-content:center;min-width:42px;
+  padding:2px 6px;border-radius:6px;color:#7cffb2;background:rgba(34,197,94,.16);
+  border:1px solid rgba(34,197,94,.32);font-size:11px;font-weight:900;text-align:center;font-family:var(--mono);
+}
+.wm-mini-s.pending{color:#f9e6a2;background:rgba(201,146,36,.18);border-color:rgba(245,195,92,.38);}
 
 .weather-mini{display:block;}
 .weather-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
@@ -790,6 +857,7 @@ const S = {
   weather:null,
   wm:{games:[],stadiums:{},error:null,lastTs:null},
   wmTips:{},
+  wmTipEdit:{},
   profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:""},
   weatherAlertKey:"",
   lastApiTs:null,
@@ -887,6 +955,16 @@ function fmtWmCountdown(){
 function escHtml(v){
   return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 }
+function wmTeamDe(name){
+  const raw=String(name||"");
+  if(WM_TEAM_DE[raw])return WM_TEAM_DE[raw];
+  return raw
+    .replace(/^Winner Group ([A-Z])$/,"Sieger Gruppe $1")
+    .replace(/^Runner-up Group ([A-Z])$/,"Zweiter Gruppe $1")
+    .replace(/^Winner Match (\d+)$/,"Sieger Spiel $1")
+    .replace(/^Loser Match (\d+)$/,"Verlierer Spiel $1")
+    .replace(/^3rd Group (.+)$/,"Dritter Gruppe $1");
+}
 function isWmActive(){const n=Date.now();return n>=WM_START&&n<WM_END;}
 function parseWmGameDate(g){
   const m=String(g?.local_date||"").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/);
@@ -901,7 +979,11 @@ function fmtWmKickoff(g){
   return dt.toLocaleString("de-DE",{timeZone:"Europe/Berlin",weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(",","");
 }
 function wmTeam(g,side){
-  return (side==="home"?(g.home_team_name_en||g.home_team_label):(g.away_team_name_en||g.away_team_label)) || "TBD";
+  const name=(side==="home"?(g.home_team_name_en||g.home_team_label):(g.away_team_name_en||g.away_team_label)) || "TBD";
+  return wmTeamDe(name);
+}
+function wmTeamHtml(g,side){
+  return escHtml(wmTeam(g,side));
 }
 function wmStarted(g){
   return String(g?.finished).toUpperCase()==="TRUE" || String(g?.time_elapsed||"notstarted").toLowerCase()!=="notstarted";
@@ -1245,32 +1327,47 @@ function wmStadiumText(g){
   return `${name}${city}`;
 }
 function wmRowHtml(g,mini=false){
-  const home=escHtml(wmTeam(g,"home"));
-  const away=escHtml(wmTeam(g,"away"));
+  const home=wmTeamHtml(g,"home");
+  const away=wmTeamHtml(g,"away");
   const score=escHtml(wmScore(g));
   const when=escHtml(fmtWmKickoff(g));
   const stadium=escHtml(wmStadiumText(g));
   const stage=escHtml(wmStage(g));
   const tv=escHtml(wmTv(g));
   const cls=wmLive(g)?" live":"";
+  const scoreCls=wmStarted(g)?"":" pending";
   if(mini){
-    return `<div class="wm-mini-row${cls}"><span class="wm-mini-t">${when}</span><span class="wm-mini-n">${home} - ${away}</span><span class="wm-mini-s">${score}</span></div>`;
+    return `<div class="wm-mini-row${cls}"><span class="wm-mini-t">${when}</span><span class="wm-mini-n">${home} - ${away}</span><span class="wm-mini-s${scoreCls}">${score}</span></div>`;
   }
   const id=String(g.id||"");
   const tip=S.wmTips[id]||{};
+  const hasTip=tip.home!==undefined && tip.home!=="" && tip.away!==undefined && tip.away!=="";
+  const editing=!!S.wmTipEdit[id] || !hasTip;
+  const tipHtml=editing
+    ? `<div class="wm-tip wm-tip-open">
+        <span class="wm-tip-label">Dein Tipp</span>
+        <input class="wm-tip-input" data-id="${escHtml(id)}" data-side="home" type="number" min="0" max="99" value="${escHtml(tip.home??"")}" placeholder="-">
+        <span>:</span>
+        <input class="wm-tip-input" data-id="${escHtml(id)}" data-side="away" type="number" min="0" max="99" value="${escHtml(tip.away??"")}" placeholder="-">
+        <button class="wm-tip-save" data-id="${escHtml(id)}" type="button">Speichern</button>
+      </div>`
+    : `<div class="wm-tip wm-tip-closed">
+        <span class="wm-tip-label">Dein Tipp</span>
+        <span class="wm-tip-chip">${escHtml(tip.home)}:${escHtml(tip.away)}</span>
+        <button class="wm-tip-edit" data-id="${escHtml(id)}" type="button">Ändern</button>
+      </div>`;
   return `<div class="wm-row${cls}" data-wm-id="${escHtml(id)}">
     <div class="wm-time">${when}<br><span>${stage}</span></div>
     <div class="wm-main">
       <div class="wm-teams">${home} - ${away}</div>
       <div class="wm-meta">${stadium}<br>TV: ${tv}</div>
     </div>
-    <div>
-      <div class="wm-score">${score}</div>
-      <div class="wm-tip">
-        <input class="wm-tip-input" data-id="${escHtml(id)}" data-side="home" type="number" min="0" max="99" value="${escHtml(tip.home??"")}" placeholder="-">
-        <span>:</span>
-        <input class="wm-tip-input" data-id="${escHtml(id)}" data-side="away" type="number" min="0" max="99" value="${escHtml(tip.away??"")}" placeholder="-">
+    <div class="wm-result-tip">
+      <div class="wm-result-box">
+        <span class="wm-result-label">Endergebnis</span>
+        <div class="wm-score${scoreCls}">${score}</div>
       </div>
+      ${tipHtml}
     </div>
   </div>`;
 }
@@ -1294,7 +1391,7 @@ function renderWmOverview(){
 function renderWmEvent(){
   renderWmHeader();
   $("#wm-countdown").text(fmtWmCountdown());
-  const list=wmFocusGames(12);
+  const list=wmSortedGames();
   if(S.wm.error){$("#wm-schedule-list").html(`<div class="lss7-empty">${escHtml(S.wm.error)}</div>`);renderWmOverview();return;}
   if(!list.length){$("#wm-schedule-list").html(`<div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div>`);renderWmOverview();return;}
   $("#wm-schedule-list").html(list.map(g=>wmRowHtml(g)).join(""));
@@ -2307,17 +2404,32 @@ function buildUI(){
     e.stopPropagation();e.preventDefault();
     fetchWmEvent();
   });
-  panel.on("change",".wm-tip-input",e=>{
-    const input=$(e.currentTarget);
-    const id=String(input.data("id")||"");
-    const side=String(input.data("side")||"");
-    if(!id||!side)return;
-    const raw=String(input.val()||"").trim();
-    const val=raw===""?"":Math.max(0,Math.min(99,parseInt(raw,10)||0));
-    if(!S.wmTips[id])S.wmTips[id]={};
-    S.wmTips[id][side]=val;
+  panel.on("click",".wm-tip-save",e=>{
+    e.stopPropagation();e.preventDefault();
+    const id=String($(e.currentTarget).data("id")||"");
+    const row=$(e.currentTarget).closest(".wm-row");
+    const homeRaw=String(row.find('.wm-tip-input[data-side="home"]').val()||"").trim();
+    const awayRaw=String(row.find('.wm-tip-input[data-side="away"]').val()||"").trim();
+    if(!id || homeRaw==="" || awayRaw==="")return;
+    S.wmTips[id]={
+      home:Math.max(0,Math.min(99,parseInt(homeRaw,10)||0)),
+      away:Math.max(0,Math.min(99,parseInt(awayRaw,10)||0))
+    };
+    delete S.wmTipEdit[id];
     saveWmTips();
-    renderWmOverview();
+    renderWmEvent();
+  });
+  panel.on("click",".wm-tip-edit",e=>{
+    e.stopPropagation();e.preventDefault();
+    const id=String($(e.currentTarget).data("id")||"");
+    if(!id)return;
+    S.wmTipEdit[id]=true;
+    renderWmEvent();
+  });
+  panel.on("keydown",".wm-tip-input",e=>{
+    if(e.key!=="Enter")return;
+    e.preventDefault();
+    $(e.currentTarget).closest(".wm-tip").find(".wm-tip-save").trigger("click");
   });
 
   // Close button
