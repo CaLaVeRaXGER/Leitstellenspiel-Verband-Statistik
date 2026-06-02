@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      6.0.4
+// @version      6.0.5
 // @description  Ultimate Premium Dashboard: Floating Panel, 8 APIs, Live-Charts, Fahrzeugstatus-Donut, Kilometerstand, ARR-Ãœbersicht, GebÃ¤ude, Schulungen, Verlaufshistorie, Team, Dark-Design.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
@@ -12,6 +12,7 @@
 // @grant        GM_getValue
 // @connect      raw.githubusercontent.com
 // @connect      github.com
+// @connect      worldcup26.ir
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
 // @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
@@ -23,7 +24,7 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "6.0.4";
+const V   = "6.0.5";
 const BASE = "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 
@@ -42,6 +43,17 @@ const API = {
   wxForecast: "https://api.open-meteo.com/v1/forecast",
   zipGeo: "https://api.zippopotam.us/de",
   dwdWarnings: "https://www.dwd.de/DWD/warnungen/warnapp/json/warnings.json",
+  wmGames: "https://worldcup26.ir/get/games",
+  wmStadiums: "https://worldcup26.ir/get/stadiums",
+};
+
+const WM_START = new Date("2026-06-11T00:00:00+02:00").getTime();
+const WM_END = new Date("2026-07-20T00:00:00+02:00").getTime();
+const WM_STADIUM_OFFSETS = {
+  1:-6,2:-6,3:-6,
+  4:-5,5:-5,6:-5,
+  7:-4,8:-4,9:-4,10:-4,11:-4,12:-4,
+  13:-7,14:-7,15:-7,16:-7
 };
 
 const LEVELS = [
@@ -116,7 +128,7 @@ GM_addStyle(`
   --purple:#a855f7;--purpleh:#c084fc;--purple3:rgba(168,85,247,0.10);
   --cyan:#22d3ee;  --cyanh:#67e8f9; --cyan3:rgba(34,211,238,0.10);
   --pink:#ec4899;  --pinkh:#f472b6; --pink3:rgba(236,72,153,0.10);
-  --t1:#f0f6fc; --t2:#c9d1d9; --t3:#8b949e; --t4:#4a5568;
+  --t1:#f8fbff; --t2:#d8e1ec; --t3:#b1bdcb; --t4:#8a98aa;
   --r:10px; --rsm:6px; --rlg:14px; --rxl:18px;
   --font:'Inter',system-ui,sans-serif;
   --mono:'JetBrains Mono',monospace;
@@ -169,7 +181,7 @@ GM_addStyle(`
 #lss7-btn {
   display:inline-flex !important;
   align-items:center; gap:7px;
-  height:34px; padding:0 11px; border-radius:8px;
+  min-height:36px; padding:4px 11px; border-radius:8px;
   cursor:pointer; transition:all .18s ease;
   user-select:none; text-decoration:none !important;
   border:1px solid rgba(255,255,255,.08);
@@ -181,7 +193,9 @@ GM_addStyle(`
   border-color:rgba(255,255,255,.14);
 }
 #lss7-btn img   { height:18px; width:auto; opacity:.94; }
-.lss7-nav-lbl   { font-size:12px; font-weight:700; color:rgba(255,255,255,.9); letter-spacing:.2px; }
+.lss7-nav-copy{display:flex;flex-direction:column;gap:2px;line-height:1.05;}
+.lss7-nav-lbl{font-size:12px;font-weight:800;color:rgba(255,255,255,.96);letter-spacing:.2px;}
+.lss7-nav-event{font-size:8px;font-weight:800;color:#f9e6a2;letter-spacing:.45px;text-transform:uppercase;}
 .lss7-nav-arr   { font-size:9px; color:rgba(255,255,255,.45); transition:transform .2s; }
 #lss7-btn.open .lss7-nav-arr { transform:rotate(180deg); }
 #lss7-live {
@@ -211,7 +225,7 @@ GM_addStyle(`
 }
 .hd-ring img{width:24px;height:24px;object-fit:contain;opacity:.96;}
 .hd-title { font-size:14px;font-weight:700;color:var(--t1);line-height:1.2; }
-.hd-sub   { font-size:10px;color:var(--t4);margin-top:1px; }
+.hd-sub   { font-size:10px;color:var(--t3);margin-top:1px; }
 .hd-meta  { margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0; }
 
 /* Badges */
@@ -281,7 +295,7 @@ GM_addStyle(`
 }
 .prof-meta{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
 .prof-name{font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.prof-sub{font-size:10px;color:var(--t4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.prof-sub{font-size:10px;color:var(--t1);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .prof-rank{font-size:10px;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .prof-reward{font-size:10px;color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;}
 .prof-bar{height:5px;border-radius:5px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:3px;}
@@ -320,6 +334,11 @@ GM_addStyle(`
 }
 .ltab:hover{color:var(--t2);background:rgba(255,255,255,.03);}
 .ltab.active{color:var(--blue);border-bottom-color:var(--blue);background:rgba(59,130,246,.05);}
+.ltab[data-tab="tp-event"]{
+  color:#f9e6a2;background:linear-gradient(180deg,rgba(201,146,36,.18),rgba(201,146,36,.04));
+  border-left:1px solid rgba(245,195,92,.16);border-right:1px solid rgba(245,195,92,.16);
+}
+.ltab[data-tab="tp-event"].active{color:#ffe5a8;border-bottom-color:#f6d377;background:rgba(201,146,36,.22);}
 
 /* â”€â”€ Scrollable Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #lss7-body{
@@ -516,6 +535,54 @@ GM_addStyle(`
   background:rgba(255,255,255,.02);font-size:11px;color:var(--t3);line-height:1.45;
 }
 .set-note b{color:var(--t1);}
+
+/* Event / WM */
+.event-card{
+  padding:14px;border:1px solid var(--b1);border-radius:var(--rlg);
+  background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
+  display:flex;flex-direction:column;gap:12px;
+}
+.event-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.event-title{font-size:15px;font-weight:800;color:var(--t1);}
+.event-sub{font-size:11px;color:var(--t3);line-height:1.45;}
+.event-count{
+  font-size:26px;font-weight:800;letter-spacing:.4px;
+  color:var(--blueh);font-family:var(--mono);
+}
+.event-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+}
+.event-kpi{
+  padding:10px 12px;border:1px solid var(--b1);border-radius:var(--rsm);
+  background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:4px;
+}
+.event-k{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);}
+.event-v{font-size:12px;color:var(--t1);font-weight:600;line-height:1.35;}
+.event-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.event-actions .lbtn{width:auto;flex:1;justify-content:center;}
+.event-note{font-size:11px;color:var(--t3);line-height:1.45;}
+.wm-source{font-size:10px;color:var(--t3);text-align:right;}
+.wm-list{display:flex;flex-direction:column;gap:7px;}
+.wm-row{
+  display:grid;grid-template-columns:92px 1fr 74px;gap:10px;align-items:center;
+  padding:9px 10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.025);
+}
+.wm-row.live{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08);}
+.wm-time{font-size:10px;color:var(--t3);line-height:1.45;font-family:var(--mono);}
+.wm-main{min-width:0;}
+.wm-teams{font-size:12px;color:var(--t1);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wm-meta{font-size:10px;color:var(--t3);margin-top:3px;line-height:1.4;}
+.wm-score{font-size:13px;color:var(--green);font-weight:800;text-align:right;font-family:var(--mono);}
+.wm-tip{display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-top:5px;font-size:10px;color:var(--t3);}
+.wm-tip input{
+  width:28px;height:22px;text-align:center;background:rgba(255,255,255,.04);
+  border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-family:var(--mono);font-size:11px;
+}
+.wm-mini{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+.wm-mini-row{display:grid;grid-template-columns:82px 1fr 52px;gap:8px;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.025);}
+.wm-mini-t{font-size:10px;color:var(--t2);font-family:var(--mono);}
+.wm-mini-n{font-size:11px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wm-mini-s{font-size:11px;color:var(--green);font-weight:800;text-align:right;font-family:var(--mono);}
 
 .weather-mini{display:block;}
 .weather-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
@@ -721,6 +788,8 @@ const S = {
   userCredits:0, userCoins:0, userId:null,
   allianceId:null, allianceName:"", allianceRank:null, allianceCredits:0,
   weather:null,
+  wm:{games:[],stadiums:{},error:null,lastTs:null},
+  wmTips:{},
   profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:""},
   weatherAlertKey:"",
   lastApiTs:null,
@@ -737,6 +806,7 @@ const S = {
     weatherMode:"off", // off | settings | overview
     weatherSound:false,
     weatherTone:"beep",
+    eventMode:"overview", // off | overview
   },
 };
 
@@ -753,6 +823,7 @@ function save(){
   GM_setValue("v7_ch",  JSON.stringify(S.creditHist));
   GM_setValue("v7_set", JSON.stringify(S.settings));
 }
+function saveWmTips(){ GM_setValue("v7_wm_tips", JSON.stringify(S.wmTips||{})); }
 function load(){
   const today=todayStr();
   const saved=GM_getValue("v7_ld",today);
@@ -763,6 +834,7 @@ function load(){
   S.lastTs       =GM_getValue("v7_lts",Date.now());
   S.lastDate     =today;
   try{S.creditHist=JSON.parse(GM_getValue("v7_ch","[]"))||[];}catch{S.creditHist=[];}
+  try{S.wmTips=JSON.parse(GM_getValue("v7_wm_tips","{}"))||{};}catch{S.wmTips={};}
   try{Object.assign(S.settings,JSON.parse(GM_getValue("v7_set","{}"))||{});}catch{}
   const validPlacements=["default","top-left","top-right","bottom-left","bottom-right"];
   if(!validPlacements.includes(S.settings.panelPlacement)) S.settings.panelPlacement="default";
@@ -775,6 +847,8 @@ function load(){
   if(!validThemes.includes(S.settings.panelTheme)) S.settings.panelTheme="dark";
   const validWeatherModes=["off","settings","overview"];
   if(!validWeatherModes.includes(S.settings.weatherMode)) S.settings.weatherMode="off";
+  const validEventModes=["off","overview"];
+  if(!validEventModes.includes(S.settings.eventMode)) S.settings.eventMode="overview";
   if(typeof S.settings.weatherSound!=="boolean") S.settings.weatherSound=false;
   const validTones=["beep","alarm","chime"];
   if(!validTones.includes(S.settings.weatherTone)) S.settings.weatherTone="beep";
@@ -801,6 +875,49 @@ function fmtClock(){
     weekday:"short",day:"2-digit",month:"2-digit",year:"numeric",
     hour:"2-digit",minute:"2-digit",second:"2-digit"
   }).replace(",","");
+}
+function fmtWmCountdown(){
+  const diff=Math.max(0,WM_START-Date.now());
+  const d=Math.floor(diff/86400000);
+  const h=Math.floor((diff%86400000)/3600000);
+  const m=Math.floor((diff%3600000)/60000);
+  const s=Math.floor((diff%60000)/1000);
+  return `${String(d).padStart(2,"0")}T ${String(h).padStart(2,"0")}H ${String(m).padStart(2,"0")}M ${String(s).padStart(2,"0")}S`;
+}
+function escHtml(v){
+  return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+function isWmActive(){const n=Date.now();return n>=WM_START&&n<WM_END;}
+function parseWmGameDate(g){
+  const m=String(g?.local_date||"").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/);
+  if(!m)return null;
+  const mo=Number(m[1]),d=Number(m[2]),y=Number(m[3]),h=Number(m[4]),mi=Number(m[5]);
+  const off=WM_STADIUM_OFFSETS[Number(g.stadium_id)] ?? -5;
+  return new Date(Date.UTC(y,mo-1,d,h-off,mi));
+}
+function fmtWmKickoff(g){
+  const dt=parseWmGameDate(g);
+  if(!dt)return escHtml(g?.local_date||"-");
+  return dt.toLocaleString("de-DE",{timeZone:"Europe/Berlin",weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(",","");
+}
+function wmTeam(g,side){
+  return (side==="home"?(g.home_team_name_en||g.home_team_label):(g.away_team_name_en||g.away_team_label)) || "TBD";
+}
+function wmStarted(g){
+  return String(g?.finished).toUpperCase()==="TRUE" || String(g?.time_elapsed||"notstarted").toLowerCase()!=="notstarted";
+}
+function wmLive(g){return wmStarted(g) && String(g?.finished).toUpperCase()!=="TRUE";}
+function wmScore(g){return wmStarted(g)?`${g.home_score??0}:${g.away_score??0}`:"vs";}
+function wmStage(g){
+  const t=String(g?.type||"group").toLowerCase();
+  const map={group:`Gruppe ${g.group||""}`,r32:"Runde der 32",r16:"Achtelfinale",qf:"Viertelfinale",sf:"Halbfinale",third:"Platz 3",final:"Finale"};
+  return map[t]||String(g?.group||t).toUpperCase();
+}
+function wmTv(g){
+  const teams=`${wmTeam(g,"home")} ${wmTeam(g,"away")}`.toLowerCase();
+  const type=String(g?.type||"").toLowerCase();
+  const free=Number(g?.id)===1 || type==="sf" || type==="final" || teams.includes("germany");
+  return free?"MagentaTV + ARD/ZDF":"MagentaTV";
 }
 function fmtShortTime(ts){
   return new Date(ts).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
@@ -1111,6 +1228,80 @@ function fetchWeather(){
   });
 }
 
+function wmSortedGames(){
+  return (S.wm.games||[]).map(g=>Object.assign({},g,{_dt:parseWmGameDate(g)}))
+    .sort((a,b)=>(a._dt?.getTime()||0)-(b._dt?.getTime()||0));
+}
+function wmFocusGames(limit=10){
+  const now=Date.now();
+  const all=wmSortedGames();
+  const upcoming=all.filter(g=>(g._dt?.getTime()||0)>=now-7200000 || wmLive(g));
+  return (upcoming.length?upcoming:all.slice(-limit)).slice(0,limit);
+}
+function wmStadiumText(g){
+  const s=S.wm.stadiums[String(g.stadium_id)]||{};
+  const name=s.fifa_name||s.name_en||`Stadion ${g.stadium_id||"-"}`;
+  const city=s.city_en?` · ${s.city_en}`:"";
+  return `${name}${city}`;
+}
+function wmRowHtml(g,mini=false){
+  const home=escHtml(wmTeam(g,"home"));
+  const away=escHtml(wmTeam(g,"away"));
+  const score=escHtml(wmScore(g));
+  const when=escHtml(fmtWmKickoff(g));
+  const stadium=escHtml(wmStadiumText(g));
+  const stage=escHtml(wmStage(g));
+  const tv=escHtml(wmTv(g));
+  const cls=wmLive(g)?" live":"";
+  if(mini){
+    return `<div class="wm-mini-row${cls}"><span class="wm-mini-t">${when}</span><span class="wm-mini-n">${home} - ${away}</span><span class="wm-mini-s">${score}</span></div>`;
+  }
+  const id=String(g.id||"");
+  const tip=S.wmTips[id]||{};
+  return `<div class="wm-row${cls}" data-wm-id="${escHtml(id)}">
+    <div class="wm-time">${when}<br><span>${stage}</span></div>
+    <div class="wm-main">
+      <div class="wm-teams">${home} - ${away}</div>
+      <div class="wm-meta">${stadium}<br>TV: ${tv}</div>
+    </div>
+    <div>
+      <div class="wm-score">${score}</div>
+      <div class="wm-tip">
+        <input class="wm-tip-input" data-id="${escHtml(id)}" data-side="home" type="number" min="0" max="99" value="${escHtml(tip.home??"")}" placeholder="-">
+        <span>:</span>
+        <input class="wm-tip-input" data-id="${escHtml(id)}" data-side="away" type="number" min="0" max="99" value="${escHtml(tip.away??"")}" placeholder="-">
+      </div>
+    </div>
+  </div>`;
+}
+function renderWmHeader(){
+  const active=isWmActive();
+  const txt=active?"EVENT LIVE":"EVENT 11.06";
+  $("#lss7-event-live").text(txt).toggle(true);
+  $("#lss7-nav-event").text(txt);
+}
+function renderWmOverview(){
+  const box=$("#event-board");
+  if(!box.length)return;
+  const show=(S.settings.eventMode||"overview")==="overview";
+  box.toggle(show);
+  if(!show)return;
+  const list=wmFocusGames(3);
+  if(S.wm.error){$("#wm-overview-view").html(`<div class="lss7-empty">${escHtml(S.wm.error)}</div>`);return;}
+  if(!list.length){$("#wm-overview-view").html(`<div class="lss7-empty">Spielplan wird geladen...</div>`);return;}
+  $("#wm-overview-view").html(`<div class="wm-mini">${list.map(g=>wmRowHtml(g,true)).join("")}</div>`);
+}
+function renderWmEvent(){
+  renderWmHeader();
+  $("#wm-countdown").text(fmtWmCountdown());
+  const list=wmFocusGames(12);
+  if(S.wm.error){$("#wm-schedule-list").html(`<div class="lss7-empty">${escHtml(S.wm.error)}</div>`);renderWmOverview();return;}
+  if(!list.length){$("#wm-schedule-list").html(`<div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div>`);renderWmOverview();return;}
+  $("#wm-schedule-list").html(list.map(g=>wmRowHtml(g)).join(""));
+  $("#wm-source").text(S.wm.lastTs?`Quelle: worldcup26.ir · aktualisiert ${timeAgo(S.wm.lastTs)}`:"Quelle: worldcup26.ir");
+  renderWmOverview();
+}
+
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  TIMER / CLOCK                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1120,6 +1311,7 @@ function tickTimer(){
     $("#lss7-playtime").text(fmtHHMM(S.playtime));save();}
 }
 function tickClock(){$("#lss7-clock").text(fmtClock());}
+function tickEventCountdown(){$("#wm-countdown").text(fmtWmCountdown());renderWmHeader();}
 function checkMidnight(){
   if(todayStr()!==S.lastDate){
     S.playtime=0;S.dailyEarn=0;S.lastAlliCreds=0;S.lastDate=todayStr();save();
@@ -1462,6 +1654,22 @@ function fetchAllData(){
   fetchSchoolings(); fetchAAOs();
   fetchDailyEarnFromOverview();
   fetchWeather();
+  fetchWmEvent();
+}
+
+function fetchWmEvent(){
+  jsonGet(API.wmStadiums,d=>{
+    const map={};
+    (d.stadiums||[]).forEach(s=>{map[String(s.id)]=s;});
+    S.wm.stadiums=map;
+    renderWmEvent();
+  },()=>{S.wm.error="Stadien konnten nicht geladen werden";renderWmEvent();});
+  jsonGet(API.wmGames,d=>{
+    S.wm.games=Array.isArray(d.games)?d.games:[];
+    S.wm.error=null;
+    S.wm.lastTs=Date.now();
+    renderWmEvent();
+  },()=>{S.wm.error="Spielplan konnte nicht geladen werden";renderWmEvent();});
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -1728,10 +1936,11 @@ function buildUI(){
         <div class="hd-ring"><img src="https://i.postimg.cc/hjsm7tQV/LSSS-Logo-fertig.png" alt="LSS"></div>
         <div>
           <div class="hd-title">Verband Statistik Pro</div>
-          <div class="hd-sub">Das Dashbord für dein Verband!</div>
+          <div class="hd-sub">Das Dashboard für deinen Verband!</div>
         </div>
         <div class="hd-meta">
           <div id="lss7-live" title="Live-Daten aktiv"></div>
+          <span id="lss7-event-live" class="bd bd-gold">EVENT 11.06</span>
           <span class="bd bd-blue">v${V}</span>
           <span id="lss7-premium" class="bd bd-gold" style="display:${S.settings.panelTheme==="premium"?"inline-flex":"none"}">PREMIUM</span>
           <button id="lss7-col" title="Ein-/Ausklappen">Ausgeklappt</button>
@@ -1786,6 +1995,7 @@ function buildUI(){
     {id:"tp-aao",       icon:"", label:"AAO"},
     {id:"tp-history",   icon:"", label:"Verlauf"},
     {id:"tp-team",      icon:"", label:"Team"},
+    {id:"tp-event",     icon:"", label:"Event"},
     {id:"tp-settings",  icon:"", label:"Settings"},
   ];
   const tabBar=$(`<div id="lss7-tabs"></div>`);
@@ -1843,6 +2053,13 @@ function buildUI(){
         <span class="sl">Wetter</span>
         <div class="weather-mini" id="wx-overview-view"><span class="w-l">Keine Wetterdaten</span><span class="w-r">-</span></div>
       </div>
+      <div class="sc w2" id="event-board" style="display:none">
+        <div class="rank-mini-head">
+          <span class="rank-mini-title">WM 2026</span>
+          <span class="rank-mini-note">Naechste Spiele</span>
+        </div>
+        <div id="wm-overview-view"><div class="lss7-empty">Spielplan wird geladen...</div></div>
+      </div>
     </div>
     <div id="cv-wrap">
       <div class="cv-hdr">
@@ -1893,6 +2110,9 @@ function buildUI(){
   // TAB: Team â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tTeam=$(`<div id="tp-team" class="lpanel"><div id="lss7-team"><div class="lss7-empty"><span class="lspin"></span> Lade Team...</div></div></div>`);
   body.append(tTeam);
+  const tEvt=$(`<div id="tp-event" class="lpanel"></div>`);
+  tEvt.append(`<div class="event-card"><div class="event-top"><div><div class="event-title">WM 2026</div><div class="event-sub">Spielplan, Ergebnisse, Spielorte, TV-Hinweis und lokale Tipps direkt im Dashboard.</div></div><span class="bd bd-gold">EVENT LIVE</span></div><div class="event-count" id="wm-countdown">${fmtWmCountdown()}</div><div class="event-grid"><div class="event-kpi"><span class="event-k">Start</span><span class="event-v">11. Juni 2026</span></div><div class="event-kpi"><span class="event-k">TV</span><span class="event-v">Alle Spiele bei MagentaTV. ARD/ZDF zeigen 60 Spiele, u.a. Deutschland, Eroeffnung, Halbfinale und Finale.</span></div></div><div class="event-actions"><button class="lbtn prime" id="wm-refresh" type="button">Spielplan aktualisieren</button><a class="lbtn" href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/scores-fixtures" target="_blank" rel="noopener">FIFA-Spielplan</a></div><div class="wm-list" id="wm-schedule-list"><div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div></div><div class="event-note">Tipps werden aktuell lokal in deinem Browser gespeichert. Damit andere die Tipps sehen koennen, brauchen wir spaeter eine zentrale Datenbank oder ein kleines Backend.</div><div class="wm-source" id="wm-source">Quelle: worldcup26.ir</div></div>`);
+  body.append(tEvt);
 
   // TAB: Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tSet=$(`<div id="tp-settings" class="lpanel"></div>`);
@@ -1966,6 +2186,17 @@ function buildUI(){
   grpWx.append(`<div class="set-note"><div class="weather-mini" id="wx-settings-view"><span class="w-l">Keine Wetterdaten</span><span class="w-r">-</span></div></div>`);
   setWrap.append(grpWx);
 
+  const grpEvent=$(`<div class="set-group"><div class="set-head">WM / Event</div></div>`);
+  grpEvent.append(`<label class="tog-row" style="justify-content:space-between;">
+    <span class="tog-lbl">Anzeige</span>
+    <select id="sb-event-mode" class="lss7-select">
+      <option value="off"${S.settings.eventMode==="off"?" selected":""}>Aus</option>
+      <option value="overview"${S.settings.eventMode==="overview"?" selected":""}>An - in Übersicht anzeigen</option>
+    </select>
+  </label>`);
+  grpEvent.append(`<button class="lbtn prime" id="sb-event-refresh" type="button">WM-Spielplan aktualisieren</button>`);
+  setWrap.append(grpEvent);
+
   const grpInfo=$(`<div class="set-group"><div class="set-head">Informationen</div></div>`);
   grpInfo.append(`<div class="set-note">${infoHTML()}</div>`);
   setWrap.append(grpInfo);
@@ -1980,14 +2211,14 @@ function buildUI(){
   setWrap.append(grpContact);
 
   const grpPn=$(`<div class="set-group"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v5.8.3</b><br>Layout-Einbindung in den Einstellungen hinzugefügt, Banner im Layout ein-/ausklappbar, Profil-Informationen ergänzt, Wettervorhersage von 4 auf 7 Stunden erweitert, mehrere Fehler behoben inkl. Update-Überschreiben.</div>`);
+  grpPn.append(`<div class="set-note"><b>v6.0.5</b><br>WM-Eventbereich mit Countdown, Spielplan, lokalen Tipps und optionaler Übersicht-Box hinzugefügt. Header, Lesbarkeit und Event-Anzeige überarbeitet.</div>`);
   setWrap.append(grpPn);
 
   tSet.append(setWrap);
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v5.8.3",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v6.0.5",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -2016,6 +2247,7 @@ function buildUI(){
     if(id==="tp-schoolings"&& !panel.data("ls")){panel.data("ls",1);fetchSchoolings();}
     if(id==="tp-aao"       && !panel.data("la")){panel.data("la",1);fetchAAOs();}
     if(id==="tp-history"){renderHistTab();}
+    if(id==="tp-event"){renderWmEvent();if(!(S.wm.games||[]).length)fetchWmEvent();}
     if(id==="tp-overview"){setTimeout(drawChart,50);}
   });
 
@@ -2066,6 +2298,26 @@ function buildUI(){
     e.preventDefault();
     S.settings.weatherLocation=String($(e.currentTarget).val()||"").trim();
     save();fetchWeather();
+  });
+  panel.on("change","#sb-event-mode",e=>{
+    S.settings.eventMode=String($(e.currentTarget).val()||"overview");
+    save();renderWmOverview();
+  });
+  panel.on("click","#sb-event-refresh,#wm-refresh",e=>{
+    e.stopPropagation();e.preventDefault();
+    fetchWmEvent();
+  });
+  panel.on("change",".wm-tip-input",e=>{
+    const input=$(e.currentTarget);
+    const id=String(input.data("id")||"");
+    const side=String(input.data("side")||"");
+    if(!id||!side)return;
+    const raw=String(input.val()||"").trim();
+    const val=raw===""?"":Math.max(0,Math.min(99,parseInt(raw,10)||0));
+    if(!S.wmTips[id])S.wmTips[id]={};
+    S.wmTips[id][side]=val;
+    saveWmTips();
+    renderWmOverview();
   });
 
   // Close button
@@ -2357,15 +2609,17 @@ function mkAccordion(icon,title,body){
 }
 function patchHTML(){
   const items=[
-    "Neu: Menü kann in den Einstellungen als Layout-Box eingebunden werden (unter dem Header).",
-    "Layout-Box kann per sichtbarem Banner-Button ein- und ausgeklappt werden.",
-    "Profil-Informationen ergänzt und Darstellung verbessert.",
-    "Wettervorhersage von 4 auf 7 Stunden erweitert.",
-    "Mehrere Fehler behoben, inklusive Update-Problem beim Überschreiben der alten Version.",
-    "Falls Update weiterhin nicht korrekt überschreibt: bitte Feedback über Kontakt senden.",
+    "Neu: WM-Event-Tab mit Countdown bis zum Start am 11.06.2026.",
+    "Spielplan wird über worldcup26.ir geladen und zeigt Teams, Zeit, Ergebnis/Status, Spielort und TV-Hinweis.",
+    "Lokale Tippfelder pro Spiel ergänzt; Tipps werden im eigenen Browser gespeichert.",
+    "Event-Box kann in den Einstellungen für die Übersicht ein- oder ausgeschaltet werden.",
+    "Header-Button im Spiel zeigt jetzt Dein Verband und einen Event-Hinweis.",
+    "Event-Button im Menü wurde deutlicher hervorgehoben.",
+    "Dark-Mode-Lesbarkeit verbessert, inklusive hellerer kleiner Texte und besser sichtbarer Profil-Fortschrittsanzeige.",
+    "Premium-Gold-Design ergänzt und mehrere UI-Fehler bereinigt.",
   ];
   return `<div style="color:var(--blue);font-weight:700;font-size:11px;margin-bottom:10px">
-    v5.8.3 — Layout, Profil, Wetter & Update Fix</div>
+    v6.0.5 — WM Event, Spielplan, Tipps & UI-Feinschliff</div>
     ${items.map(t=>`<div class="patch-i"><span class="patch-b">→</span><span>${t}</span></div>`).join("")}`;
 }
 function infoHTML(){
@@ -2391,7 +2645,10 @@ function buildTrigger(){
   const a=$(`
     <a href="#" id="lss7-btn">
       <img src="https://i.postimg.cc/hjsm7tQV/LSSS-Logo-fertig.png" alt="LSS">
-      <span class="lss7-nav-lbl">Verband</span>
+      <span class="lss7-nav-copy">
+        <span class="lss7-nav-lbl">Dein Verband</span>
+        <span class="lss7-nav-event" id="lss7-nav-event">Event 11.06</span>
+      </span>
       <div id="lss7-live"></div>
       <span class="lss7-nav-arr">v</span>
     </a>`);
@@ -2490,10 +2747,13 @@ $(document).ready(()=>{
   fetchDailyEarnFromOverview();
   fetchWeather();
   renderWeather();
+  fetchWmEvent();
+  renderWmEvent();
 
   // Intervals
   setInterval(tickTimer,          ITV.timer);
   setInterval(tickClock,          ITV.clock);
+  setInterval(tickEventCountdown, ITV.clock);
   setInterval(checkMidnight,      ITV.midnight);
   setInterval(fetchAlliance,      ITV.alliance);
   setInterval(fetchUserinfo,      ITV.userinfo);
@@ -2502,6 +2762,7 @@ $(document).ready(()=>{
   setInterval(fetchSchoolings,    ITV.schools);
   setInterval(fetchDailyEarnFromOverview, ITV.dailyEarn);
   setInterval(fetchWeather,       ITV.weather);
+  setInterval(fetchWmEvent,       300000);
   setInterval(updateFooter,       ITV.footer);
 
   // Daily-Earnings quick-stat sync
