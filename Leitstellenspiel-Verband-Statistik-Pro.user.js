@@ -2,8 +2,8 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      6.0.5.1
-// @description  Ultimate Premium Dashboard: Floating Panel, 8 APIs, Live-Charts, Fahrzeugstatus-Donut, Kilometerstand, ARR-Ãœbersicht, GebÃ¤ude, Schulungen, Verlaufshistorie, Team, Dark-Design.
+// @version      6.0.7
+// @description  Ultimate Premium Dashboard: Floating Panel, Live-Charts, Fahrzeugstatus-Donut, Lehrgänge, 7-Tage-Verbandsverdienst, Verlaufshistorie, Team, Wetter, WM-Event und Dark-Design.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/
 // @grant        GM_xmlhttpRequest
@@ -24,7 +24,7 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "6.0.5.1";
+const V   = "6.0.7";
 const BASE = "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 
@@ -34,6 +34,7 @@ const API = {
   vStates:     `${BASE}/api/vehicle_states`,
   buildings:   `${BASE}/api/buildings`,
   schoolings:  `${BASE}/api/alliance_schoolings`,
+  schoolingsPage: `${BASE}/schoolings`,
   vehicles:    `${BASE}/api/v2/vehicles`,
   vDistances:  `${BASE}/api/v1/vehicle_distances.json`,
   aaos:        `${BASE}/api/v1/aaos`,
@@ -311,6 +312,7 @@ GM_addStyle(`
 .prof-sub{font-size:10px;color:var(--t1);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .prof-rank{font-size:10px;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .prof-reward{font-size:10px;color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;}
+.prof-next{font-size:10px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;font-weight:700;}
 .prof-bar{height:5px;border-radius:5px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:3px;}
 .prof-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--cyan));}
 
@@ -453,6 +455,27 @@ GM_addStyle(`
   border-radius:4px;padding:1px 7px;flex-shrink:0;
 }
 .lrow-sub{font-size:10px;color:var(--t4);flex-shrink:0;}
+.sch-row{
+  display:grid;grid-template-columns:minmax(0,1fr) 54px 92px 96px;
+  gap:8px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--b0);font-size:11px;
+}
+.sch-row:last-child{border-bottom:none;}
+.sch-row:hover{background:var(--bgh);}
+.sch-name{color:var(--t1);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sch-sub{display:block;margin-top:2px;color:var(--t3);font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sch-seats,.sch-cost,.sch-finish{font-family:var(--mono);font-size:10px;text-align:right;color:var(--t2);font-weight:700;}
+.sch-seats{color:var(--greenh);}
+
+/* Verbandsverdienst */
+#alliance-earn-board{padding:10px 12px;}
+.alli-earn-list{display:flex;flex-direction:column;gap:5px;}
+.alli-earn-row{display:grid;grid-template-columns:70px minmax(0,1fr) 126px;gap:8px;align-items:center;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.02);}
+.alli-earn-row.today{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.22);}
+.alli-earn-day{font-size:10px;color:var(--t3);font-weight:700;white-space:nowrap;}
+.alli-earn-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;}
+.alli-earn-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--blue));min-width:2px;}
+.alli-earn-val{font-size:11px;color:var(--green);font-family:var(--mono);font-weight:700;text-align:right;white-space:nowrap;}
+.alli-earn-empty{font-size:11px;color:var(--t3);padding:6px 2px;}
 
 /* â”€â”€ Credit History â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .hist-row{
@@ -852,13 +875,14 @@ const S = {
   lastAlliCreds:0, dailyEarn:0,
   lastDate:todayStr(),
   creditHist:[],     // [{ts,v}]
+  allianceDaily:[],   // [{date,start,end}]
   userCredits:0, userCoins:0, userId:null,
   allianceId:null, allianceName:"", allianceRank:null, allianceCredits:0,
   weather:null,
   wm:{games:[],stadiums:{},error:null,lastTs:null},
   wmTips:{},
   wmTipEdit:{},
-  profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:""},
+  profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:""},
   weatherAlertKey:"",
   lastApiTs:null,
   settings:{
@@ -889,6 +913,7 @@ function save(){
   GM_setValue("v7_de",  S.dailyEarn);
   GM_setValue("v7_ld",  today);
   GM_setValue("v7_ch",  JSON.stringify(S.creditHist));
+  GM_setValue("v7_ad",  JSON.stringify(S.allianceDaily));
   GM_setValue("v7_set", JSON.stringify(S.settings));
 }
 function saveWmTips(){ GM_setValue("v7_wm_tips", JSON.stringify(S.wmTips||{})); }
@@ -902,6 +927,7 @@ function load(){
   S.lastTs       =GM_getValue("v7_lts",Date.now());
   S.lastDate     =today;
   try{S.creditHist=JSON.parse(GM_getValue("v7_ch","[]"))||[];}catch{S.creditHist=[];}
+  try{S.allianceDaily=JSON.parse(GM_getValue("v7_ad","[]"))||[];}catch{S.allianceDaily=[];}
   try{S.wmTips=JSON.parse(GM_getValue("v7_wm_tips","{}"))||{};}catch{S.wmTips={};}
   try{Object.assign(S.settings,JSON.parse(GM_getValue("v7_set","{}"))||{});}catch{}
   const validPlacements=["default","top-left","top-right","bottom-left","bottom-right"];
@@ -927,6 +953,25 @@ function load(){
 // â•‘  UTILITIES                                                   â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function todayStr(){return new Date().toISOString().split("T")[0];}
+function localDateKey(d=new Date()){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,"0");
+  const day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function dateKeyToLocalDate(key){
+  const m=String(key||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m)return new Date();
+  return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
+}
+function dayLabel(key){
+  const d=dateKeyToLocalDate(key);
+  const today=localDateKey();
+  const yesterday=localDateKey(new Date(Date.now()-86400000));
+  if(key===today)return "Heute";
+  if(key===yesterday)return "Gestern";
+  return d.toLocaleDateString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit"});
+}
 function fmt(n,u=""){return typeof n==="number"?n.toLocaleString("de-DE")+(u?" "+u:""):"-";}
 function fmtMoney(n){return typeof n==="number"?n.toLocaleString("de-DE")+" ¢":"-";}
 function fmtKm(n){
@@ -1373,7 +1418,7 @@ function wmRowHtml(g,mini=false){
 }
 function renderWmHeader(){
   const active=isWmActive();
-  const txt=active?"EVENT LIVE":"EVENT ab dem 11.06";
+  const txt=active?"EVENT LIVE":"EVENT 11.06";
   $("#lss7-event-live").text(txt).toggle(true);
   $("#lss7-nav-event").text(txt);
 }
@@ -1421,6 +1466,75 @@ function checkMidnight(){
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  CREDIT HISTORY                                              â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function normalizeAllianceDaily(){
+  const map=new Map();
+  (Array.isArray(S.allianceDaily)?S.allianceDaily:[]).forEach(x=>{
+    if(!x||!x.date)return;
+    const date=String(x.date);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
+    const start=Number(x.start);
+    const end=Number(x.end);
+    if(!Number.isFinite(start)||!Number.isFinite(end))return;
+    const old=map.get(date);
+    if(old){
+      old.start=Math.min(old.start,start);
+      old.end=Math.max(old.end,end);
+    }else{
+      map.set(date,{date,start,end});
+    }
+  });
+  S.allianceDaily=Array.from(map.values()).sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
+  return S.allianceDaily;
+}
+
+function trackAllianceDailyCredits(total){
+  const val=Number(total)||0;
+  if(!val)return;
+  const key=localDateKey();
+  const arr=normalizeAllianceDaily();
+  let cur=arr.find(x=>x.date===key);
+  if(!cur){
+    cur={date:key,start:val,end:val};
+    arr.push(cur);
+  }else{
+    cur.end=val;
+    if(!Number.isFinite(cur.start)||cur.start<=0)cur.start=val;
+  }
+  S.allianceDaily=arr.sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
+}
+
+function allianceDailyRows(){
+  return normalizeAllianceDaily().slice(-7).map(x=>({
+    date:x.date,
+    label:dayLabel(x.date),
+    earn:Math.max(0,(Number(x.end)||0)-(Number(x.start)||0)),
+  }));
+}
+
+function renderAllianceDailyBoard(){
+  const list=$("#alliance-earn-list");
+  if(!list.length)return;
+  const rows=allianceDailyRows();
+  if(!rows.length){
+    $("#alliance-earn-note").text("Startet ab jetzt");
+    list.html(`<div class="alli-earn-empty">Noch keine Tagesdaten. Der erste Stand wird beim naechsten Refresh gespeichert.</div>`);
+    return;
+  }
+  const max=Math.max(...rows.map(r=>r.earn),1);
+  const sum=rows.reduce((s,r)=>s+r.earn,0);
+  const avg=rows.length?Math.round(sum/rows.length):0;
+  $("#alliance-earn-note").text(rows.length<7?`${rows.length}/7 Tage gesammelt`:`Ø ${fmtMoney(avg)}`);
+  list.html(rows.map(r=>{
+    const pct=Math.max(2,Math.round((r.earn/max)*100));
+    const today=r.date===localDateKey();
+    return `<div class="alli-earn-row${today?" today":""}">
+      <span class="alli-earn-day">${escHtml(r.label)}</span>
+      <span class="alli-earn-bar"><span class="alli-earn-fill" style="width:${pct}%"></span></span>
+      <span class="alli-earn-val">${fmtMoney(r.earn)}</span>
+    </div>`;
+  }).join(""));
+}
+
 function pushHist(val){
   const now=Date.now(),h=S.creditHist;
   if(!h.length||now-h[h.length-1].ts>290000){
@@ -1537,6 +1651,7 @@ function fetchAlliance(){
     S.allianceId=apiAllianceId || domAllianceId || S.allianceId || null;
     S.lastApiTs=Date.now();
     const tot=d.credits_total||0;
+    trackAllianceDailyCredits(tot);
     S.lastAlliCreds=tot;save();
     pushHist(tot);
     renderOverview(d);
@@ -1590,6 +1705,11 @@ function renderProfileQuick(){
     $("#prof-reward").text(`Level-Up: ${S.profile.reward}`).show();
   }else{
     $("#prof-reward").hide().text("");
+  }
+  if(S.profile.needText){
+    $("#prof-next").text(S.profile.needText).show();
+  }else{
+    $("#prof-next").hide().text("");
   }
   const pct=Math.max(0,Math.min(100,Number(S.profile.progress)||0));
   $("#prof-progress").text(`${S.profile.progressText||"-"} (${Math.round(pct)}%)`);
@@ -1708,6 +1828,10 @@ function fetchProfileCard(){
     const rewardTxt=(rewardNode?.textContent||"").replace(/\s+/g," ").trim();
     const mReward=rewardTxt.match(/(?:Belohnung|Reward|Level.?Up)\s*:?\s*(.+)$/i);
     const reward=(mReward&&mReward[1]?mReward[1].trim():(rewardTxt.length>0 && rewardTxt.length<120 ? rewardTxt : ""));
+    const needNode=Array.from(doc.querySelectorAll(".alert")).find(el=>/benötigst\s+noch|benoetigst\s+noch|Beförderung|Befoerderung/i.test(el.textContent||""));
+    const needRaw=(needNode?.textContent||"").replace(/\s+/g," ").trim();
+    const mNeed=needRaw.match(/ben(?:ö|oe)tigst\s+noch\s+([\d.,]+)/i);
+    const needText=mNeed?`Noch ${mNeed[1]} Credits bis zur Beförderung`:needRaw;
     const creditsFromLevel=curAbs!==null?curAbs:null;
     if(creditsFromLevel!==null){
       const lv=pickLevelByCredits(creditsFromLevel);
@@ -1719,6 +1843,7 @@ function fetchProfileCard(){
     S.profile.progress=progress;
     S.profile.progressText=progressText;
     if(!S.profile.reward) S.profile.reward=reward||"";
+    S.profile.needText=needText||"";
     renderProfileQuick();
   },()=>renderProfileQuick());
 }
@@ -1732,7 +1857,70 @@ function fetchBuildings(){
 }
 
 function fetchSchoolings(){
-  apiGet(API.schoolings,list=>{ renderSchoolings(Array.isArray(list)?list:[]); });
+  apiGet(API.schoolings,list=>{
+    const arr=Array.isArray(list)?list:[];
+    if(arr.length){renderSchoolings(arr);return;}
+    fetchSchoolingsFromPage();
+  },fetchSchoolingsFromPage);
+}
+
+function cleanSchoolingCellText(cell){
+  if(!cell)return "";
+  const clone=cell.cloneNode(true);
+  clone.querySelectorAll("script,style,svg").forEach(n=>n.remove());
+  return (clone.textContent||"").replace(/\s+/g," ").trim();
+}
+
+function formatSchoolingRemaining(ts){
+  let end=Number(ts)||0;
+  if(!end)return "";
+  if(end<1000000000000)end*=1000;
+  const diff=end-Date.now();
+  if(diff<=0)return "Fertig";
+  const d=Math.floor(diff/86400000);
+  const h=Math.floor((diff%86400000)/3600000);
+  const m=Math.floor((diff%3600000)/60000);
+  const s=Math.floor((diff%60000)/1000);
+  const p=n=>String(n).padStart(2,"0");
+  const clock=`${p(h)}:${p(m)}:${p(s)}`;
+  return d>0?`${d} Tage - ${clock}`:clock;
+}
+
+function readSchoolingFinish(cell,rowHtml){
+  const visible=cleanSchoolingCellText(cell);
+  if(visible && !/registerEducationTimer/i.test(visible))return visible;
+  const html=`${cell?.innerHTML||""} ${rowHtml||""}`;
+  const m=html.match(/registerEducationTimer\(\s*["'][^"']+["']\s*,\s*["'][^"']+["']\s*,\s*(\d{10,})\s*\)/i);
+  return m?formatSchoolingRemaining(m[1]):"-";
+}
+
+function parseSchoolingsHtml(html){
+  const doc=new DOMParser().parseFromString(html||"","text/html");
+  const rows=Array.from(doc.querySelectorAll("tr.schooling_opened_table_searchable, table.table-striped tbody tr"));
+  return rows.map(tr=>{
+    const tds=Array.from(tr.querySelectorAll("td"));
+    if(tds.length<4)return null;
+    const link=tds[0].querySelector("a[href*='/schoolings/']");
+    const caption=(cleanSchoolingCellText(link)||cleanSchoolingCellText(tds[0]));
+    const href=link?.getAttribute("href")||"";
+    const owner=cleanSchoolingCellText(tds[4]);
+    const finish=readSchoolingFinish(tds[3],tr.innerHTML);
+    return {
+      caption,
+      freeSeats:cleanSchoolingCellText(tds[1]),
+      cost:cleanSchoolingCellText(tds[2]),
+      finish,
+      owner,
+      url:href?`${BASE}${href}`:"",
+      fromHtml:true
+    };
+  }).filter(s=>s&&s.caption);
+}
+
+function fetchSchoolingsFromPage(){
+  pageGet(API.schoolingsPage,html=>{
+    renderSchoolings(parseSchoolingsHtml(html));
+  },()=>renderSchoolings([]));
 }
 
 function fetchVehicleDistances(){
@@ -1788,6 +1976,7 @@ function renderOverview(d){
   setV("#sv-members", d.user_count||0);
   setV("#sv-rank",    d.rank||"-");
   setV("#sv-daily",   fmtMoney(S.dailyEarn));
+  renderAllianceDailyBoard();
 
   const mc=d.user_count||0,maxM=100;
   const pct=Math.min(100,Math.round(mc/maxM*100));
@@ -1867,23 +2056,41 @@ function renderBuildings(list){
 function renderSchoolings(list){
   const cont=$("#lss7-sch").empty();
   const running=list.filter(s=>!s.dismissed);
-  if(!running.length){cont.html(`<div class="lss7-empty">Keine laufenden Schulungen.</div>`);return;}
+  if(!running.length){cont.html(`<div class="lss7-empty">Keine laufenden Lehrgänge.</div>`);return;}
 
   const grp={};
-  running.forEach(s=>{const k=s.caption||"Unbekannte Schulung";grp[k]=(grp[k]||0)+1;});
+  running.forEach(s=>{const k=s.caption||s.name||"Unbekannter Lehrgang";grp[k]=(grp[k]||0)+1;});
 
   const sg=$(`<div class="sg sg2" style="margin-bottom:1px"></div>`);
-  sg.append(`<div class="sc"><span class="sl">Aktive Schulungen</span><span class="sv c-cy">${running.length}</span></div>`);
-  sg.append(`<div class="sc"><span class="sl">Schulungsarten</span><span class="sv">${Object.keys(grp).length}</span></div>`);
+  sg.append(`<div class="sc"><span class="sl">Aktive Lehrgänge</span><span class="sv c-cy">${running.length}</span></div>`);
+  sg.append(`<div class="sc"><span class="sl">Lehrgangsarten</span><span class="sv">${Object.keys(grp).length}</span></div>`);
   cont.append(sg);
 
   const listDiv=$(`<div></div>`);
-  Object.entries(grp).sort((a,b)=>b[1]-a[1]).forEach(([name,cnt])=>{
-    listDiv.append(`<div class="lrow">
-      <span class="lrow-icon">Sch</span>
-      <span class="lrow-name">${name}</span>
-      <span class="lrow-val">${cnt}x</span></div>`);
-  });
+  if(running.some(s=>s.fromHtml)){
+    listDiv.append(`<div class="sort-hdr" style="grid-template-columns:minmax(0,1fr) 54px 92px 96px">
+      <span>Lehrgang</span><span style="text-align:right">Plätze</span><span style="text-align:right">Kosten</span><span style="text-align:right">Fertig</span>
+    </div>`);
+    running.forEach(s=>{
+      const name=escHtml(s.caption||"Unbekannter Lehrgang");
+      const owner=escHtml(s.owner||"");
+      const cost=escHtml((s.cost||"-").replace(/\s*\(Tag\/Teilnehmer\)/i,""));
+      const link=s.url?`<a href="${escHtml(s.url)}" target="_blank">${name}</a>`:name;
+      listDiv.append(`<div class="sch-row">
+        <span class="sch-name">${link}${owner?`<span class="sch-sub">${owner}</span>`:""}</span>
+        <span class="sch-seats">${escHtml(s.freeSeats||"-")}</span>
+        <span class="sch-cost">${cost}</span>
+        <span class="sch-finish">${escHtml(s.finish||"-")}</span>
+      </div>`);
+    });
+  }else{
+    Object.entries(grp).sort((a,b)=>b[1]-a[1]).forEach(([name,cnt])=>{
+      listDiv.append(`<div class="lrow">
+        <span class="lrow-icon">Lg</span>
+        <span class="lrow-name">${escHtml(name)}</span>
+        <span class="lrow-val">${cnt}x</span></div>`);
+    });
+  }
   cont.append(listDiv);
 }
 
@@ -2037,7 +2244,7 @@ function buildUI(){
         </div>
         <div class="hd-meta">
           <div id="lss7-live" title="Live-Daten aktiv"></div>
-          <span id="lss7-event-live" class="bd bd-gold">EVENT ab dem 11.06</span>
+          <span id="lss7-event-live" class="bd bd-gold">EVENT 11.06</span>
           <span class="bd bd-blue">v${V}</span>
           <span id="lss7-premium" class="bd bd-gold" style="display:${S.settings.panelTheme==="premium"?"inline-flex":"none"}">PREMIUM</span>
           <button id="lss7-col" title="Ein-/Ausklappen">Ausgeklappt</button>
@@ -2055,6 +2262,7 @@ function buildUI(){
           <span id="prof-rank" class="prof-rank">Dienstgrad: ${S.profile.rank}</span>
           <span id="prof-reward" class="prof-reward"></span>
           <span id="prof-progress" class="prof-sub">${S.profile.progressText}</span>
+          <span id="prof-next" class="prof-next"></span>
           <div class="prof-bar"><div id="prof-fill" class="prof-fill" style="width:${S.profile.progress}%"></div></div>
         </div>
       </div>
@@ -2088,7 +2296,7 @@ function buildUI(){
   const TABS=[
     {id:"tp-overview",  icon:"", label:"Uebersicht"},
     {id:"tp-vehicles",  icon:"", label:"Fahrzeuge"},
-    {id:"tp-schoolings",icon:"", label:"Schulungen"},
+    {id:"tp-schoolings",icon:"", label:"Lehrgänge"},
     {id:"tp-aao",       icon:"", label:"AAO"},
     {id:"tp-history",   icon:"", label:"Verlauf"},
     {id:"tp-team",      icon:"", label:"Team"},
@@ -2139,6 +2347,15 @@ function buildUI(){
         <span class="sl">Tagesverdienst</span>
         <span class="sv c-gr" id="sv-daily">${fmtMoney(S.dailyEarn)}</span>
       </div>
+      <div class="sc w2" id="alliance-earn-board">
+        <div class="rank-mini-head">
+          <span class="rank-mini-title">Verbandsverdienst 7 Tage</span>
+          <span class="rank-mini-note" id="alliance-earn-note">Startet ab jetzt</span>
+        </div>
+        <div class="alli-earn-list" id="alliance-earn-list">
+          <div class="alli-earn-empty">Noch keine Tagesdaten.</div>
+        </div>
+      </div>
       <div class="sc w2" id="rank-board">
         <div class="rank-mini-head">
           <span class="rank-mini-title">Ranking Umfeld</span>
@@ -2178,9 +2395,9 @@ function buildUI(){
     <div class="vb-wrap" id="lss7-vbars"><div class="lss7-empty"><span class="lspin"></span> Lade...</div></div>`);
   body.append(tVeh);
 
-  // TAB: Schulungen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // TAB: Lehrgänge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tSch=$(`<div id="tp-schoolings" class="lpanel"></div>`);
-  tSch.append(`<div id="lss7-sch"><div class="lss7-empty"><span class="lspin"></span> Lade Schulungen...</div></div>`);
+  tSch.append(`<div id="lss7-sch"><div class="lss7-empty"><span class="lspin"></span> Lade Lehrgänge...</div></div>`);
   body.append(tSch);
 
   // TAB: AAO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -2308,14 +2525,14 @@ function buildUI(){
   setWrap.append(grpContact);
 
   const grpPn=$(`<div class="set-group"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v6.0.5</b><br>WM-Eventbereich mit Countdown, Spielplan, lokalen Tipps und optionaler Übersicht-Box hinzugefügt. Header, Lesbarkeit und Event-Anzeige überarbeitet.</div>`);
+  grpPn.append(`<div class="set-note"><b>v6.0.7</b><br>7-Tage-Verbandsverdienst ergänzt. Vorherige Änderungen bleiben in den Patch-Notes sichtbar.</div>`);
   setWrap.append(grpPn);
 
   tSet.append(setWrap);
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v6.0.5",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v6.0.7",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -2720,31 +2937,57 @@ function mkAccordion(icon,title,body){
   </div>`;
 }
 function patchHTML(){
-  const items=[
-    "Neu: WM-Event-Tab mit Countdown bis zum Start am 11.06.2026.",
-    "Spielplan wird über worldcup26.ir geladen und zeigt Teams, Zeit, Ergebnis/Status, Spielort und TV-Hinweis.",
-    "Lokale Tippfelder pro Spiel ergänzt; Tipps werden im eigenen Browser gespeichert.",
-    "Event-Box kann in den Einstellungen für die Übersicht ein- oder ausgeschaltet werden.",
-    "Header-Button im Spiel zeigt jetzt Dein Verband und einen Event-Hinweis.",
-    "Event-Button im Menü wurde deutlicher hervorgehoben.",
-    "Dark-Mode-Lesbarkeit verbessert, inklusive hellerer kleiner Texte und besser sichtbarer Profil-Fortschrittsanzeige.",
-    "Premium-Gold-Design ergänzt und mehrere UI-Fehler bereinigt.",
+  const groups=[
+    {
+      title:"v6.0.7 — 7-Tage-Verbandsverdienst",
+      items:[
+        "Neue Übersicht-Box Verbandsverdienst 7 Tage hinzugefügt.",
+        "Der Verbandscounter speichert ab jetzt täglich den ersten und letzten bekannten Stand der Verbandscredits.",
+        "Aus diesen Tagesständen wird automatisch der Tagesverdienst berechnet und als kleine Balkenübersicht angezeigt.",
+        "Die Statistik wird lokal im Browser gespeichert und füllt sich ab dem Einbau nach und nach auf bis zu sieben Tage.",
+        "Versionsanzeige und Patch-Notes wurden auf v6.0.7 aktualisiert.",
+      ],
+    },
+    {
+      title:"v6.0.6 — Lehrgänge, Profil-Fortschritt & Fehlerbehebungen",
+      items:[
+        "Der Menüpunkt Schulungen heißt jetzt Lehrgänge.",
+        "Lehrgänge werden zuverlässiger geladen: zuerst über die API, danach automatisch als Fallback direkt aus der Lehrgänge-Seite.",
+        "Die Lehrgänge-Liste zeigt Name, freie Plätze, Kosten, Restzeit und ausführenden Spieler, wenn die Daten aus der Seite gelesen werden.",
+        "Fehler behoben: In der Fertig-Spalte der Lehrgänge werden keine Timer-Script-Fragmente mehr angezeigt.",
+        "Im Profilbereich wird zusätzlich angezeigt, wie viele Credits noch bis zur nächsten Beförderung fehlen.",
+      ],
+    },
+    {
+      title:"v6.0.5 — WM Event, Spielplan, Tipps & UI-Feinschliff",
+      items:[
+        "WM-Event-Tab mit Countdown bis zum Start am 11.06.2026 hinzugefügt.",
+        "Spielplan zeigt Teams, Zeit, Ergebnis/Status, Spielort und TV-Hinweis.",
+        "Lokale Tippfelder pro Spiel ergänzt; Tipps werden im eigenen Browser gespeichert.",
+        "Event-Box kann in den Einstellungen für die Übersicht ein- oder ausgeschaltet werden.",
+        "Header-Button im Spiel zeigt jetzt Dein Verband und einen Event-Hinweis.",
+        "Event-Button im Menü wurde deutlicher hervorgehoben.",
+        "Dark-Mode-Lesbarkeit verbessert, inklusive hellerer kleiner Texte und besser sichtbarer Profil-Fortschrittsanzeige.",
+        "Premium-Gold-Design ergänzt und mehrere UI-Fehler bereinigt.",
+      ],
+    },
   ];
-  return `<div style="color:var(--blue);font-weight:700;font-size:11px;margin-bottom:10px">
-    v6.0.5 — WM Event, Spielplan, Tipps & UI-Feinschliff</div>
-    ${items.map(t=>`<div class="patch-i"><span class="patch-b">→</span><span>${t}</span></div>`).join("")}`;
+  return groups.map((g,i)=>`<div style="color:var(--blue);font-weight:700;font-size:11px;margin:${i?12:0}px 0 10px">
+    ${g.title}</div>
+    ${g.items.map(t=>`<div class="patch-i"><span class="patch-b">→</span><span>${t}</span></div>`).join("")}`).join("");
 }
 function infoHTML(){
   const rows=[
     ["Ersteller","Fabian (Capt.BobbyNash)"],
     ["Supporter","m75e, twoyears"],
     ["Version",V],
-    ["APIs","allianceinfo · userinfo · vehicle_states · buildings · alliance_schoolings · v2/vehicles · v1/vehicle_distances · v1/aaos"],
+    ["APIs","allianceinfo · userinfo · vehicle_states · alliance_schoolings · schoolings · v2/vehicles · v1/aaos"],
     ["Panel-Typ","Floating, Bootstrap-unabhängig"],
     ["Alliance-Interval","60s"],
+    ["7-Tage-Verdienst","lokal ab erstem Refresh"],
     ["Fahrzeugstatus","90s"],
-    ["Gebäude/Schulungen","300s"],
-    ["Kilometer/AAO","300s (Lazy)"],
+    ["Lehrgänge","300s"],
+    ["AAO","300s (Lazy)"],
   ];
   return rows.map(([k,v])=>`<div class="info-r"><span class="info-k">${k}</span><span class="info-v">${v}</span></div>`).join("");
 }
@@ -2759,7 +3002,7 @@ function buildTrigger(){
       <img src="https://i.postimg.cc/hjsm7tQV/LSSS-Logo-fertig.png" alt="LSS">
       <span class="lss7-nav-copy">
         <span class="lss7-nav-lbl">Dein Verband</span>
-        <span class="lss7-nav-event" id="lss7-nav-event">Event Aab dem 11.06</span>
+        <span class="lss7-nav-event" id="lss7-nav-event">Event 11.06</span>
       </span>
       <div id="lss7-live"></div>
       <span class="lss7-nav-arr">v</span>
