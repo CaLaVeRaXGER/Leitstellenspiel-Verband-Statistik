@@ -2,10 +2,11 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      6.0.7
-// @description  Ultimate Premium Dashboard: Floating Panel, Live-Charts, Fahrzeugstatus-Donut, Lehrgänge, 7-Tage-Verbandsverdienst, Verlaufshistorie, Team, Wetter, WM-Event und Dark-Design.
+// @version      6.0.8
+// @description  Ultimate Premium Dashboard: Floating Panel, Live-Charts, Fahrzeugstatus-Donut, Lehrgänge, 7-Tage-Verbandsverdienst, Spielzeit-Statistik, Team, Wetter, WM-Event und Dark-Design.
 // @author       Fabian (Capt.BobbyNash)
-// @match        https://www.leitstellenspiel.de/
+// @match        https://www.leitstellenspiel.de/*
+// @run-at       document-idle
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
 // @grant        GM_setValue
@@ -13,6 +14,11 @@
 // @connect      raw.githubusercontent.com
 // @connect      github.com
 // @connect      worldcup26.ir
+// @connect      www.leitstellenspiel.de
+// @connect      api.open-meteo.com
+// @connect      geocoding-api.open-meteo.com
+// @connect      api.zippopotam.us
+// @connect      www.dwd.de
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
 // @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
@@ -24,7 +30,7 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "6.0.7";
+const V   = "6.0.8";
 const BASE = "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 
@@ -285,12 +291,30 @@ GM_addStyle(`
   display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr 1px 1fr;
   background:var(--bg1);border-bottom:1px solid var(--b1);
 }
+#lss7-qs.no-playtime{grid-template-columns:1fr 1px 1fr 1px 1fr;}
 .qs-div{background:var(--b1);}
 .qs-cell{padding:9px 11px;display:flex;flex-direction:column;gap:2px;cursor:default;}
+.qs-cell.clickable{position:relative;cursor:pointer;}
+.qs-cell.clickable:hover{background:rgba(255,255,255,.025);}
 .qs-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t4);}
 .qs-val{font-size:12px;font-weight:700;color:var(--t1);}
 .qs-val.mono{font-family:var(--mono);font-size:12px;letter-spacing:1.2px;color:var(--green);}
 .qs-val.sm  {font-size:10px;font-weight:500;color:var(--t3);}
+.pt-pop{
+  position:absolute;top:100%;left:8px;z-index:50;width:230px;
+  margin-top:6px;padding:10px;border:1px solid var(--b2);border-radius:8px;
+  background:var(--bg2);box-shadow:0 16px 38px rgba(0,0,0,.45);display:none;
+}
+.pt-pop.open{display:block;}
+.pt-pop-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.pt-pop-t{font-size:11px;font-weight:800;color:var(--t1);}
+.pt-pop-s{font-size:10px;color:var(--t4);}
+.pt-row{display:grid;grid-template-columns:76px 1fr 72px;gap:7px;align-items:center;padding:5px 0;border-top:1px solid var(--b0);}
+.pt-row:first-child{border-top:none;}
+.pt-day{font-size:10px;color:var(--t3);font-weight:700;white-space:nowrap;}
+.pt-bar{height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;}
+.pt-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--cyan),var(--blue));min-width:2px;}
+.pt-time{font-size:10px;color:var(--green);font-weight:800;text-align:right;font-family:var(--mono);}
 .prof-strip{
   flex-shrink:0;
   margin:0;
@@ -299,21 +323,31 @@ GM_addStyle(`
   border-left:none;
   border-right:none;
   border-radius:0;
-  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));
-  padding:8px 10px;
+  background:
+    linear-gradient(135deg,rgba(59,130,246,.10),rgba(34,211,238,.035)),
+    linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01));
+  padding:10px 12px;
 }
-.prof-row{display:flex;align-items:center;gap:10px;min-width:0;}
+.prof-row{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:12px;min-width:0;}
 .prof-av{
-  width:54px;height:38px;border-radius:6px;
-  object-fit:cover;border:1px solid var(--b2);background:var(--bg3);flex-shrink:0;
+  width:66px;height:48px;border-radius:7px;
+  object-fit:cover;border:1px solid rgba(96,165,250,.28);background:var(--bg3);flex-shrink:0;
+  box-shadow:0 8px 18px rgba(0,0,0,.18);
 }
-.prof-meta{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
-.prof-name{font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.prof-sub{font-size:10px;color:var(--t1);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.prof-rank{font-size:10px;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.prof-reward{font-size:10px;color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;}
-.prof-next{font-size:10px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;font-weight:700;}
-.prof-bar{height:5px;border-radius:5px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:3px;}
+.prof-meta{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1;}
+.prof-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0;}
+.prof-name{font-size:14px;font-weight:900;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;}
+.prof-rank{
+  display:inline-flex;align-items:center;max-width:42%;
+  padding:3px 7px;border-radius:999px;border:1px solid rgba(34,211,238,.28);
+  background:rgba(34,211,238,.09);font-size:10px;color:var(--cyan);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800;
+}
+.prof-progress-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;}
+.prof-sub{font-size:10px;color:var(--t1);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.prof-reward{font-size:10px;color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;font-weight:800;}
+.prof-next{font-size:10px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;font-weight:700;text-align:right;}
+.prof-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:0;border:1px solid rgba(255,255,255,.04);}
 .prof-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--cyan));}
 
 /* â”€â”€ Notification Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -471,9 +505,11 @@ GM_addStyle(`
 .alli-earn-list{display:flex;flex-direction:column;gap:5px;}
 .alli-earn-row{display:grid;grid-template-columns:70px minmax(0,1fr) 126px;gap:8px;align-items:center;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.02);}
 .alli-earn-row.today{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.22);}
+.alli-earn-row.zero .alli-earn-bar{background:rgba(96,165,250,.055);}
+.alli-earn-row.zero .alli-earn-fill{width:100% !important;background:linear-gradient(90deg,rgba(96,165,250,.18),rgba(34,197,94,.10));opacity:.7;}
 .alli-earn-day{font-size:10px;color:var(--t3);font-weight:700;white-space:nowrap;}
-.alli-earn-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;}
-.alli-earn-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--blue));min-width:2px;}
+.alli-earn-bar{display:block;height:9px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.035);}
+.alli-earn-fill{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#15803d,#22c55e,#86efac);min-width:14px;box-shadow:0 0 12px rgba(34,197,94,.45);}
 .alli-earn-val{font-size:11px;color:var(--green);font-family:var(--mono);font-weight:700;text-align:right;white-space:nowrap;}
 .alli-earn-empty{font-size:11px;color:var(--t3);padding:6px 2px;}
 
@@ -575,16 +611,25 @@ GM_addStyle(`
 /* Event / WM */
 .event-card{
   padding:14px;border:1px solid var(--b1);border-radius:var(--rlg);
-  background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
+  background:linear-gradient(180deg,rgba(59,130,246,.10),rgba(255,255,255,.015));
   display:flex;flex-direction:column;gap:12px;
 }
 .event-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .event-title{font-size:15px;font-weight:800;color:var(--t1);}
 .event-sub{font-size:11px;color:var(--t3);line-height:1.45;}
 .event-count{
-  font-size:26px;font-weight:800;letter-spacing:.4px;
+  padding:10px 12px;border:1px solid rgba(96,165,250,.25);border-radius:10px;
+  background:rgba(59,130,246,.10);font-size:24px;font-weight:900;letter-spacing:.4px;
   color:var(--blueh);font-family:var(--mono);
 }
+.event-status{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.event-pill{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;
+  background:rgba(34,197,94,.13);border:1px solid rgba(34,197,94,.34);color:#7cffb2;
+  font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;
+}
+.event-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.8);}
+.event-count-lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;font-weight:800;}
 .event-grid{
   display:grid;grid-template-columns:1fr 1fr;gap:8px;
 }
@@ -608,6 +653,12 @@ GM_addStyle(`
 .wm-main{min-width:0;}
 .wm-teams{font-size:12px;color:var(--t1);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .wm-meta{font-size:10px;color:var(--t3);margin-top:3px;line-height:1.4;}
+.wm-status{
+  display:inline-flex;margin-top:6px;padding:2px 6px;border-radius:999px;
+  border:1px solid rgba(96,165,250,.22);background:rgba(96,165,250,.09);
+  color:var(--blueh);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;
+}
+.wm-row.live .wm-status{color:#7cffb2;border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.12);}
 .wm-score{
   display:inline-flex;justify-content:center;align-items:center;min-width:48px;
   margin-left:auto;padding:4px 7px;border-radius:7px;
@@ -675,24 +726,57 @@ GM_addStyle(`
 .wm-mini-s.pending{color:#f9e6a2;background:rgba(201,146,36,.18);border-color:rgba(245,195,92,.38);}
 
 .weather-mini{display:block;}
-.weather-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.wx-card{
+  display:grid;grid-template-columns:minmax(260px,.75fr) minmax(420px,1.25fr);gap:10px;align-items:start;
+  padding:0;width:100%;
+}
+.weather-head{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;
+  padding:8px 10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.025);
+}
+.wx-place{display:flex;align-items:center;gap:8px;min-width:0;}
+.wx-icon{
+  width:28px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.24);font-size:16px;flex-shrink:0;
+}
+.wx-place-main{min-width:0;}
+.wx-city{display:block;font-size:11px;color:var(--t1);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wx-desc{display:block;font-size:9px;color:var(--t3);margin-top:1px;}
+.wx-now{text-align:right;white-space:nowrap;}
+.wx-temp{display:block;font-size:17px;line-height:1;color:var(--cyan);font-weight:900;font-family:var(--mono);}
+.wx-wind{display:block;margin-top:3px;font-size:9px;color:var(--t3);font-family:var(--mono);}
 .weather-mini .w-l{font-size:11px;color:var(--t2);}
 .weather-mini .w-r{font-size:11px;color:var(--cyan);font-family:var(--mono);}
-.weather-forecast{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
+.weather-forecast{display:grid;grid-template-columns:repeat(7,minmax(58px,1fr));gap:6px;padding:0;min-width:0;}
 .wx-chip{
-  border:1px solid var(--b1);background:rgba(255,255,255,.02);border-radius:6px;
-  padding:4px 6px;font-size:10px;color:var(--t2);
+  border:1px solid var(--b1);background:rgba(255,255,255,.025);border-radius:7px;
+  padding:6px 5px;font-size:9px;color:var(--t2);text-align:center;min-width:0;
 }
+.wx-chip b{display:block;font-size:9px;color:var(--t3);font-family:var(--mono);margin-bottom:2px;}
+.wx-chip span{display:block;color:var(--t1);font-weight:800;white-space:nowrap;font-size:10px;}
 .wx-alert{margin-top:6px;font-size:10px;color:var(--amber);}
 .wx-warn{
-  margin-top:6px;padding:8px;border-radius:6px;border:1px solid var(--b1);font-size:10px;line-height:1.4;display:block;width:100%;
+  grid-column:1/-1;padding:8px 9px;border-radius:7px;border:1px solid var(--b1);font-size:10px;line-height:1.35;display:block;width:auto;
 }
+.wx-warn b{font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
 .wx-warn.lvl0{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:#4ade80;}
 .wx-warn.lvl2{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);color:#fbbf24;}
 .wx-warn.lvl3{background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.35);color:#fb923c;}
 .wx-warn.lvl4{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#f87171;}
 .wx-warn.lvl5{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.35);color:#c084fc;}
-.wx-src{margin-top:2px;font-size:9px;color:var(--t4);text-align:left;opacity:.66;}
+.wx-src{grid-column:1/-1;font-size:9px;color:var(--t4);text-align:right;opacity:.62;margin-top:-4px;}
+.wx-details{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
+.wx-detail{padding:6px 8px;border-radius:7px;border:1px solid var(--b1);background:rgba(255,255,255,.025);}
+.wx-detail-k{display:block;font-size:8px;color:var(--t4);text-transform:uppercase;letter-spacing:.6px;font-weight:800;}
+.wx-detail-v{display:block;margin-top:2px;font-size:10px;color:var(--t1);font-family:var(--mono);font-weight:800;}
+#lss7:not(.layout) .wx-card{grid-template-columns:1fr;max-width:none;}
+#lss7:not(.layout) .weather-forecast{grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible;}
+#lss7:not(.layout) .wx-details{grid-template-columns:repeat(2,minmax(0,1fr));}
+@media (max-width:640px){
+  .wx-card{grid-template-columns:1fr;max-width:none;}
+  .weather-forecast{grid-template-columns:repeat(4,minmax(0,1fr));}
+  .wx-details{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
 
 #lss7-changelog{
   flex-shrink:0;border-top:1px solid var(--b1);
@@ -876,9 +960,10 @@ const S = {
   lastDate:todayStr(),
   creditHist:[],     // [{ts,v}]
   allianceDaily:[],   // [{date,start,end}]
+  playtimeDaily:[],   // [{date,seconds}]
   userCredits:0, userCoins:0, userId:null,
   allianceId:null, allianceName:"", allianceRank:null, allianceCredits:0,
-  weather:null,
+  weather:null, weatherTs:0, weatherLoc:"",
   wm:{games:[],stadiums:{},error:null,lastTs:null},
   wmTips:{},
   wmTipEdit:{},
@@ -889,8 +974,8 @@ const S = {
     notifications:true,
     coins:true,
     compact:false,
-    panelPlacement:"top-right",
-    panelMode:"floating",
+    panelPlacement:"default",
+    panelMode:"embedded",
     panelCollapsed:false,
     panelSize:"normal",
     panelTheme:"dark",
@@ -899,6 +984,7 @@ const S = {
     weatherSound:false,
     weatherTone:"beep",
     eventMode:"overview", // off | overview
+    playtimeEnabled:true,
   },
 };
 
@@ -914,26 +1000,49 @@ function save(){
   GM_setValue("v7_ld",  today);
   GM_setValue("v7_ch",  JSON.stringify(S.creditHist));
   GM_setValue("v7_ad",  JSON.stringify(S.allianceDaily));
+  GM_setValue("v7_pd",  JSON.stringify(S.playtimeDaily));
   GM_setValue("v7_set", JSON.stringify(S.settings));
 }
 function saveWmTips(){ GM_setValue("v7_wm_tips", JSON.stringify(S.wmTips||{})); }
+function saveWeatherCache(){
+  const loc=(S.settings.weatherLocation||"").trim();
+  if(!loc || !S.weather || S.weather.error) return;
+  S.weatherTs=Date.now();
+  S.weatherLoc=loc;
+  GM_setValue("v7_wx_cache", JSON.stringify({loc,ts:S.weatherTs,data:S.weather}));
+}
+function loadWeatherCache(){
+  const loc=(S.settings.weatherLocation||"").trim();
+  if(!loc) return;
+  try{
+    const cache=JSON.parse(GM_getValue("v7_wx_cache","null"));
+    if(!cache || cache.loc!==loc || !cache.data) return;
+    if(Date.now()-(Number(cache.ts)||0)>10800000) return;
+    S.weather=cache.data;
+    S.weatherTs=Number(cache.ts)||Date.now();
+    S.weatherLoc=loc;
+  }catch{}
+}
 function load(){
   const today=todayStr();
   const saved=GM_getValue("v7_ld",today);
+  const storedPlaytime=GM_getValue("v7_pt",0);
   const newDay=saved!==today;
-  S.playtime     =newDay?0:GM_getValue("v7_pt",0);
-  S.lastAlliCreds=newDay?0:GM_getValue("v7_lc",0);
+  S.playtime     =newDay?0:storedPlaytime;
+  S.lastAlliCreds=GM_getValue("v7_lc",0);
   S.dailyEarn    =newDay?0:GM_getValue("v7_de",0);
   S.lastTs       =GM_getValue("v7_lts",Date.now());
   S.lastDate     =today;
   try{S.creditHist=JSON.parse(GM_getValue("v7_ch","[]"))||[];}catch{S.creditHist=[];}
   try{S.allianceDaily=JSON.parse(GM_getValue("v7_ad","[]"))||[];}catch{S.allianceDaily=[];}
+  try{S.playtimeDaily=JSON.parse(GM_getValue("v7_pd","[]"))||[];}catch{S.playtimeDaily=[];}
+  if(newDay && saved && storedPlaytime>0)recordPlaytimeDay(saved,storedPlaytime);
   try{S.wmTips=JSON.parse(GM_getValue("v7_wm_tips","{}"))||{};}catch{S.wmTips={};}
   try{Object.assign(S.settings,JSON.parse(GM_getValue("v7_set","{}"))||{});}catch{}
   const validPlacements=["default","top-left","top-right","bottom-left","bottom-right"];
   if(!validPlacements.includes(S.settings.panelPlacement)) S.settings.panelPlacement="default";
   const validModes=["floating","embedded"];
-  if(!validModes.includes(S.settings.panelMode)) S.settings.panelMode="floating";
+  if(!validModes.includes(S.settings.panelMode)) S.settings.panelMode="embedded";
   if(typeof S.settings.panelCollapsed!=="boolean") S.settings.panelCollapsed=false;
   const validSizes=["small","normal","large"];
   if(!validSizes.includes(S.settings.panelSize)) S.settings.panelSize="normal";
@@ -946,13 +1055,21 @@ function load(){
   if(typeof S.settings.weatherSound!=="boolean") S.settings.weatherSound=false;
   const validTones=["beep","alarm","chime"];
   if(!validTones.includes(S.settings.weatherTone)) S.settings.weatherTone="beep";
+  if(typeof S.settings.playtimeEnabled!=="boolean") S.settings.playtimeEnabled=true;
+  loadWeatherCache();
+  if(!GM_getValue("v7_layout_default_done",false)){
+    S.settings.panelMode="embedded";
+    S.settings.panelPlacement="default";
+    GM_setValue("v7_set", JSON.stringify(S.settings));
+    GM_setValue("v7_layout_default_done",true);
+  }
   if(newDay)save();
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  UTILITIES                                                   â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-function todayStr(){return new Date().toISOString().split("T")[0];}
+function todayStr(){return localDateKey();}
 function localDateKey(d=new Date()){
   const y=d.getFullYear();
   const m=String(d.getMonth()+1).padStart(2,"0");
@@ -990,6 +1107,9 @@ function fmtClock(){
   }).replace(",","");
 }
 function fmtWmCountdown(){
+  const now=Date.now();
+  if(now>=WM_END)return "EVENT BEENDET";
+  if(now>=WM_START)return "EVENT LIVE";
   const diff=Math.max(0,WM_START-Date.now());
   const d=Math.floor(diff/86400000);
   const h=Math.floor((diff%86400000)/3600000);
@@ -1034,6 +1154,11 @@ function wmStarted(g){
   return String(g?.finished).toUpperCase()==="TRUE" || String(g?.time_elapsed||"notstarted").toLowerCase()!=="notstarted";
 }
 function wmLive(g){return wmStarted(g) && String(g?.finished).toUpperCase()!=="TRUE";}
+function wmStatusText(g){
+  if(wmLive(g))return "Live";
+  if(String(g?.finished).toUpperCase()==="TRUE")return "Beendet";
+  return "Geplant";
+}
 function wmScore(g){return wmStarted(g)?`${g.home_score??0}:${g.away_score??0}`:"vs";}
 function wmStage(g){
   const t=String(g?.type||"group").toLowerCase();
@@ -1082,26 +1207,50 @@ function apiGet(url,cb,onErr){
   });
 }
 function pageGet(url,cb,onErr){
-  GM_xmlhttpRequest({
-    method:"GET",url,
-    onload(r){
-      if(r.status===200) cb(r.responseText||"");
-      else onErr&&onErr(r.status);
-    },
-    onerror(){onErr&&onErr(-1);console.warn("[LSS7] fail:",url);}
+  const fallback=()=>fetchTextFallback(url,cb,onErr);
+  try{
+    GM_xmlhttpRequest({
+      method:"GET",url,timeout:12000,
+      onload(r){
+        if(r.status===200) cb(r.responseText||"");
+        else fallback();
+      },
+      onerror(){fallback();console.warn("[LSS7] fail:",url);},
+      ontimeout(){fallback();console.warn("[LSS7] timeout:",url);}
+    });
+  }catch{fallback();}
+}
+function fetchTextFallback(url,cb,onErr){
+  if(typeof fetch!=="function"){onErr&&onErr("network");return;}
+  fetch(url,{cache:"no-store"}).then(r=>{
+    if(!r.ok)throw new Error(String(r.status));
+    return r.text();
+  }).then(txt=>cb(txt||"")).catch(e=>{
+    console.warn("[LSS7] fetch fallback fail:",url,e);
+    onErr&&onErr(String(e?.message||"network"));
   });
 }
+function fetchJsonFallback(url,cb,onErr){
+  fetchTextFallback(url,txt=>{
+    try{cb(JSON.parse(txt||"{}"));}
+    catch{onErr&&onErr("parse");}
+  },onErr);
+}
 function jsonGet(url,cb,onErr){
-  GM_xmlhttpRequest({
-    method:"GET",url,
-    onload(r){
-      if(r.status===200){
-        try{cb(JSON.parse(r.responseText||"{}"));}
-        catch{onErr&&onErr("parse");}
-      }else onErr&&onErr(String(r.status));
-    },
-    onerror(){onErr&&onErr("network");}
-  });
+  const fallback=()=>fetchJsonFallback(url,cb,onErr);
+  try{
+    GM_xmlhttpRequest({
+      method:"GET",url,timeout:12000,
+      onload(r){
+        if(r.status===200){
+          try{cb(JSON.parse(r.responseText||"{}"));}
+          catch{fallback();}
+        }else fallback();
+      },
+      onerror(){fallback();},
+      ontimeout(){fallback();}
+    });
+  }catch{fallback();}
 }
 function parseDeNum(str){
   if(!str) return null;
@@ -1177,6 +1326,11 @@ function weatherCodeToIcon(code){
   if([71,73,75].includes(code)) return "❄️";
   if([95].includes(code)) return "⛈️";
   return "🌡️";
+}
+function compactWeatherPlace(place){
+  const parts=String(place||"").split(",").map(x=>x.trim()).filter(Boolean);
+  if(parts.length>=2)return `${parts[0]}, ${parts[1]}`;
+  return parts[0]||"-";
 }
 function playWeatherTone(kind){
   try{
@@ -1263,8 +1417,12 @@ function renderWeather(){
   const elSet=$("#wx-settings-view");
   const elOv=$("#wx-overview-view");
   if(!S.weather){
-    elSet.html(`<span class="w-l">Keine Wetterdaten</span><span class="w-r">-</span>`);
-    elOv.html(`<span class="w-l">Keine Wetterdaten</span><span class="w-r">-</span>`);
+    const pending=(S.settings.weatherLocation||"").trim();
+    const h=pending
+      ? `<span class="w-l">Wetterdaten werden geladen...</span><span class="w-r">${escHtml(pending)}</span>`
+      : `<span class="w-l">Keine Wetterdaten</span><span class="w-r">Ort fehlt</span>`;
+    elSet.html(h);
+    elOv.html(h);
     return;
   }
   if(S.weather.error){
@@ -1272,22 +1430,43 @@ function renderWeather(){
     elSet.html(h);elOv.html(h);return;
   }
   const icon=weatherCodeToIcon(S.weather.code);
-  const headline=`<div class="weather-head"><span class="w-l">${icon} ${S.weather.place}: ${weatherCodeToText(S.weather.code)}</span>
-    <span class="w-r">${S.weather.temp}°C · ${S.weather.wind} km/h</span></div>`;
-  const fc=(S.weather.forecast||[]).map(x=>`<span class="wx-chip">${x.t}: ${weatherCodeToIcon(x.c)} ${x.temp}°</span>`).join("");
+  const place=escHtml(compactWeatherPlace(S.weather.place));
+  const desc=escHtml(weatherCodeToText(S.weather.code));
+  const fc=(S.weather.forecast||[]).map(x=>`<span class="wx-chip"><b>${escHtml(x.t)}</b><span>${weatherCodeToIcon(x.c)} ${escHtml(x.temp)}°</span></span>`).join("");
   const warn=S.weather.warn||{level:0,title:"Keine Warnung",desc:"Aktuell liegt keine DWD-Warnung für den Ort vor.",src:"DWD"};
+  const details=[
+    ["Gefühlt",`${S.weather.feels ?? "-"}°C`],
+    ["Feuchte",`${S.weather.humidity ?? "-"}%`],
+    ["Niederschlag",`${S.weather.precip ?? 0} mm`],
+    ["Wind",`${S.weather.wind} km/h`],
+  ].map(([k,v])=>`<div class="wx-detail"><span class="wx-detail-k">${k}</span><span class="wx-detail-v">${escHtml(v)}</span></div>`).join("");
   const alert=`<div class="wx-warn lvl${warn.level}">
-    <b>${warn.title}</b><br>${warn.desc}
+    <b>${escHtml(warn.title)}</b><br>${escHtml(warn.desc)}
   </div>`;
-  const full=`${headline}<div class="wx-src">Quelle: DWD</div><div class="weather-forecast">${fc}</div>${alert}`;
+  const full=`<div class="wx-card">
+    <div class="weather-head">
+      <div class="wx-place">
+        <span class="wx-icon">${icon}</span>
+        <span class="wx-place-main"><span class="wx-city">${place}</span><span class="wx-desc">${desc}</span></span>
+      </div>
+      <div class="wx-now"><span class="wx-temp">${escHtml(S.weather.temp)}°C</span><span class="wx-wind">Wind ${escHtml(S.weather.wind)} km/h</span></div>
+    </div>
+    <div class="weather-forecast">${fc}</div>
+    <div class="wx-details">${details}</div>
+    ${alert}
+    <div class="wx-src">Quelle: DWD Warnungen · Open-Meteo Wetterdaten</div>
+  </div>`;
   elSet.html(full);elOv.html(full);
 }
 function fetchWeather(){
   const loc=(S.settings.weatherLocation||"").trim();
-  if(!loc){ S.weather=null; renderWeather(); return; }
-  const isPlz=/^\d{5}$/.test(loc);
+  if(!loc){ S.weather=null; S.weatherLoc=""; renderWeather(); return; }
+  if(S.weather && S.weatherLoc===loc) renderWeather();
+  const zipMatch=loc.match(/\b\d{5}\b/);
+  const cleanCity=loc.replace(/\b\d{5}\b/g,"").split(/[,(]/)[0].trim();
+  const geoQueries=Array.from(new Set([loc,cleanCity,loc.split(",")[0].trim()].filter(Boolean)));
   const loadByLatLon=(lat,lon,place,admin1="",zip="")=>{
-    const url=`${API.wxForecast}?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,wind_speed_10m&timezone=auto`;
+    const url=`${API.wxForecast}?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,wind_speed_10m&timezone=auto`;
     jsonGet(url,w=>{
       const c=w?.current||{};
       const h=w?.hourly||{};
@@ -1307,18 +1486,25 @@ function fetchWeather(){
       S.weather={
         place,
         temp: Math.round(Number(c.temperature_2m)||0),
+        feels: Math.round(Number(c.apparent_temperature)||Number(c.temperature_2m)||0),
+        humidity: Math.round(Number(c.relative_humidity_2m)||0),
+        precip: Number(c.precipitation||0).toLocaleString("de-DE",{maximumFractionDigits:1}),
         wind: Math.round(Number(c.wind_speed_10m)||0),
         code: Number(c.weather_code)||0,
         forecast:fc,
         alert,
-        warn:{level:0,title:"Keine Warnung",desc:"Aktuell liegt keine DWD-Warnung für den Ort vor.",src:"DWD"}
+        warn:{level:0,title:"DWD wird geprüft",desc:"Warnungen werden im Hintergrund geladen.",src:"DWD"}
       };
+      S.weatherLoc=loc;
+      saveWeatherCache();
+      renderWeather();
       if(alert && S.settings.weatherSound && S.weatherAlertKey!==alertKey){
         playWeatherTone(S.settings.weatherTone||"beep");
       }
       S.weatherAlertKey=alertKey;
       fetchDwdWarning({place,admin1,zip},warn=>{
         S.weather.warn=warn;
+        saveWeatherCache();
         if(warn.level>=2 && S.settings.weatherSound){
           const wk=`${place}|${warn.level}|${warn.title}`;
           if(S.weatherAlertKey!==wk){ playWeatherTone(S.settings.weatherTone||"beep"); S.weatherAlertKey=wk; }
@@ -1326,33 +1512,37 @@ function fetchWeather(){
         renderWeather();
       });
     },()=>{
-      S.weather={error:"Wetterdaten konnten nicht geladen werden"};
+      if(!(S.weather && S.weatherLoc===loc)) S.weather={error:"Wetterdaten konnten nicht geladen werden"};
       renderWeather();
     });
   };
-  if(isPlz){
-    jsonGet(`${API.zipGeo}/${encodeURIComponent(loc)}`,z=>{
+  const lookupByName=(queries,idx=0)=>{
+    const qRaw=queries[idx];
+    if(!qRaw){ if(!(S.weather && S.weatherLoc===loc)) S.weather={error:"Ort/PLZ nicht gefunden"}; renderWeather(); return; }
+    const q=encodeURIComponent(qRaw);
+    jsonGet(`${API.wxGeo}?name=${q}&count=3&language=de&format=json`,g=>{
+      const results=(g?.results||[]).filter(p=>Number.isFinite(Number(p.latitude))&&Number.isFinite(Number(p.longitude)));
+      const p=results[0];
+      if(!p){ lookupByName(queries,idx+1); return; }
+      const place=[p.name,p.admin1,p.country].filter(Boolean).join(", ");
+      loadByLatLon(p.latitude,p.longitude,place,p.admin1,zipMatch?.[0]||"");
+    },()=>lookupByName(queries,idx+1));
+  };
+  if(zipMatch){
+    const zip=zipMatch[0];
+    jsonGet(`${API.zipGeo}/${encodeURIComponent(zip)}`,z=>{
       const p=z?.places?.[0];
-      if(!p){ S.weather={error:"PLZ nicht gefunden"}; renderWeather(); return; }
+      if(!p){ lookupByName(geoQueries); return; }
       const lat=Number(p.latitude),lon=Number(p.longitude);
+      if(!Number.isFinite(lat)||!Number.isFinite(lon)){ lookupByName(geoQueries); return; }
       const place=[p["place name"],p.state,z.country].filter(Boolean).join(", ");
-      loadByLatLon(lat,lon,place,p.state,loc);
+      loadByLatLon(lat,lon,place,p.state,zip);
     },()=>{
-      S.weather={error:"PLZ-Suche nicht erreichbar"};
-      renderWeather();
+      lookupByName(geoQueries);
     });
     return;
   }
-  const q=encodeURIComponent(loc);
-  jsonGet(`${API.wxGeo}?name=${q}&count=1&language=de&format=json`,g=>{
-    const p=g?.results?.[0];
-    if(!p){ S.weather={error:"Ort/PLZ nicht gefunden"}; renderWeather(); return; }
-    const place=[p.name,p.admin1,p.country].filter(Boolean).join(", ");
-    loadByLatLon(p.latitude,p.longitude,place,p.admin1,"");
-  },()=>{
-    S.weather={error:"Geo-Suche nicht erreichbar"};
-    renderWeather();
-  });
+  lookupByName(geoQueries);
 }
 
 function wmSortedGames(){
@@ -1379,6 +1569,7 @@ function wmRowHtml(g,mini=false){
   const stadium=escHtml(wmStadiumText(g));
   const stage=escHtml(wmStage(g));
   const tv=escHtml(wmTv(g));
+  const status=escHtml(wmStatusText(g));
   const cls=wmLive(g)?" live":"";
   const scoreCls=wmStarted(g)?"":" pending";
   if(mini){
@@ -1405,7 +1596,7 @@ function wmRowHtml(g,mini=false){
     <div class="wm-time">${when}<br><span>${stage}</span></div>
     <div class="wm-main">
       <div class="wm-teams">${home} - ${away}</div>
-      <div class="wm-meta">${stadium}<br>TV: ${tv}</div>
+      <div class="wm-meta">${stadium}<br>TV: ${tv}<br><span class="wm-status">${status}</span></div>
     </div>
     <div class="wm-result-tip">
       <div class="wm-result-box">
@@ -1421,6 +1612,7 @@ function renderWmHeader(){
   const txt=active?"EVENT LIVE":"EVENT 11.06";
   $("#lss7-event-live").text(txt).toggle(true);
   $("#lss7-nav-event").text(txt);
+  $("#wm-event-pill").text(txt);
 }
 function renderWmOverview(){
   const box=$("#event-board");
@@ -1447,17 +1639,94 @@ function renderWmEvent(){
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  TIMER / CLOCK                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function normalizePlaytimeDaily(){
+  const map=new Map();
+  (Array.isArray(S.playtimeDaily)?S.playtimeDaily:[]).forEach(x=>{
+    if(!x||!x.date)return;
+    const date=String(x.date);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
+    const seconds=Math.max(0,Number(x.seconds)||0);
+    const old=map.get(date);
+    map.set(date,{date,seconds:Math.max(old?.seconds||0,seconds)});
+  });
+  S.playtimeDaily=Array.from(map.values()).sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
+  return S.playtimeDaily;
+}
+function recordPlaytimeDay(date,seconds){
+  if(!date)return;
+  const arr=normalizePlaytimeDaily();
+  let row=arr.find(x=>x.date===date);
+  const sec=Math.max(0,Math.floor(Number(seconds)||0));
+  if(!row){row={date,seconds:sec};arr.push(row);}
+  else row.seconds=Math.max(row.seconds||0,sec);
+  S.playtimeDaily=arr.sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
+}
+function setPlaytimeDay(date,seconds){
+  if(!date)return;
+  const arr=normalizePlaytimeDaily();
+  let row=arr.find(x=>x.date===date);
+  const sec=Math.max(0,Math.floor(Number(seconds)||0));
+  if(!row){row={date,seconds:sec};arr.push(row);}
+  else row.seconds=sec;
+  S.playtimeDaily=arr.sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
+}
+function resetTodayPlaytime(){
+  S.playtime=0;
+  S.lastTs=Date.now();
+  setPlaytimeDay(todayStr(),0);
+  save();
+  updatePlaytimeUi();
+}
+function playtimeRows(){
+  recordPlaytimeDay(todayStr(),S.playtime);
+  return normalizePlaytimeDaily().slice(-7).map(x=>({
+    date:x.date,label:dayLabel(x.date),seconds:Math.max(0,Number(x.seconds)||0)
+  }));
+}
+function renderPlaytimeStats(){
+  const pop=$("#playtime-pop");
+  if(!pop.length)return;
+  const rows=playtimeRows();
+  const max=Math.max(...rows.map(r=>r.seconds),1);
+  const total=rows.reduce((s,r)=>s+r.seconds,0);
+  const body=rows.length?rows.map(r=>{
+    const pct=Math.max(2,Math.round((r.seconds/max)*100));
+    return `<div class="pt-row">
+      <span class="pt-day">${escHtml(r.label)}</span>
+      <span class="pt-bar"><span class="pt-fill" style="width:${pct}%"></span></span>
+      <span class="pt-time">${fmtHHMM(r.seconds)}</span>
+    </div>`;
+  }).join(""):`<div class="alli-earn-empty">Noch keine Spielzeitdaten.</div>`;
+  pop.html(`<div class="pt-pop-h"><span class="pt-pop-t">Spielzeit 7 Tage</span><span class="pt-pop-s">Summe ${fmtHHMM(total)}</span></div>${body}`);
+}
+function updatePlaytimeUi(){
+  const on=S.settings.playtimeEnabled!==false;
+  $("#lss7-qs").toggleClass("no-playtime",!on);
+  $("#qs-playtime-cell,#qs-playtime-div").toggle(on);
+  $("#lss7-playtime").text(fmtHHMM(S.playtime));
+  renderPlaytimeStats();
+}
 function tickTimer(){
   const now=Date.now(), el=Math.floor((now-S.lastTs)/1000);
-  if(el>0){S.playtime+=el;S.lastTs=now;
-    $("#lss7-playtime").text(fmtHHMM(S.playtime));save();}
+  if(el>0){
+    S.lastTs=now;
+    if(S.settings.playtimeEnabled!==false){
+      S.playtime+=el;
+      recordPlaytimeDay(todayStr(),S.playtime);
+    }
+    updatePlaytimeUi();save();
+  }
 }
 function tickClock(){$("#lss7-clock").text(fmtClock());}
 function tickEventCountdown(){$("#wm-countdown").text(fmtWmCountdown());renderWmHeader();}
 function checkMidnight(){
-  if(todayStr()!==S.lastDate){
-    S.playtime=0;S.dailyEarn=0;S.lastAlliCreds=0;S.lastDate=todayStr();save();
-    $("#lss7-playtime").text(fmtHHMM(0));
+  const today=todayStr();
+  if(today!==S.lastDate){
+    recordPlaytimeDay(S.lastDate,S.playtime);
+    S.playtime=0;S.dailyEarn=0;S.lastDate=today;
+    recordPlaytimeDay(today,0);
+    save();
+    updatePlaytimeUi();
     setV("#sv-daily",fmtMoney(0));
     setV("#qs-daily",fmtMoney(0));
   }
@@ -1475,12 +1744,14 @@ function normalizeAllianceDaily(){
     const start=Number(x.start);
     const end=Number(x.end);
     if(!Number.isFinite(start)||!Number.isFinite(end))return;
+    const earned=Number.isFinite(Number(x.earned))?Math.max(0,Number(x.earned)):Math.max(0,end-start);
     const old=map.get(date);
     if(old){
       old.start=Math.min(old.start,start);
       old.end=Math.max(old.end,end);
+      old.earned=Math.max(old.earned||0,earned);
     }else{
-      map.set(date,{date,start,end});
+      map.set(date,{date,start,end,earned});
     }
   });
   S.allianceDaily=Array.from(map.values()).sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
@@ -1491,14 +1762,19 @@ function trackAllianceDailyCredits(total){
   const val=Number(total)||0;
   if(!val)return;
   const key=localDateKey();
+  const last=Number(S.lastAlliCreds)||0;
   const arr=normalizeAllianceDaily();
   let cur=arr.find(x=>x.date===key);
   if(!cur){
-    cur={date:key,start:val,end:val};
+    const start=(last>0 && last<=val)?last:val;
+    cur={date:key,start,end:val,earned:Math.max(0,val-start)};
     arr.push(cur);
   }else{
+    const delta=(last>0 && val>=last)?val-last:0;
+    cur.earned=Math.max(0,Number(cur.earned)||Math.max(0,(Number(cur.end)||0)-(Number(cur.start)||0)))+delta;
     cur.end=val;
     if(!Number.isFinite(cur.start)||cur.start<=0)cur.start=val;
+    cur.earned=Math.max(cur.earned,Math.max(0,cur.end-cur.start));
   }
   S.allianceDaily=arr.sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
 }
@@ -1507,7 +1783,7 @@ function allianceDailyRows(){
   return normalizeAllianceDaily().slice(-7).map(x=>({
     date:x.date,
     label:dayLabel(x.date),
-    earn:Math.max(0,(Number(x.end)||0)-(Number(x.start)||0)),
+    earn:Math.max(0,Number(x.earned)||((Number(x.end)||0)-(Number(x.start)||0))),
   }));
 }
 
@@ -1525,11 +1801,14 @@ function renderAllianceDailyBoard(){
   const avg=rows.length?Math.round(sum/rows.length):0;
   $("#alliance-earn-note").text(rows.length<7?`${rows.length}/7 Tage gesammelt`:`Ø ${fmtMoney(avg)}`);
   list.html(rows.map(r=>{
-    const pct=Math.max(2,Math.round((r.earn/max)*100));
+    const pct=r.earn>0?Math.max(10,Math.round((r.earn/max)*100)):100;
     const today=r.date===localDateKey();
-    return `<div class="alli-earn-row${today?" today":""}">
+    const fill=r.earn>0
+      ? `width:${pct}%;display:block;height:100%;background:linear-gradient(90deg,#15803d,#22c55e,#86efac);`
+      : `width:100%;display:block;height:100%;background:linear-gradient(90deg,rgba(96,165,250,.18),rgba(34,197,94,.10));`;
+    return `<div class="alli-earn-row${today?" today":""}${r.earn>0?"":" zero"}">
       <span class="alli-earn-day">${escHtml(r.label)}</span>
-      <span class="alli-earn-bar"><span class="alli-earn-fill" style="width:${pct}%"></span></span>
+      <span class="alli-earn-bar"><span class="alli-earn-fill" style="${fill}"></span></span>
       <span class="alli-earn-val">${fmtMoney(r.earn)}</span>
     </div>`;
   }).join(""));
@@ -1700,7 +1979,7 @@ function fetchUserinfo(){
 
 function renderProfileQuick(){
   $("#prof-name").text(S.profile.name||"-");
-  $("#prof-rank").text(`Dienstgrad: ${S.profile.rank||"-"}`);
+  $("#prof-rank").text(S.profile.rank||"-");
   if(S.profile.reward){
     $("#prof-reward").text(`Level-Up: ${S.profile.reward}`).show();
   }else{
@@ -2258,12 +2537,16 @@ function buildUI(){
       <div class="prof-row">
         <img id="prof-av" class="prof-av" src="${S.profile.avatar||"https://www.leitstellenspiel.de/images/user.png"}" alt="Profil">
         <div class="prof-meta">
-          <span id="prof-name" class="prof-name">${S.profile.name}</span>
-          <span id="prof-rank" class="prof-rank">Dienstgrad: ${S.profile.rank}</span>
-          <span id="prof-reward" class="prof-reward"></span>
-          <span id="prof-progress" class="prof-sub">${S.profile.progressText}</span>
-          <span id="prof-next" class="prof-next"></span>
+          <div class="prof-top">
+            <span id="prof-name" class="prof-name">${S.profile.name}</span>
+            <span id="prof-rank" class="prof-rank">${S.profile.rank}</span>
+          </div>
+          <div class="prof-progress-row">
+            <span id="prof-progress" class="prof-sub">${S.profile.progressText}</span>
+            <span id="prof-next" class="prof-next"></span>
+          </div>
           <div class="prof-bar"><div id="prof-fill" class="prof-fill" style="width:${S.profile.progress}%"></div></div>
+          <span id="prof-reward" class="prof-reward"></span>
         </div>
       </div>
     </div>`);
@@ -2271,11 +2554,12 @@ function buildUI(){
   // â”€â”€ Quick-Stats Strip (4 Zellen) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
     <div id="lss7-qs">
-      <div class="qs-cell">
+      <div class="qs-cell clickable" id="qs-playtime-cell" title="7-Tage-Spielzeit anzeigen">
         <span class="qs-lbl">Spielzeit</span>
         <span id="lss7-playtime" class="qs-val mono">${fmtHHMM(S.playtime)}</span>
+        <div id="playtime-pop" class="pt-pop"></div>
       </div>
-      <div class="qs-div"></div>
+      <div class="qs-div" id="qs-playtime-div"></div>
       <div class="qs-cell">
         <span class="qs-lbl">Eigene Credits</span>
         <span id="qs-credits" class="qs-val" style="color:var(--green)"><span class="lspin"></span></span>
@@ -2330,9 +2614,9 @@ function buildUI(){
         <span class="sv c-gr" id="sv-kasse">-</span>
       </div>
       <div class="sc">
-        <span class="sl">Rang</span>
+        <span class="sl">Platzierung</span>
         <span class="sv c-am" id="sv-rank">-</span>
-        <span id="sv-rank-next">Ranking wird geladen...</span>
+        <span id="sv-rank-next">Platzierung wird geladen...</span>
       </div>
       <div class="sc">
         <span class="sl">Mitglieder</span>
@@ -2358,7 +2642,7 @@ function buildUI(){
       </div>
       <div class="sc w2" id="rank-board">
         <div class="rank-mini-head">
-          <span class="rank-mini-title">Ranking Umfeld</span>
+          <span class="rank-mini-title">Platzierungsumfeld</span>
           <span class="rank-mini-note" id="rank-mini-note">Lade...</span>
         </div>
         <div class="rank-mini-list" id="rank-mini-list"></div>
@@ -2425,7 +2709,26 @@ function buildUI(){
   const tTeam=$(`<div id="tp-team" class="lpanel"><div id="lss7-team"><div class="lss7-empty"><span class="lspin"></span> Lade Team...</div></div></div>`);
   body.append(tTeam);
   const tEvt=$(`<div id="tp-event" class="lpanel"></div>`);
-  tEvt.append(`<div class="event-card"><div class="event-top"><div><div class="event-title">WM 2026</div><div class="event-sub">Spielplan, Ergebnisse, Spielorte, TV-Hinweis und lokale Tipps direkt im Dashboard.</div></div><span class="bd bd-gold">EVENT LIVE</span></div><div class="event-count" id="wm-countdown">${fmtWmCountdown()}</div><div class="event-grid"><div class="event-kpi"><span class="event-k">Start</span><span class="event-v">11. Juni 2026</span></div><div class="event-kpi"><span class="event-k">TV</span><span class="event-v">Alle Spiele bei MagentaTV. ARD/ZDF zeigen 60 Spiele, u.a. Deutschland, Eroeffnung, Halbfinale und Finale.</span></div></div><div class="event-actions"><button class="lbtn prime" id="wm-refresh" type="button">Spielplan aktualisieren</button><a class="lbtn" href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/scores-fixtures" target="_blank" rel="noopener">FIFA-Spielplan</a></div><div class="wm-list" id="wm-schedule-list"><div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div></div><div class="event-note">Tipps werden aktuell lokal in deinem Browser gespeichert. Damit andere die Tipps sehen koennen, brauchen wir spaeter eine zentrale Datenbank oder ein kleines Backend.</div><div class="wm-source" id="wm-source">Quelle: worldcup26.ir</div></div>`);
+  tEvt.append(`<div class="event-card">
+    <div class="event-top">
+      <div>
+        <div class="event-title">WM 2026</div>
+        <div class="event-sub">Spielplan, Ergebnisse, Spielorte, TV-Hinweis und lokale Tipps direkt im Dashboard.</div>
+      </div>
+      <div class="event-status"><span class="event-pill" id="wm-event-pill">EVENT LIVE</span><span class="bd bd-gold">WM</span></div>
+    </div>
+    <div><div class="event-count-lbl">Status</div><div class="event-count" id="wm-countdown">${fmtWmCountdown()}</div></div>
+    <div class="event-grid">
+      <div class="event-kpi"><span class="event-k">Start</span><span class="event-v">11. Juni 2026</span></div>
+      <div class="event-kpi"><span class="event-k">Tipps</span><span class="event-v">Deine Tipps werden lokal gespeichert und bleiben direkt am Spiel sichtbar.</span></div>
+      <div class="event-kpi"><span class="event-k">TV</span><span class="event-v">MagentaTV, ARD/ZDF je nach Spiel und Runde.</span></div>
+      <div class="event-kpi"><span class="event-k">Daten</span><span class="event-v">Automatisch aktualisierte Spiele mit Ergebnis, Status und Spielort.</span></div>
+    </div>
+    <div class="event-actions"><button class="lbtn prime" id="wm-refresh" type="button">Spielplan aktualisieren</button><a class="lbtn" href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/scores-fixtures" target="_blank" rel="noopener">FIFA-Spielplan</a></div>
+    <div class="wm-list" id="wm-schedule-list"><div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div></div>
+    <div class="event-note">Tipps werden aktuell lokal in deinem Browser gespeichert. Damit andere die Tipps sehen koennen, brauchen wir spaeter eine zentrale Datenbank oder ein kleines Backend.</div>
+    <div class="wm-source" id="wm-source">Quelle: worldcup26.ir</div>
+  </div>`);
   body.append(tEvt);
 
   // TAB: Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -2434,12 +2737,13 @@ function buildUI(){
 
   const grpAct=$(`<div class="set-group"><div class="set-head">Aktionen</div></div>`);
   grpAct.append(mkBtn("Akt.","Alle Daten jetzt aktualisieren","id='sb-refresh' class='lbtn prime'"));
+  grpAct.append(mkBtn("00:00","Heutige Spielzeit zurücksetzen","id='sb-playtime-reset' class='lbtn'"));
   setWrap.append(grpAct);
 
   const grpOpt=$(`<div class="set-group"><div class="set-head">Optionen</div></div>`);
   grpOpt.append(mkToggle("tog-notif","Browser-Benachrichtigungen","notifications"));
   grpOpt.append(mkToggle("tog-coins","Coins anzeigen","coins"));
-  grpOpt.append(mkPlacementSelect());
+  grpOpt.append(mkToggle("tog-playtime","Spielzeit anzeigen","playtimeEnabled"));
   grpOpt.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Menü-Modus</span>
     <select id="sb-panel-mode" class="lss7-select">
@@ -2525,14 +2829,14 @@ function buildUI(){
   setWrap.append(grpContact);
 
   const grpPn=$(`<div class="set-group"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v6.0.7</b><br>7-Tage-Verbandsverdienst ergänzt. Vorherige Änderungen bleiben in den Patch-Notes sichtbar.</div>`);
+  grpPn.append(`<div class="set-note"><b>v6.0.8</b><br>Layout-Box als Standard, Profil/Platzierung/Wetter überarbeitet und mehrere Stabilitätsfixes ergänzt.</div>`);
   setWrap.append(grpPn);
 
   tSet.append(setWrap);
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v6.0.7",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v6.0.8",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -2567,12 +2871,17 @@ function buildUI(){
 
   // Settings buttons
   panel.on("click","#sb-refresh",  e=>{ e.stopPropagation(); fetchAllData(); });
-  panel.on("change","#sb-placement",e=>{
-    e.stopPropagation();
-    const v=String($(e.currentTarget).val()||"default");
-    S.settings.panelPlacement=v;
-    save();
-    applyPanelMode();
+  panel.on("click","#sb-playtime-reset",e=>{
+    e.stopPropagation();e.preventDefault();
+    resetTodayPlaytime();
+  });
+  panel.on("click","#qs-playtime-cell",e=>{
+    e.stopPropagation();e.preventDefault();
+    renderPlaytimeStats();
+    $("#playtime-pop").toggleClass("open");
+  });
+  panel.on("click",e=>{
+    if(!$(e.target).closest("#qs-playtime-cell").length) $("#playtime-pop").removeClass("open");
   });
   panel.on("change","#sb-panel-mode",e=>{
     S.settings.panelMode=String($(e.currentTarget).val()||"floating");
@@ -2661,6 +2970,7 @@ function buildUI(){
     const key=$(this).data("key");
     S.settings[key]=!S.settings[key];save();
     $(this).find(".tog-track").toggleClass("on",S.settings[key]);
+    if(key==="playtimeEnabled")updatePlaytimeUi();
   });
 
   $("body").append(panel);
@@ -2682,22 +2992,6 @@ function enableTabBarScroll(tabBar){
       e.preventDefault();
     }
   });
-}
-function mkPlacementSelect(){
-  const cur=S.settings.panelPlacement||"default";
-  const opts=[
-    ["default","Normales Menü"],
-    ["top-right","Oben rechts"],
-    ["top-left","Oben links"],
-    ["bottom-right","Unten rechts"],
-    ["bottom-left","Unten links"],
-  ];
-  return `<label class="tog-row" style="justify-content:space-between;">
-    <span class="tog-lbl">Menü-Position</span>
-    <select id="sb-placement" class="lss7-select">
-      ${opts.map(([v,l])=>`<option value="${v}"${cur===v?" selected":""}>${l}</option>`).join("")}
-    </select>
-  </label>`;
 }
 function getLayoutAnchor(){
   const rowMain=$("#row-main-template").first();
@@ -2796,30 +3090,9 @@ function computeRankContext(list){
   if(idx<0 && hasAllianceId){
     idx=list.findIndex(x=>x.id!==null && x.id===Number(S.allianceId));
   }
-  // Strong fallback by credits (very close to allianceinfo credits)
-  if(idx<0 && S.allianceCredits){
-    const mine=Number(S.allianceCredits)||0;
-    let bestIdx=-1,bestDiff=Number.POSITIVE_INFINITY;
-    list.forEach((x,i)=>{
-      const d=Math.abs((Number(x.credits)||0)-mine);
-      if(d<bestDiff){bestDiff=d;bestIdx=i;}
-    });
-    const rel=mine>0?(bestDiff/mine):1;
-    if(bestIdx>=0 && rel<=0.02) idx=bestIdx;
-  }
-  // Fallback chain if strict ID match is not available in the ranking rows
   if(idx<0 && S.allianceName){
     const n=norm(S.allianceName);
     idx=list.findIndex(x=>norm(x.name)===n);
-  }
-  if(idx<0 && S.allianceCredits){
-    const mine=Number(S.allianceCredits)||0;
-    let bestIdx=-1,bestDiff=Number.POSITIVE_INFINITY;
-    list.forEach((x,i)=>{
-      const d=Math.abs((Number(x.credits)||0)-mine);
-      if(d<bestDiff){bestDiff=d;bestIdx=i;}
-    });
-    if(bestIdx>=0) idx=bestIdx;
   }
   if(idx<0 && S.allianceRank && S.allianceCredits){
     const r=Number(S.allianceRank);
@@ -2828,10 +3101,19 @@ function computeRankContext(list){
     if(byRank){
       const d=Math.abs((Number(byRank.credits)||0)-mine);
       const rel=mine>0?(d/mine):1;
-      if(rel<=0.02 || d<=10000000) idx=list.indexOf(byRank);
+      if(rel<=0.01 || d<=10000000) idx=list.indexOf(byRank);
     }
   }
-  // Final fallback: anchor by API rank to always render a useful neighborhood.
+  if(idx<0 && S.allianceCredits){
+    const mine=Number(S.allianceCredits)||0;
+    let bestIdx=-1,bestDiff=Number.POSITIVE_INFINITY;
+    list.forEach((x,i)=>{
+      const d=Math.abs((Number(x.credits)||0)-mine);
+      if(d<bestDiff){bestDiff=d;bestIdx=i;}
+    });
+    const rel=mine>0?(bestDiff/mine):1;
+    if(bestIdx>=0 && (rel<=0.005 || bestDiff<=5000000)) idx=bestIdx;
+  }
   if(idx<0 && S.allianceRank){
     const r=Number(S.allianceRank);
     const byRank=list.find(x=>Number(x.rank)===r);
@@ -2841,10 +3123,14 @@ function computeRankContext(list){
     const domRank=readAllianceRankFromDom();
     const anchorRank=domRank || (S.allianceRank?Number(S.allianceRank):null);
     if(anchorRank && anchorRank>0){
-      idx=Math.max(0,Math.min(list.length-1,anchorRank-1));
+      let bestIdx=-1,bestDist=Number.POSITIVE_INFINITY;
+      list.forEach((x,i)=>{
+        const dist=Math.abs((Number(x.rank)||0)-anchorRank);
+        if(dist<bestDist){bestDist=dist;bestIdx=i;}
+      });
+      if(bestIdx>=0 && bestDist<=2) idx=bestIdx;
     }
   }
-  if(idx<0) idx=Math.max(0,Math.floor(list.length/2));
   if(idx<0) return null;
   const me=list[idx];
   const above=idx>0?list[idx-1]:null;
@@ -2854,25 +3140,25 @@ function computeRankContext(list){
   return {idx,me,above,needed,slice};
 }
 function renderRankSummary(ctx){
-  if(!ctx){ setV("#sv-rank-next","Ranking nicht gefunden"); return; }
-  if(!ctx.above){ setV("#sv-rank-next","Top-Rang erreicht"); return; }
-  setV("#sv-rank-next",`Bis Rang ${ctx.above.rank}: ${fmtMoney(ctx.needed)}`);
+  if(!ctx){ setV("#sv-rank-next","Platzierung nicht gefunden"); return; }
+  if(!ctx.above){ setV("#sv-rank-next","Top-Platzierung erreicht"); return; }
+  setV("#sv-rank-next",`Bis Platz ${ctx.above.rank}: ${fmtMoney(ctx.needed)}`);
 }
 function renderRankMini(ctx){
   if(!ctx){
-    $("#rank-mini-note").text("Ranking nicht verfuegbar");
+    $("#rank-mini-note").text("Platzierung nicht verfuegbar");
     $("#rank-mini-list").html("");
     return;
   }
   $("#rank-mini-note").text(ctx.above
-    ? `Bis naechster Rang fehlen ${fmtMoney(ctx.needed)}`
-    : "Top-Rang erreicht");
+    ? `Bis naechster Platz fehlen ${fmtMoney(ctx.needed)}`
+    : "Top-Platzierung erreicht");
   const rows=ctx.slice.map(x=>{
     const isMe=x===ctx.me;
     const rankTxt=isMe && S.allianceRank ? `#${S.allianceRank}` : `#${x.rank}`;
     return `<div class="rank-mini-row ${isMe?"me":""}">
       <div class="rank-mini-r">${rankTxt}</div>
-      <div class="rank-mini-n">${x.name}</div>
+      <div class="rank-mini-n">${escHtml(x.name)}</div>
       <div class="rank-mini-c">${fmtMoney(x.credits)}</div>
     </div>`;
   }).join("");
@@ -2897,14 +3183,14 @@ function loadRankContext(done){
       const r=Number(S.allianceRank)||0;
       const targetPage=r>0?Math.floor((r-1)/(first.pageSize||25))+1:1;
       if(first.foundById) return;
-      if(targetPage<=1){ if(!first.ok) $("#rank-mini-note").text("Ranking geladen (Fallback-Zuordnung aktiv)"); return; }
+      if(targetPage<=1){ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); return; }
       fetch(`${API.alliancesPage}?page=${targetPage}`,{credentials:"include"})
         .then(rr=>rr.ok?rr.text():Promise.reject(new Error(`HTTP ${rr.status}`)))
         .then(h2=>{
           const second=applyRankHtml(h2,targetPage,first.pageSize||25);
-          if(!second.foundById && !second.ok) $("#rank-mini-note").text("Ranking geladen (Fallback-Zuordnung aktiv)");
+          if(!second.foundById && !second.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)");
         })
-        .catch(()=>{ if(!first.ok) $("#rank-mini-note").text("Ranking geladen (Fallback-Zuordnung aktiv)"); });
+        .catch(()=>{ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); });
     })
     .catch(()=>{
       pageGet(API.alliancesPage,raw=>{
@@ -2912,11 +3198,11 @@ function loadRankContext(done){
         const r=Number(S.allianceRank)||0;
         const targetPage=r>0?Math.floor((r-1)/(first.pageSize||25))+1:1;
         if(first.foundById) return;
-        if(targetPage<=1){ if(!first.ok) $("#rank-mini-note").text("Ranking geladen (Fallback-Zuordnung aktiv)"); return; }
+        if(targetPage<=1){ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); return; }
         pageGet(`${API.alliancesPage}?page=${targetPage}`,h2=>{
           const second=applyRankHtml(h2,targetPage,first.pageSize||25);
-          if(!second.foundById && !second.ok) $("#rank-mini-note").text("Ranking geladen (Fallback-Zuordnung aktiv)");
-        },()=>{ if(!first.ok) $("#rank-mini-note").text("Ranking geladen (Fallback-Zuordnung aktiv)"); });
+          if(!second.foundById && !second.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)");
+        },()=>{ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); });
       },()=>{
         renderRankSummary(null);
         renderRankMini(null);
@@ -2938,6 +3224,36 @@ function mkAccordion(icon,title,body){
 }
 function patchHTML(){
   const groups=[
+    {
+      title:"v6.0.8 — Spielzeit, Wetter & WM-Event",
+      items:[
+        "Fehler behoben: Die Spielzeit wird jetzt anhand der lokalen Tagesgrenze um 00:00 Uhr deutscher Zeit zurückgesetzt.",
+        "In den Einstellungen kann die Spielzeit-Anzeige jetzt ein- und ausgeschaltet werden.",
+        "In den Einstellungen gibt es jetzt einen Button, um die heutige Spielzeit manuell auf 0 zurückzusetzen.",
+        "Klick auf die Spielzeit öffnet eine kleine 7-Tage-Statistik mit Tagesbalken und Gesamtsumme.",
+        "Verbandsverdienst stabilisiert: der letzte Gesamtstand bleibt als Gegenwert erhalten und Tageswerte werden aus den laufenden Gesamtcredits-Differenzen gebildet.",
+        "Menü-Position aus den Einstellungen entfernt; die Layout-Box ist jetzt der neue Standardmodus.",
+        "Player-Profil optisch überarbeitet: größerer Avatar, klarere Dienstgrad-Anzeige und besser lesbarer Fortschritt.",
+        "Rang wurde in der Übersicht zu Platzierung umbenannt, inklusive Platzierungsumfeld und Hinweistexte.",
+        "Platzierungsumfeld stabilisiert: Zuordnung priorisiert jetzt ID, exakten Namen und eine engere Credit-Prüfung.",
+        "Verbandsverdienst-Balken wirken aktiver und zeigen auch Null-Tage sauber als Sammelzustand an.",
+        "Verbandsverdienst-Balken optisch verstärkt, damit die Füllung im dunklen Layout klar sichtbar ist.",
+        "Fehler behoben: Die Füllung der Verbandsverdienst-Balken wird jetzt als Block gerendert und korrekt grün nach Verdienstbreite angezeigt.",
+        "Verbandsverdienst-Balken zusätzlich abgesichert: die grüne Füllung wird direkt im Balken-Markup gesetzt, damit sie zuverlässig sichtbar bleibt.",
+        "Die Wetterbox wurde professioneller gestaltet: klarere Wetterkarte, Temperatur, Wind, Stundenforecast, Warnbox und Quellenhinweis.",
+        "Wetterbox nachgeschärft: kompaktere Forecast-Zeile, kürzerer Ortsname und ruhigere Warn-/Quellenanzeige.",
+        "Wetter passt sich jetzt im Floating-Menü automatisch einspaltig an, damit die Vorhersage nicht abgeschnitten wird.",
+        "Wetterbox im Layout-Modus wieder flächiger dargestellt und um gefühlte Temperatur, Feuchte und Niederschlag erweitert.",
+        "Wetter lädt schneller: Wetterdaten werden sofort angezeigt, DWD-Warnungen werden anschließend im Hintergrund ergänzt.",
+        "Wetter-Cache ergänzt: Beim Öffnen werden passende zuletzt geladene Wetterdaten sofort angezeigt, neue Daten laden im Hintergrund nach.",
+        "Wetterabruf robuster gemacht: Open-Meteo, PLZ-Suche und DWD-Warnungen nutzen jetzt Timeouts und einen Browser-Fetch-Fallback.",
+        "Wetter-Ortssuche verbessert: reine PLZ, PLZ mit Ortsname und Ortsnamen mit Bundesland werden toleranter erkannt.",
+        "Wenn ein Ort eingetragen ist, zeigt die Wetterbox beim Laden jetzt einen Ladehinweis statt dauerhaft Keine Wetterdaten.",
+        "Userscript-Header erweitert: Match-Regel auf Leitstellenspiel-Unterseiten und @connect-Einträge für Wetter-, PLZ- und DWD-Dienste ergänzt.",
+        "Das WM-Event wurde optisch überarbeitet und zeigt jetzt einen klareren Event-Status sowie Statusinformationen pro Spiel.",
+        "Version und Patch-Notes wurden auf v6.0.8 aktualisiert.",
+      ],
+    },
     {
       title:"v6.0.7 — 7-Tage-Verbandsverdienst",
       items:[
@@ -2982,9 +3298,10 @@ function infoHTML(){
     ["Supporter","m75e, twoyears"],
     ["Version",V],
     ["APIs","allianceinfo · userinfo · vehicle_states · alliance_schoolings · schoolings · v2/vehicles · v1/aaos"],
-    ["Panel-Typ","Floating, Bootstrap-unabhängig"],
+    ["Panel-Typ","Layout-Box Standard, Floating optional"],
     ["Alliance-Interval","60s"],
     ["7-Tage-Verdienst","lokal ab erstem Refresh"],
+    ["Spielzeit","lokal, 7 Tage"],
     ["Fahrzeugstatus","90s"],
     ["Lehrgänge","300s"],
     ["AAO","300s (Lazy)"],
@@ -3094,6 +3411,7 @@ $(document).ready(()=>{
   buildUI();
   buildTrigger();
   applyPanelMode();
+  updatePlaytimeUi();
 
   // Initialer Fetch
   fetchAlliance();
