@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      6.0.8
+// @version      7.0.0
 // @description  Ultimate Premium Dashboard: Floating Panel, Live-Charts, Fahrzeugstatus-Donut, Lehrgänge, 7-Tage-Verbandsverdienst, Spielzeit-Statistik, Team, Wetter, WM-Event und Dark-Design.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/*
@@ -11,6 +11,7 @@
 // @grant        GM_addStyle
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_info
 // @connect      raw.githubusercontent.com
 // @connect      github.com
 // @connect      worldcup26.ir
@@ -30,7 +31,7 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "6.0.8";
+const V   = "7.0.0";
 const BASE = "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 
@@ -278,6 +279,7 @@ GM_addStyle(`
 #lss7-col:hover{background:var(--blue3);color:var(--blueh);border-color:rgba(59,130,246,.35);}
 #lss7.layout #lss7-col{display:flex;}
 #lss7.layout.emb-collapsed .prof-strip,
+#lss7.layout.emb-collapsed .prof-event-strip,
 #lss7.layout.emb-collapsed #lss7-qs,
 #lss7.layout.emb-collapsed #lss7-tabs,
 #lss7.layout.emb-collapsed #lss7-body,
@@ -349,6 +351,86 @@ GM_addStyle(`
 .prof-next{font-size:10px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;font-weight:700;text-align:right;}
 .prof-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:0;border:1px solid rgba(255,255,255,.04);}
 .prof-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--cyan));}
+.prof-event-strip{
+  flex-shrink:0;
+  position:relative;
+  display:flex;flex-direction:column;gap:0;
+  padding:5px 12px;border-bottom:1px solid var(--b1);
+  background:linear-gradient(90deg,rgba(245,158,11,.10),rgba(34,197,94,.035));
+  overflow:visible;
+  transition:background .22s ease,border-color .22s ease;
+}
+.prof-event-strip.idle{
+  background:linear-gradient(90deg,rgba(255,255,255,.025),rgba(255,255,255,.01));
+}
+.prof-event-row{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;
+  min-height:30px;padding:5px 0;border-top:1px solid rgba(255,255,255,.045);
+  position:relative;
+}
+.prof-event-row:first-child{border-top:none;}
+.prof-event-row-link{color:inherit!important;text-decoration:none!important;cursor:pointer;transition:background .15s ease,border-color .15s ease;}
+.prof-event-row-link:hover{background:rgba(168,85,247,.075);}
+.prof-event-row.active::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(245,158,11,.42),transparent);
+  opacity:.55;
+}
+.prof-event-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--t4);
+  box-shadow:0 0 0 3px rgba(255,255,255,.035);
+}
+.prof-event-strip.active .prof-event-dot{background:#22c55e;box-shadow:0 0 13px rgba(34,197,94,.75),0 0 0 3px rgba(34,197,94,.14);}
+.prof-event-strip.idle .prof-event-dot{background:rgba(138,152,170,.72);}
+.prof-event-main{min-width:0;display:flex;flex-direction:column;gap:2px;}
+.prof-event-titleline{min-width:0;display:flex;align-items:center;gap:6px;}
+.prof-event-gem{
+  position:relative;width:22px;height:22px;border-radius:7px;
+  display:inline-flex;align-items:center;justify-content:center;
+  color:#ffe5a8;background:rgba(245,158,11,.13);
+  border:1px solid rgba(245,158,11,.38);
+  font-size:13px;font-weight:900;line-height:1;cursor:help;
+  box-shadow:0 0 16px rgba(245,158,11,.12) inset,0 0 12px rgba(245,158,11,.12);
+  flex-shrink:0;
+}
+.prof-event-strip.idle .prof-event-gem{
+  color:var(--t4);background:rgba(255,255,255,.035);border-color:var(--b1);box-shadow:none;
+}
+.prof-event-gem.siren{
+  color:#ffd0d0;background:rgba(239,68,68,.13);border-color:rgba(239,68,68,.38);
+  box-shadow:0 0 16px rgba(239,68,68,.12) inset,0 0 12px rgba(239,68,68,.12);
+}
+.prof-event-gem.sale{
+  color:#e9d5ff;background:rgba(168,85,247,.13);border-color:rgba(168,85,247,.4);
+  box-shadow:0 0 16px rgba(168,85,247,.12) inset,0 0 12px rgba(168,85,247,.12);
+}
+.prof-event-tip{
+  pointer-events:none;position:absolute;left:0;top:calc(100% + 9px);
+  width:min(360px,calc(100vw - 42px));z-index:80;
+  padding:10px 12px;border-radius:9px;border:1px solid rgba(245,158,11,.36);
+  background:linear-gradient(180deg,rgba(22,18,10,.98),rgba(12,15,20,.98));
+  box-shadow:0 18px 42px rgba(0,0,0,.58),0 0 0 1px rgba(255,255,255,.04) inset;
+  color:var(--t2);font-size:11px;line-height:1.45;font-weight:650;
+  opacity:0;transform:translate(0,-4px);transition:opacity .16s ease,transform .16s ease;
+}
+.prof-event-tip b{display:block;color:#ffe5a8;font-size:11px;margin-bottom:3px;}
+.prof-event-gem.siren .prof-event-tip{border-color:rgba(239,68,68,.38);}
+.prof-event-gem.siren .prof-event-tip b{color:#fecaca;}
+.prof-event-gem.sale .prof-event-tip{border-color:rgba(168,85,247,.42);}
+.prof-event-gem.sale .prof-event-tip b{color:#e9d5ff;}
+.prof-event-gem:hover .prof-event-tip{opacity:1;transform:translate(0,0);}
+.prof-event-label{
+  min-width:0;font-size:11px;color:var(--t2);font-weight:800;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.prof-event-strip.active .prof-event-label{color:#ffe5a8;}
+.prof-event-type{
+  font-size:9px;color:var(--t4);font-weight:800;text-transform:uppercase;letter-spacing:.45px;
+}
+.prof-event-time{
+  font-size:11px;color:var(--green);font-family:var(--mono);font-weight:900;white-space:nowrap;
+}
+.prof-event-strip.idle .prof-event-time{color:var(--t4);}
 
 /* â”€â”€ Notification Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #lss7-notif{flex-shrink:0;display:none;}
@@ -513,6 +595,57 @@ GM_addStyle(`
 .alli-earn-val{font-size:11px;color:var(--green);font-family:var(--mono);font-weight:700;text-align:right;white-space:nowrap;}
 .alli-earn-empty{font-size:11px;color:var(--t3);padding:6px 2px;}
 
+/* Verbandsprognose */
+#forecast-board{padding:10px 12px;}
+.forecast-controls{
+  display:grid;grid-template-columns:minmax(220px,1fr) auto;
+  gap:8px;align-items:end;padding:12px;margin-bottom:10px;
+  border:1px solid var(--b1);background:rgba(255,255,255,.025);border-radius:8px;
+}
+.forecast-control{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.forecast-control span{font-size:9px;color:var(--t4);font-weight:900;text-transform:uppercase;letter-spacing:.5px;}
+.forecast-controls .lss7-select{width:100%;max-width:none;}
+@media(max-width:620px){.forecast-controls{grid-template-columns:1fr}.forecast-controls .lbtn{width:100%;}}
+.forecast-wrap{padding:14px;display:flex;flex-direction:column;gap:12px;}
+.forecast-beta{display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border-radius:8px;border:1px solid rgba(245,158,11,.58);border-left:4px solid #f59e0b;background:linear-gradient(90deg,rgba(245,158,11,.18),rgba(245,158,11,.07));color:#ffe8aa;font-size:10px;line-height:1.45;box-shadow:0 0 18px rgba(245,158,11,.07) inset;}
+.forecast-beta b{display:inline-flex;align-items:center;padding:2px 6px;border-radius:5px;background:#f59e0b;color:#171006;white-space:nowrap;font-size:9px;letter-spacing:.5px;}
+.forecast-beta-badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:rgba(245,158,11,.18);border:1px solid rgba(245,158,11,.58);color:#fcd34d!important;font-size:9px!important;font-weight:950!important;letter-spacing:.55px;text-transform:uppercase;}
+.forecast-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.forecast-title{font-size:15px;font-weight:900;color:var(--t1);}
+.forecast-sub{margin-top:3px;font-size:10px;color:var(--t3);line-height:1.4;}
+.forecast-status{flex-shrink:0;padding:4px 8px;border-radius:999px;border:1px solid var(--b2);background:rgba(255,255,255,.04);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;}
+.forecast-status.good{color:#86efac;border-color:rgba(34,197,94,.34);background:rgba(34,197,94,.10);}
+.forecast-status.warn{color:#fcd34d;border-color:rgba(245,158,11,.34);background:rgba(245,158,11,.10);}
+.forecast-status.bad{color:#fca5a5;border-color:rgba(239,68,68,.34);background:rgba(239,68,68,.10);}
+.forecast-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--b1);border:1px solid var(--b1);border-radius:8px;overflow:hidden;}
+.forecast-kpi{padding:10px;background:var(--bg1);min-width:0;}
+.forecast-k{font-size:8px;color:var(--t4);text-transform:uppercase;letter-spacing:.7px;font-weight:800;}
+.forecast-v{display:block;margin-top:4px;color:var(--t1);font-size:12px;font-family:var(--mono);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.forecast-v.green{color:var(--greenh);}.forecast-v.amber{color:var(--amberh);}.forecast-v.blue{color:var(--blueh);}
+.forecast-progress{height:10px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;border:1px solid rgba(255,255,255,.04);}
+.forecast-progress-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#2563eb,#22c55e,#86efac);transition:width .5s ease;}
+.forecast-progress-meta{display:flex;justify-content:space-between;gap:10px;margin-top:5px;font-size:9px;color:var(--t4);}
+.forecast-chart-box{padding:10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);}
+.forecast-chart-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;font-size:9px;color:var(--t4);text-transform:uppercase;letter-spacing:.6px;font-weight:800;}
+.forecast-canvas{display:block;width:100%;height:150px;}
+.forecast-mini{display:flex;flex-direction:column;gap:10px;}
+.forecast-mini .forecast-beta{padding:7px 9px;align-items:center;}
+.forecast-mini-card{display:grid;grid-template-columns:minmax(155px,.8fr) minmax(0,1.2fr);gap:12px;align-items:stretch;}
+.forecast-mini-hero{display:flex;flex-direction:column;justify-content:center;padding:12px;border:1px solid rgba(34,197,94,.25);border-radius:8px;background:linear-gradient(135deg,rgba(34,197,94,.10),rgba(59,130,246,.06));}
+.forecast-mini-label{font-size:8px;color:var(--t4);font-weight:900;text-transform:uppercase;letter-spacing:.65px;}
+.forecast-mini-time{margin-top:3px;font-family:var(--mono);font-size:22px;line-height:1.05;color:var(--greenh);font-weight:900;}
+.forecast-mini-date{margin-top:5px;font-size:10px;color:var(--t2);font-weight:750;}
+.forecast-mini-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+.forecast-mini-stat{padding:8px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.022);min-width:0;}
+.forecast-mini-stat span{display:block;font-size:8px;color:var(--t4);font-weight:850;text-transform:uppercase;letter-spacing:.45px;}
+.forecast-mini-stat b{display:block;margin-top:3px;font-size:10px;color:var(--t1);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.forecast-mini-stat b.green{color:var(--greenh);}.forecast-mini-stat b.amber{color:var(--amberh);}
+.forecast-mini-progress{height:9px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;border:1px solid rgba(255,255,255,.035);}
+.forecast-mini-progress span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--blue),var(--green));}
+.forecast-mini-foot{display:flex;justify-content:space-between;gap:10px;font-size:9px;color:var(--t4);}
+@media(max-width:560px){.forecast-mini-card{grid-template-columns:1fr}.forecast-mini-time{font-size:19px;}}
+@media(max-width:700px){.forecast-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}.forecast-canvas{height:130px;}}
+
 /* â”€â”€ Credit History â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .hist-row{
   display:flex;gap:8px;padding:5px 14px;
@@ -566,9 +699,18 @@ GM_addStyle(`
 }
 
 /* â”€â”€ Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-.set-wrap{padding:14px;display:flex;flex-direction:column;gap:10px;}
-.set-head{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t4);margin-bottom:2px;}
-.set-group{display:flex;flex-direction:column;gap:5px;}
+.set-wrap{padding:14px;display:grid;grid-template-columns:1fr;gap:10px;align-items:start;}
+#lss7.layout .set-wrap{grid-template-columns:repeat(2,minmax(0,1fr));}
+.settings-intro,.set-wide{grid-column:1/-1;}
+.settings-intro{padding:12px 13px;border:1px solid rgba(59,130,246,.24);border-radius:8px;background:linear-gradient(135deg,rgba(59,130,246,.10),rgba(34,197,94,.035));}
+.settings-intro b{display:block;color:var(--t1);font-size:13px;margin-bottom:3px;}
+.settings-intro span{font-size:10px;color:var(--t3);line-height:1.45;}
+.set-head{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;color:var(--t2);padding-bottom:7px;margin-bottom:2px;border-bottom:1px solid var(--b1);}
+.set-group{display:flex;flex-direction:column;gap:6px;padding:11px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);min-width:0;}
+.set-group .tog-row{min-height:40px;}
+.set-group .lss7-select{flex:0 1 220px;min-width:0;}
+.set-group .set-note{margin-top:2px;}
+@media(max-width:760px){#lss7.layout .set-wrap{grid-template-columns:1fr}.set-wide{grid-column:auto}.settings-intro{grid-column:1/-1;}}
 .lbtn{
   display:flex;align-items:center;gap:8px;padding:9px 12px;
   font-size:12px;font-weight:600;font-family:var(--font);
@@ -643,6 +785,46 @@ GM_addStyle(`
 .event-actions .lbtn{width:auto;flex:1;justify-content:center;}
 .event-note{font-size:11px;color:var(--t3);line-height:1.45;}
 .wm-source{font-size:10px;color:var(--t3);text-align:right;}
+.game-events-card{
+  display:flex;flex-direction:column;gap:9px;
+  padding:12px;border:1px solid rgba(245,158,11,.32);border-radius:10px;
+  background:linear-gradient(180deg,rgba(245,158,11,.13),rgba(34,197,94,.035));
+  box-shadow:0 0 22px rgba(245,158,11,.07) inset;
+}
+.game-events-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.game-events-title{font-size:12px;font-weight:900;color:#ffe5a8;text-transform:uppercase;letter-spacing:.55px;}
+.game-events-live{
+  display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:999px;
+  border:1px solid rgba(34,197,94,.38);background:rgba(34,197,94,.14);
+  color:#86efac;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;
+}
+.game-events-live::before{content:"";width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.9);}
+.game-events-list{display:flex;flex-direction:column;gap:7px;}
+.game-event-row{
+  display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:9px;align-items:center;
+  padding:8px 9px;border:1px solid rgba(255,255,255,.08);border-radius:8px;
+  background:rgba(8,12,18,.38);
+}
+.game-event-row-link{color:inherit!important;text-decoration:none!important;cursor:pointer;transition:border-color .15s ease,background .15s ease,transform .15s ease;}
+.game-event-row-link:hover{border-color:rgba(168,85,247,.42);background:rgba(168,85,247,.08);transform:translateY(-1px);}
+.game-event-ico{
+  width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.15);
+  color:#ffe5a8;font-size:14px;font-weight:900;
+}
+.game-event-main{min-width:0;}
+.game-event-title{font-size:12px;color:var(--t1);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.game-event-desc{margin-top:2px;font-size:10px;color:var(--t3);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.game-event-time{
+  min-width:76px;text-align:right;color:#86efac;font-family:var(--mono);
+  font-size:12px;font-weight:900;white-space:nowrap;
+}
+.game-events-mini{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+.game-events-mini .game-event-row{grid-template-columns:30px minmax(0,1fr) auto;padding:7px 8px;background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.24);}
+.game-events-mini .game-event-ico{width:24px;height:24px;font-size:12px;}
+.game-events-mini .game-event-title{font-size:11px;}
+.game-events-mini .game-event-desc{display:none;}
+.game-events-mini .game-event-time{font-size:11px;}
 .wm-list{display:flex;flex-direction:column;gap:7px;}
 .wm-row{
   display:grid;grid-template-columns:92px minmax(0,1fr) minmax(190px,230px);gap:10px;align-items:center;
@@ -653,6 +835,12 @@ GM_addStyle(`
 .wm-main{min-width:0;}
 .wm-teams{font-size:12px;color:var(--t1);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .wm-meta{font-size:10px;color:var(--t3);margin-top:3px;line-height:1.4;}
+.wm-match-events{display:flex;flex-direction:column;gap:5px;margin-top:7px;padding-top:7px;border-top:1px solid var(--b1);}
+.wm-event-line{display:grid;grid-template-columns:18px 72px minmax(0,1fr);gap:5px;align-items:start;font-size:9px;line-height:1.35;}
+.wm-event-icon{font-size:11px;text-align:center;}
+.wm-event-team{color:var(--t3);font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wm-event-names{color:var(--t2);font-weight:650;}
+.wm-api-note{margin-top:5px;font-size:9px;color:var(--t4);line-height:1.35;}
 .wm-status{
   display:inline-flex;margin-top:6px;padding:2px 6px;border-radius:999px;
   border:1px solid rgba(96,165,250,.22);background:rgba(96,165,250,.09);
@@ -851,6 +1039,23 @@ GM_addStyle(`
 .info-v{color:var(--t2);font-weight:500;}
 .patch-i{display:flex;gap:8px;margin-bottom:5px;font-size:11px;}
 .patch-b{color:var(--blue);flex-shrink:0;}
+.patch-ver{
+  border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.02);
+  margin:0 0 8px;overflow:hidden;
+}
+.patch-ver summary{
+  list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;
+  padding:9px 10px;color:var(--blueh);font-size:11px;font-weight:800;
+  background:rgba(59,130,246,.055);user-select:none;
+}
+.patch-ver summary::-webkit-details-marker{display:none;}
+.patch-ver summary::before{
+  content:"›";display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border-radius:5px;border:1px solid var(--b1);
+  color:var(--t3);transition:transform .16s ease;
+}
+.patch-ver[open] summary::before{transform:rotate(90deg);color:var(--blueh);}
+.patch-ver-body{padding:9px 10px 8px;}
 
 /* Footer */
 #lss7-ft{
@@ -860,53 +1065,22 @@ GM_addStyle(`
 }
 .ft-l,.ft-r{font-size:10px;color:var(--t4);}
 
-/* Update Popup */
-#lss7-uo{
-  position:fixed;inset:0;background:rgba(0,0,0,.78);
-  backdrop-filter:blur(7px);z-index:99999;
-  display:flex;align-items:center;justify-content:center;
-}
-#lss7-ub{
-  background:linear-gradient(180deg, rgba(8,16,34,.96), rgba(7,13,27,.96));
-  border:1px solid rgba(88,122,201,.28);border-radius:14px;
-  padding:18px 18px 14px;width:380px;text-align:left;
-  box-shadow:0 40px 100px rgba(0,0,0,.85);font-family:var(--font);color:var(--t1);
-  animation:popin .22s cubic-bezier(.34,1.56,.64,1) both;
-  position:relative;
-}
-@keyframes popin{from{opacity:0;transform:scale(.86) translateY(-10px)}}
-.ub-x{
-  position:absolute;top:10px;right:10px;width:26px;height:26px;
-  border-radius:9px;border:1px solid var(--b2);background:rgba(255,255,255,.04);
-  color:var(--t3);font-size:15px;line-height:1;cursor:pointer;
-}
-.ub-x:hover{background:rgba(255,255,255,.1);color:var(--t1);}
-.ub-tag{
-  display:inline-flex;align-items:center;gap:6px;padding:4px 9px;
-  border:1px solid rgba(65,122,255,.35);background:rgba(65,122,255,.12);
-  color:#9fc0ff;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.4px;
-  margin-bottom:10px;text-transform:uppercase;
-}
-.ub-icon{display:none;}
-#lss7-ub h2{font-size:25px;font-weight:800;margin:0 0 8px;letter-spacing:0;}
-#lss7-ub p {font-size:14px;color:var(--t3);line-height:1.55;margin:0 0 14px;}
-.ub-vers{
-  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-  margin:0 0 14px;padding:10px 12px;border:1px solid var(--b2);
-  border-radius:10px;background:rgba(255,255,255,.03);font-size:12px;color:var(--t3);
-}
-.ub-vers strong{color:var(--t1);}
-.ub-row{display:flex;gap:8px;}
-.ub-btn{
-  flex:1;padding:10px;font-size:12px;font-weight:700;
-  border-radius:10px;border:none;cursor:pointer;
-  font-family:var(--font);transition:all .15s;text-decoration:none;display:block;
-  text-align:center;
-}
-.ub-ok{background:linear-gradient(180deg,#2f6fff,#2358d6);color:#fff;}
-.ub-ok:hover{filter:brightness(1.07);}
-.ub-sk{background:rgba(255,255,255,.04);color:var(--t3);border:1px solid var(--b2);}
-.ub-sk:hover{background:rgba(255,255,255,.08);color:var(--t1);}
+/* Update status */
+.lss7-update-note{display:none;position:relative;z-index:2;margin-top:10px;padding:8px 10px;border-radius:7px;border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.10);align-items:center;gap:8px;color:#a7f3c2;font-size:10px;font-weight:750;}
+.lss7-update-note.show{display:flex;}
+.lss7-update-note.available{border-color:rgba(245,158,11,.42);background:rgba(245,158,11,.11);color:#fcd98b;}
+.lss7-update-note span{flex:1;min-width:0;}
+.lss7-update-note button{border:0;background:transparent;color:inherit;font-size:10px;font-weight:900;cursor:pointer;text-decoration:underline;padding:0;white-space:nowrap;}
+.update-status{display:flex;flex-direction:column;gap:7px;padding:9px 10px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.02);font-size:10px;color:var(--t3);line-height:1.4;}
+.update-status strong{color:var(--t1);}
+.update-status.good{border-color:rgba(34,197,94,.28);background:rgba(34,197,94,.07);}
+.update-status.warn{border-color:rgba(245,158,11,.30);background:rgba(245,158,11,.07);}
+.update-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px;}
+.update-actions .lbtn{justify-content:center;text-align:center;}
+.set-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px!important;}
+.set-actions .set-head{grid-column:1/-1;}
+#lss7:not(.layout) .set-actions,#lss7:not(.layout) .update-actions{grid-template-columns:1fr!important;}
+@media(max-width:700px){.set-actions{grid-template-columns:1fr!important}.update-actions{grid-template-columns:1fr;}}
 
 /* Shared */
 .lss7-div{height:1px;background:var(--b1);}
@@ -960,16 +1134,19 @@ const S = {
   lastDate:todayStr(),
   creditHist:[],     // [{ts,v}]
   allianceDaily:[],   // [{date,start,end}]
+  allianceSnapshot:null,
   playtimeDaily:[],   // [{date,seconds}]
   userCredits:0, userCoins:0, userId:null,
   allianceId:null, allianceName:"", allianceRank:null, allianceCredits:0,
   weather:null, weatherTs:0, weatherLoc:"",
+  gameEvents:[],
   wm:{games:[],stadiums:{},error:null,lastTs:null},
   wmTips:{},
   wmTipEdit:{},
   profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:""},
   weatherAlertKey:"",
   lastApiTs:null,
+  update:{previousVersion:"",justUpdated:false,availableVersion:"",checking:false,lastCheck:0,error:""},
   settings:{
     notifications:true,
     coins:true,
@@ -985,6 +1162,8 @@ const S = {
     weatherTone:"beep",
     eventMode:"overview", // off | overview
     playtimeEnabled:true,
+    forecastEnabled:true,
+    forecastTarget:30000000000,
   },
 };
 
@@ -997,9 +1176,10 @@ function save(){
   GM_setValue("v7_lts", S.lastTs);
   GM_setValue("v7_lc",  S.lastAlliCreds);
   GM_setValue("v7_de",  S.dailyEarn);
-  GM_setValue("v7_ld",  today);
+  GM_setValue("v7_ld",  S.lastDate||today);
   GM_setValue("v7_ch",  JSON.stringify(S.creditHist));
   GM_setValue("v7_ad",  JSON.stringify(S.allianceDaily));
+  GM_setValue("v7_as",  JSON.stringify(S.allianceSnapshot));
   GM_setValue("v7_pd",  JSON.stringify(S.playtimeDaily));
   GM_setValue("v7_set", JSON.stringify(S.settings));
 }
@@ -1031,14 +1211,19 @@ function load(){
   S.playtime     =newDay?0:storedPlaytime;
   S.lastAlliCreds=GM_getValue("v7_lc",0);
   S.dailyEarn    =newDay?0:GM_getValue("v7_de",0);
-  S.lastTs       =GM_getValue("v7_lts",Date.now());
+  S.lastTs       =Date.now();
   S.lastDate     =today;
   try{S.creditHist=JSON.parse(GM_getValue("v7_ch","[]"))||[];}catch{S.creditHist=[];}
   try{S.allianceDaily=JSON.parse(GM_getValue("v7_ad","[]"))||[];}catch{S.allianceDaily=[];}
+  try{S.allianceSnapshot=JSON.parse(GM_getValue("v7_as","null"));}catch{S.allianceSnapshot=null;}
   try{S.playtimeDaily=JSON.parse(GM_getValue("v7_pd","[]"))||[];}catch{S.playtimeDaily=[];}
   if(newDay && saved && storedPlaytime>0)recordPlaytimeDay(saved,storedPlaytime);
   try{S.wmTips=JSON.parse(GM_getValue("v7_wm_tips","{}"))||{};}catch{S.wmTips={};}
   try{Object.assign(S.settings,JSON.parse(GM_getValue("v7_set","{}"))||{});}catch{}
+  S.update.previousVersion=String(GM_getValue("v7_installed_version","")||"");
+  const existingInstallation=!!GM_getValue("v7_layout_default_done",false);
+  S.update.justUpdated=S.update.previousVersion?compareVersions(V,S.update.previousVersion)>0:existingInstallation;
+  GM_setValue("v7_installed_version",V);
   const validPlacements=["default","top-left","top-right","bottom-left","bottom-right"];
   if(!validPlacements.includes(S.settings.panelPlacement)) S.settings.panelPlacement="default";
   const validModes=["floating","embedded"];
@@ -1056,6 +1241,9 @@ function load(){
   const validTones=["beep","alarm","chime"];
   if(!validTones.includes(S.settings.weatherTone)) S.settings.weatherTone="beep";
   if(typeof S.settings.playtimeEnabled!=="boolean") S.settings.playtimeEnabled=true;
+  if(typeof S.settings.forecastEnabled!=="boolean") S.settings.forecastEnabled=true;
+  S.settings.forecastTarget=Math.max(1,Number(S.settings.forecastTarget)||30000000000);
+  delete S.settings.forecastDeadline;
   loadWeatherCache();
   if(!GM_getValue("v7_layout_default_done",false)){
     S.settings.panelMode="embedded";
@@ -1150,6 +1338,41 @@ function wmTeam(g,side){
 function wmTeamHtml(g,side){
   return escHtml(wmTeam(g,side));
 }
+function wmEventList(raw){
+  if(raw===null || raw===undefined)return [];
+  if(Array.isArray(raw))return raw.flatMap(wmEventList).filter(Boolean);
+  if(typeof raw==="object")return Object.values(raw).flatMap(wmEventList).filter(Boolean);
+  const text=String(raw).trim();
+  if(!text || text.toLowerCase()==="null" || text==="{}" || text==="[]")return [];
+  return text
+    .replace(/^[\[{]|[\]}]$/g,"")
+    .replace(/[“”"]/g,"")
+    .split(/\s*,\s*/)
+    .map(x=>x.trim())
+    .filter(Boolean);
+}
+function wmSideEvents(g,side,type){
+  const names=type==="yellow"
+    ? [`${side}_yellow_cards`,`${side}_yellow_card`,`${side}_bookings`]
+    : [`${side}_red_cards`,`${side}_red_card`,`${side}_dismissals`];
+  for(const key of names){
+    const list=wmEventList(g?.[key]);
+    if(list.length)return list;
+  }
+  return [];
+}
+function wmMatchEventsHtml(g){
+  if(!wmStarted(g))return "";
+  const lines=[];
+  const add=(icon,team,items)=>{if(items.length)lines.push(`<div class="wm-event-line"><span class="wm-event-icon">${icon}</span><span class="wm-event-team">${escHtml(team)}</span><span class="wm-event-names">${items.map(escHtml).join(" · ")}</span></div>`);};
+  add("⚽",wmTeam(g,"home"),wmEventList(g.home_scorers));
+  add("⚽",wmTeam(g,"away"),wmEventList(g.away_scorers));
+  add("🟨",wmTeam(g,"home"),wmSideEvents(g,"home","yellow"));
+  add("🟨",wmTeam(g,"away"),wmSideEvents(g,"away","yellow"));
+  add("🟥",wmTeam(g,"home"),wmSideEvents(g,"home","red"));
+  add("🟥",wmTeam(g,"away"),wmSideEvents(g,"away","red"));
+  return lines.length?`<div class="wm-match-events">${lines.join("")}</div>`:"";
+}
 function wmStarted(g){
   return String(g?.finished).toUpperCase()==="TRUE" || String(g?.time_elapsed||"notstarted").toLowerCase()!=="notstarted";
 }
@@ -1170,6 +1393,154 @@ function wmTv(g){
   const type=String(g?.type||"").toLowerCase();
   const free=Number(g?.id)===1 || type==="sf" || type==="final" || teams.includes("germany");
   return free?"MagentaTV + ARD/ZDF":"MagentaTV";
+}
+function fmtCountdownMs(endTs){
+  const end=Number(endTs)||0;
+  if(!end)return "-";
+  const diff=Math.max(0,end-Date.now());
+  const d=Math.floor(diff/86400000);
+  const h=Math.floor((diff%86400000)/3600000);
+  const m=Math.floor((diff%3600000)/60000);
+  const s=Math.floor((diff%60000)/1000);
+  const time=`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  return d>0?`${d}T ${time}`:time;
+}
+function gameEventIcon(type,title){
+  const t=`${type} ${title}`.toLowerCase();
+  if(t.includes("coin"))return "C";
+  if(t.includes("credit"))return "¢";
+  if(t.includes("einsatz"))return "!";
+  return "EV";
+}
+function profEventGemHtml(){
+  return `<span class="prof-event-gem" aria-label="Info zu Credit-Events">&#9670;<span class="prof-event-tip"><b>Doppelte Credits f&uuml;r regul&auml;re Eins&auml;tze</b>Erledige Eins&auml;tze und verdiene 2x Credits f&uuml;r regul&auml;re Eins&auml;tze. (Eins&auml;tze, die zu Verbands-Events geh&ouml;ren und Verbands-Gro&szlig;eins&auml;tze sind ausgeschlossen)</span></span>`;
+}
+function profEventSirenHtml(){
+  return `<span class="prof-event-gem siren" aria-label="Info zu Einsatz-Events">&#128680;<span class="prof-event-tip"><b>Einsatz-Event</b>Spare 50% beim sofortigen Beenden von Eins&auml;tzen!</span></span>`;
+}
+function profEventSaleHtml(){
+  return `<span class="prof-event-gem sale" aria-label="Info zum Coin-Sale">%<span class="prof-event-tip"><b>Coin-Sale aktiv</b>Die Echtgeldw&auml;hrung Coins ist aktuell reduziert. Die genaue verbleibende Zeit wird direkt aus der Spielnavigation &uuml;bernommen.</span></span>`;
+}
+function isCreditGameEvent(ev){
+  return `${ev?.type||""} ${ev?.title||""}`.toLowerCase().includes("credit");
+}
+function isSaleGameEvent(ev){
+  return `${ev?.type||""} ${ev?.title||""} ${ev?.desc||""}`.toLowerCase().includes("sale");
+}
+function isCoinGameEvent(ev){
+  const t=`${ev?.type||""} ${ev?.title||""} ${ev?.desc||""}`.toLowerCase();
+  return t.includes("coin") || t.includes("einsatz-event") || t.includes("sofortigen beenden");
+}
+function profEventActionHtml(ev){
+  if(isSaleGameEvent(ev))return profEventSaleHtml();
+  if(isCreditGameEvent(ev))return profEventGemHtml();
+  if(isCoinGameEvent(ev))return profEventSirenHtml();
+  return "";
+}
+function profileGameEventRowHtml(ev){
+  const action=profEventActionHtml(ev);
+  const sale=isSaleGameEvent(ev),tag=sale?"a":"div";
+  const link=sale?` href="${BASE}/coins" target="_blank" rel="noopener" title="Coin-Shop öffnen"`:"";
+  return `<${tag} class="prof-event-row active${sale?" prof-event-row-link":""}"${link} data-event-key="${escHtml(ev.key||ev.title||"event")}">
+    <span class="prof-event-dot"></span>
+    <span class="prof-event-main">
+      <span class="prof-event-titleline">
+        <span class="prof-event-label">${escHtml(ev.title||"Leitstellenspiel Event")}</span>
+        ${action}
+      </span>
+      <span class="prof-event-type">${escHtml(ev.type||"Live-Event")}</span>
+    </span>
+    <span class="prof-event-time" data-event-time="${escHtml(ev.key||ev.title||"event")}">${escHtml(fmtCountdownMs(ev.end))}</span>
+  </${tag}>`;
+}
+function profileGameEventIdleHtml(){
+  return `<div class="prof-event-row">
+    <span class="prof-event-dot"></span>
+    <span class="prof-event-main">
+      <span class="prof-event-titleline">
+        <span class="prof-event-label">Derzeit kein Leitstellenspiel-Event aktiv</span>
+      </span>
+      <span class="prof-event-type">Live-Status</span>
+    </span>
+    <span class="prof-event-time">-</span>
+  </div>`;
+}
+function updateProfileGameEventTimes(prof,events){
+  const map=new Map(events.map(ev=>[String(ev.key||ev.title||"event"),fmtCountdownMs(ev.end)]));
+  prof.find(".prof-event-row.active").each(function(){
+    const key=String($(this).attr("data-event-key")||"");
+    const val=map.get(key);
+    if(val)$(this).find(".prof-event-time").text(val);
+  });
+}
+function parseSaleCountdownMs(text){
+  const raw=String(text||"");
+  const dayMatch=raw.match(/(\d+)\s*Tag/i);
+  const timeMatch=raw.match(/(\d{1,2}):(\d{2}):(\d{2})/);
+  const days=dayMatch?parseInt(dayMatch[1],10)||0:0;
+  if(!timeMatch && !days)return 0;
+  const hours=timeMatch?parseInt(timeMatch[1],10)||0:0;
+  const minutes=timeMatch?parseInt(timeMatch[2],10)||0:0;
+  const seconds=timeMatch?parseInt(timeMatch[3],10)||0:0;
+  return (((days*24+hours)*60+minutes)*60+seconds)*1000;
+}
+function readGameEventsFromDom(){
+  const nodes=Array.from(document.querySelectorAll("li#event-info-block.timer-event, li.timer-event.credit-modifier-event, li.timer-event.coin-reduction-event"));
+  const seen=new Set();
+  const events=nodes.map((el,idx)=>{
+    const $el=$(el);
+    const timer=$el.find(".timer[data-end-time]").first();
+    const end=Number(timer.attr("data-end-time")||0);
+    if(end && end<=Date.now())return null;
+    const title=(
+      $el.find(".credits-title").first().text().trim() ||
+      $el.clone().children(".timer,a,img").remove().end().text().replace(/\s+/g," ").trim() ||
+      "Leitstellenspiel Event"
+    );
+    const desc=String($el.attr("data-original-title")||$el.attr("title")||"").trim();
+    const type=$el.hasClass("coin-reduction-event") ? "Coin-Rabatt" :
+      $el.hasClass("credit-modifier-event") ? "Credit-Boost" : "Live-Event";
+    const key=`${type}|${title}|${end||idx}`;
+    if(seen.has(key))return null;
+    seen.add(key);
+    return {key,type,title,desc,end,icon:gameEventIcon(type,title)};
+  }).filter(Boolean);
+  const sale=document.querySelector("#sale_countdown");
+  const saleText=String(sale?.textContent||"").replace(/\s+/g," ").trim();
+  if(sale && /sale/i.test(saleText)){
+    const remaining=parseSaleCountdownMs(saleText);
+    events.push({
+      key:"coin-sale",
+      type:"Coin-Sale",
+      title:"Coin-Sale aktiv",
+      desc:"Die Echtgeldwährung Coins ist aktuell reduziert.",
+      end:remaining?Date.now()+remaining:0,
+      icon:"%"
+    });
+  }
+  return events;
+}
+function scanGameEvents(){
+  S.gameEvents=readGameEventsFromDom();
+  renderGameEvents();
+}
+function gameEventRowHtml(ev,mini=false){
+  const desc=mini?"":`<div class="game-event-desc">${escHtml(ev.desc||"Laufendes Spiel-Event")}</div>`;
+  const sale=isSaleGameEvent(ev),tag=sale?"a":"div";
+  const link=sale?` href="${BASE}/coins" target="_blank" rel="noopener" title="Coin-Shop öffnen"`:"";
+  return `<${tag} class="game-event-row${sale?" game-event-row-link":""}"${link}>
+    <span class="game-event-ico">${escHtml(ev.icon)}</span>
+    <span class="game-event-main">
+      <span class="game-event-title">${escHtml(ev.title)}</span>
+      ${desc}
+    </span>
+    <span class="game-event-time">${escHtml(fmtCountdownMs(ev.end))}</span>
+  </${tag}>`;
+}
+function activeGameEvents(){
+  const active=(S.gameEvents||[]).filter(ev=>!ev.end || Number(ev.end)>Date.now());
+  if(active.length!==S.gameEvents.length)S.gameEvents=active;
+  return active;
 }
 function fmtShortTime(ts){
   return new Date(ts).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
@@ -1572,6 +1943,7 @@ function wmRowHtml(g,mini=false){
   const status=escHtml(wmStatusText(g));
   const cls=wmLive(g)?" live":"";
   const scoreCls=wmStarted(g)?"":" pending";
+  const matchEvents=wmMatchEventsHtml(g);
   if(mini){
     return `<div class="wm-mini-row${cls}"><span class="wm-mini-t">${when}</span><span class="wm-mini-n">${home} - ${away}</span><span class="wm-mini-s${scoreCls}">${score}</span></div>`;
   }
@@ -1597,6 +1969,7 @@ function wmRowHtml(g,mini=false){
     <div class="wm-main">
       <div class="wm-teams">${home} - ${away}</div>
       <div class="wm-meta">${stadium}<br>TV: ${tv}<br><span class="wm-status">${status}</span></div>
+      ${matchEvents}
     </div>
     <div class="wm-result-tip">
       <div class="wm-result-box">
@@ -1609,10 +1982,42 @@ function wmRowHtml(g,mini=false){
 }
 function renderWmHeader(){
   const active=isWmActive();
-  const txt=active?"EVENT LIVE":"EVENT 11.06";
+  const liveEvents=activeGameEvents();
+  const txt=liveEvents.length
+    ? `${liveEvents.length} LSS-EVENT${liveEvents.length>1?"S":""} LIVE`
+    : active?"EVENT LIVE":"EVENT 11.06";
   $("#lss7-event-live").text(txt).toggle(true);
   $("#lss7-nav-event").text(txt);
-  $("#wm-event-pill").text(txt);
+  $("#wm-event-pill").text(active?"EVENT LIVE":"EVENT 11.06");
+}
+function renderGameEvents(){
+  const liveEvents=activeGameEvents();
+  const has=liveEvents.length>0;
+  const full=has?liveEvents.map(ev=>gameEventRowHtml(ev,false)).join(""):"";
+  const mini=has?`<div class="game-events-mini">${liveEvents.map(ev=>gameEventRowHtml(ev,true)).join("")}</div>`:"";
+  const prof=$("#lss-profile-events");
+  if(prof.length){
+    if(has){
+      const keys=liveEvents.map(ev=>String(ev.key||ev.title||"event")).join("|");
+      prof.removeClass("idle").addClass("active").removeAttr("title");
+      if(prof.attr("data-event-keys")!==keys){
+        prof.attr("data-event-keys",keys);
+        prof.html(liveEvents.map(profileGameEventRowHtml).join(""));
+      }else{
+        updateProfileGameEventTimes(prof,liveEvents);
+      }
+    }else{
+      prof.removeClass("active").addClass("idle").removeAttr("title");
+      if(prof.attr("data-event-keys")!=="__idle"){
+        prof.attr("data-event-keys","__idle");
+        prof.html(profileGameEventIdleHtml());
+      }
+    }
+  }
+  $("#lss-game-events-card").toggle(has);
+  $("#lss-game-events-list").html(full);
+  $("#lss-live-events-overview").toggle(has).html(mini);
+  renderWmHeader();
 }
 function renderWmOverview(){
   const box=$("#event-board");
@@ -1620,6 +2025,7 @@ function renderWmOverview(){
   const show=(S.settings.eventMode||"overview")==="overview";
   box.toggle(show);
   if(!show)return;
+  renderGameEvents();
   const list=wmFocusGames(3);
   if(S.wm.error){$("#wm-overview-view").html(`<div class="lss7-empty">${escHtml(S.wm.error)}</div>`);return;}
   if(!list.length){$("#wm-overview-view").html(`<div class="lss7-empty">Spielplan wird geladen...</div>`);return;}
@@ -1632,7 +2038,9 @@ function renderWmEvent(){
   if(S.wm.error){$("#wm-schedule-list").html(`<div class="lss7-empty">${escHtml(S.wm.error)}</div>`);renderWmOverview();return;}
   if(!list.length){$("#wm-schedule-list").html(`<div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div>`);renderWmOverview();return;}
   $("#wm-schedule-list").html(list.map(g=>wmRowHtml(g)).join(""));
-  $("#wm-source").text(S.wm.lastTs?`Quelle: worldcup26.ir · aktualisiert ${timeAgo(S.wm.lastTs)}`:"Quelle: worldcup26.ir");
+  const hasCards=(S.wm.games||[]).some(g=>Object.keys(g||{}).some(k=>/card|booking|dismissal/i.test(k)));
+  const cardInfo=hasCards?"Kartendaten verfügbar":"Kartendaten derzeit nicht verfügbar";
+  $("#wm-source").text(S.wm.lastTs?`Quelle: worldcup26.ir · Torschützen verfügbar · ${cardInfo} · aktualisiert ${timeAgo(S.wm.lastTs)}`:`Quelle: worldcup26.ir · ${cardInfo}`);
   renderWmOverview();
 }
 
@@ -1671,6 +2079,7 @@ function setPlaytimeDay(date,seconds){
   S.playtimeDaily=arr.sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
 }
 function resetTodayPlaytime(){
+  rollPlaytimeDay(Date.now());
   S.playtime=0;
   S.lastTs=Date.now();
   setPlaytimeDay(todayStr(),0);
@@ -1706,25 +2115,42 @@ function updatePlaytimeUi(){
   $("#lss7-playtime").text(fmtHHMM(S.playtime));
   renderPlaytimeStats();
 }
+function rollPlaytimeDay(now=Date.now()){
+  const today=localDateKey(new Date(now));
+  if(today===S.lastDate)return false;
+  if(S.lastDate)recordPlaytimeDay(S.lastDate,S.playtime);
+  S.playtime=0;
+  S.dailyEarn=0;
+  S.lastDate=today;
+  S.lastTs=now;
+  setPlaytimeDay(today,0);
+  return true;
+}
 function tickTimer(){
-  const now=Date.now(), el=Math.floor((now-S.lastTs)/1000);
+  const now=Date.now();
+  const changedDay=rollPlaytimeDay(now);
+  const el=changedDay?0:Math.floor((now-S.lastTs)/1000);
+  S.lastTs=now;
   if(el>0){
-    S.lastTs=now;
-    if(S.settings.playtimeEnabled!==false){
-      S.playtime+=el;
+    const active=document.visibilityState==="visible" && S.settings.playtimeEnabled!==false;
+    if(active){
+      S.playtime+=Math.min(el,5);
       recordPlaytimeDay(todayStr(),S.playtime);
     }
-    updatePlaytimeUi();save();
   }
+  if(changedDay){
+    setV("#sv-daily",fmtMoney(0));
+    setV("#qs-daily",fmtMoney(0));
+  }
+  updatePlaytimeUi();save();
 }
 function tickClock(){$("#lss7-clock").text(fmtClock());}
-function tickEventCountdown(){$("#wm-countdown").text(fmtWmCountdown());renderWmHeader();}
+function tickEventCountdown(){
+  $("#wm-countdown").text(fmtWmCountdown());
+  renderGameEvents();
+}
 function checkMidnight(){
-  const today=todayStr();
-  if(today!==S.lastDate){
-    recordPlaytimeDay(S.lastDate,S.playtime);
-    S.playtime=0;S.dailyEarn=0;S.lastDate=today;
-    recordPlaytimeDay(today,0);
+  if(rollPlaytimeDay(Date.now())){
     save();
     updatePlaytimeUi();
     setV("#sv-daily",fmtMoney(0));
@@ -1741,49 +2167,96 @@ function normalizeAllianceDaily(){
     if(!x||!x.date)return;
     const date=String(x.date);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
-    const start=Number(x.start);
-    const end=Number(x.end);
-    if(!Number.isFinite(start)||!Number.isFinite(end))return;
+    const start=Number.isFinite(Number(x.start))?Number(x.start):0;
+    const end=Number.isFinite(Number(x.end))?Number(x.end):0;
     const earned=Number.isFinite(Number(x.earned))?Math.max(0,Number(x.earned)):Math.max(0,end-start);
     const old=map.get(date);
     if(old){
-      old.start=Math.min(old.start,start);
+      if(start>0)old.start=old.start>0?Math.min(old.start,start):start;
       old.end=Math.max(old.end,end);
       old.earned=Math.max(old.earned||0,earned);
+      old.estimated=!!(old.estimated||x.estimated);
     }else{
-      map.set(date,{date,start,end,earned});
+      map.set(date,{date,start,end,earned,estimated:!!x.estimated});
     }
   });
   S.allianceDaily=Array.from(map.values()).sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
   return S.allianceDaily;
 }
 
-function trackAllianceDailyCredits(total){
-  const val=Number(total)||0;
-  if(!val)return;
-  const key=localDateKey();
-  const last=Number(S.lastAlliCreds)||0;
+function allianceDateSegments(fromTs,toTs){
+  const start=Math.max(0,Number(fromTs)||0),end=Math.max(start,Number(toTs)||Date.now());
+  if(!start || end<=start)return [{date:localDateKey(),ms:1}];
+  const parts=[];
+  let cursor=start,guard=0;
+  while(cursor<end && guard<16){
+    const d=new Date(cursor);
+    const next=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1).getTime();
+    const stop=Math.min(end,next);
+    parts.push({date:localDateKey(d),ms:Math.max(1,stop-cursor)});
+    cursor=stop;guard++;
+  }
+  if(cursor<end)parts.push({date:localDateKey(),ms:Math.max(1,end-cursor)});
+  return parts;
+}
+function addAllianceEarn(date,amount,estimated=false,endCredits=0){
+  const value=Math.max(0,Math.round(Number(amount)||0));
   const arr=normalizeAllianceDaily();
-  let cur=arr.find(x=>x.date===key);
-  if(!cur){
-    const start=(last>0 && last<=val)?last:val;
-    cur={date:key,start,end:val,earned:Math.max(0,val-start)};
-    arr.push(cur);
-  }else{
-    const delta=(last>0 && val>=last)?val-last:0;
-    cur.earned=Math.max(0,Number(cur.earned)||Math.max(0,(Number(cur.end)||0)-(Number(cur.start)||0)))+delta;
-    cur.end=val;
-    if(!Number.isFinite(cur.start)||cur.start<=0)cur.start=val;
-    cur.earned=Math.max(cur.earned,Math.max(0,cur.end-cur.start));
+  let row=arr.find(x=>x.date===date);
+  if(!row){row={date,start:0,end:0,earned:0,estimated:false};arr.push(row);}
+  row.earned=Math.max(0,Number(row.earned)||0)+value;
+  row.estimated=!!(row.estimated||estimated);
+  if(endCredits>0){
+    row.end=Math.max(Number(row.end)||0,endCredits);
+    if(!(Number(row.start)>0))row.start=Math.max(0,endCredits-row.earned);
   }
   S.allianceDaily=arr.sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
 }
+function trackAllianceDailyCredits(total){
+  const val=Number(total)||0;
+  if(val<=0)return;
+  const now=Date.now();
+  const prev=S.allianceSnapshot;
+  if(!prev || !(Number(prev.credits)>0) || !(Number(prev.ts)>0)){
+    addAllianceEarn(localDateKey(),0,false,val);
+    S.allianceSnapshot={credits:val,ts:now,date:localDateKey()};
+    S.lastAlliCreds=val;
+    return;
+  }
+  const before=Number(prev.credits)||0;
+  const delta=val-before;
+  if(delta>0){
+    const segments=allianceDateSegments(prev.ts,now);
+    const totalMs=segments.reduce((s,x)=>s+x.ms,0)||1;
+    const estimated=segments.length>1 || now-Number(prev.ts)>900000;
+    let assigned=0;
+    segments.forEach((seg,i)=>{
+      const share=i===segments.length-1?delta-assigned:Math.round(delta*(seg.ms/totalMs));
+      assigned+=share;
+      addAllianceEarn(seg.date,share,estimated,seg.date===localDateKey()?val:0);
+    });
+  }else{
+    addAllianceEarn(localDateKey(),0,false,val);
+  }
+  S.allianceSnapshot={credits:val,ts:now,date:localDateKey()};
+  S.lastAlliCreds=val;
+}
+function resetAllianceDailyCredits(){
+  const current=Math.max(0,Number(S.allianceCredits)||Number(S.allianceSnapshot?.credits)||Number(S.lastAlliCreds)||0);
+  S.allianceDaily=[];
+  S.allianceSnapshot=current?{credits:current,ts:Date.now(),date:localDateKey()}:null;
+  S.lastAlliCreds=current;
+  save();
+  renderAllianceDailyBoard();
+  renderForecast();
+}
 
-function allianceDailyRows(){
-  return normalizeAllianceDaily().slice(-7).map(x=>({
+function allianceDailyRows(limit=7){
+  return normalizeAllianceDaily().slice(-Math.max(1,Number(limit)||7)).map(x=>({
     date:x.date,
     label:dayLabel(x.date),
     earn:Math.max(0,Number(x.earned)||((Number(x.end)||0)-(Number(x.start)||0))),
+    estimated:!!x.estimated,
   }));
 }
 
@@ -1807,11 +2280,123 @@ function renderAllianceDailyBoard(){
       ? `width:${pct}%;display:block;height:100%;background:linear-gradient(90deg,#15803d,#22c55e,#86efac);`
       : `width:100%;display:block;height:100%;background:linear-gradient(90deg,rgba(96,165,250,.18),rgba(34,197,94,.10));`;
     return `<div class="alli-earn-row${today?" today":""}${r.earn>0?"":" zero"}">
-      <span class="alli-earn-day">${escHtml(r.label)}</span>
+      <span class="alli-earn-day" title="${r.estimated?"Geschätzter Offline-Anteil":"Gemessener Tageswert"}">${r.estimated?"~ ":""}${escHtml(r.label)}</span>
       <span class="alli-earn-bar"><span class="alli-earn-fill" style="${fill}"></span></span>
       <span class="alli-earn-val">${fmtMoney(r.earn)}</span>
     </div>`;
   }).join(""));
+}
+
+function robustDailyAverage(values){
+  const vals=values.map(Number).filter(x=>Number.isFinite(x)&&x>0).sort((a,b)=>a-b);
+  if(!vals.length)return 0;
+  const trimmed=vals.length>=5?vals.slice(1,-1):vals;
+  const avg=trimmed.reduce((s,x)=>s+x,0)/trimmed.length;
+  const mid=Math.floor(vals.length/2);
+  const median=vals.length%2?vals[mid]:(vals[mid-1]+vals[mid])/2;
+  return Math.round((avg+median)/2);
+}
+function allianceForecastModel(){
+  const current=Math.max(0,Number(S.allianceCredits)||Number(S.allianceSnapshot?.credits)||0);
+  const target=Math.max(1,Number(S.settings.forecastTarget)||30000000000);
+  const remaining=Math.max(0,target-current);
+  const rows=allianceDailyRows(8);
+  const today=localDateKey();
+  const completed=rows.filter(r=>r.date!==today&&r.earn>0).slice(-7);
+  let samples=completed.map(r=>r.earn);
+  let usedToday=false;
+  if(!samples.length){
+    const cur=rows.find(r=>r.date===today);
+    const elapsed=(Date.now()-new Date(new Date().setHours(0,0,0,0)).getTime())/86400000;
+    if(cur?.earn>0 && elapsed>=0.08){samples=[Math.round(cur.earn/Math.min(1,elapsed))];usedToday=true;}
+  }
+  const avg=robustDailyAverage(samples);
+  const days=remaining===0?0:(avg>0?Math.ceil(remaining/avg):null);
+  const predicted=days===null?null:new Date(Date.now()+days*86400000);
+  let status="Noch zu wenig Daten",statusClass="warn";
+  if(remaining===0){status="Meilenstein erreicht";statusClass="good";}
+  else if(avg>0){status="Prognose aktiv";statusClass="good";}
+  const progress=Math.max(0,Math.min(100,(current/target)*100));
+  const estimatedCount=completed.filter(r=>r.estimated).length;
+  const quality=samples.length>=7?"Beste lokale Datenbasis":samples.length>=3?"Prognose wird sicherer":"Frühe Schätzung";
+  return {current,target,remaining,rows,samples,avg,days,predicted,status,statusClass,progress,estimatedCount,quality,usedToday};
+}
+function formatForecastDate(d){
+  return d?d.toLocaleDateString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"}):"-";
+}
+function forecastOverviewHtml(m){
+  const eta=m.days===null?"Noch offen":m.days===0?"Erreicht":`${fmt(m.days)} Tage`;
+  const predicted=m.predicted?formatForecastDate(m.predicted):"Sobald genügend Daten vorliegen";
+  return `<div class="forecast-mini">
+    <div class="forecast-beta"><b>BETA</b><span>Ab 3 bis 7 vollständigen Tagen wird die Prognose deutlich sicherer. Leichte Abweichungen bleiben dennoch möglich.</span></div>
+    <div class="forecast-mini-card">
+      <div class="forecast-mini-hero">
+        <span class="forecast-mini-label">Voraussichtlich erreicht in</span>
+        <strong class="forecast-mini-time">${escHtml(eta)}</strong>
+        <span class="forecast-mini-date">${escHtml(predicted)}</span>
+      </div>
+      <div class="forecast-mini-data">
+        <div class="forecast-mini-stat"><span>Aktueller Stand</span><b>${fmtMoney(m.current)}</b></div>
+        <div class="forecast-mini-stat"><span>Meilenstein</span><b>${fmtMoney(m.target)}</b></div>
+        <div class="forecast-mini-stat"><span>Ø Tagesverdienst</span><b class="green">${m.avg?fmtMoney(m.avg):"Wird ermittelt"}</b></div>
+        <div class="forecast-mini-stat"><span>Noch benötigt</span><b class="amber">${fmtMoney(m.remaining)}</b></div>
+      </div>
+    </div>
+    <div class="forecast-mini-progress"><span style="width:${m.progress.toFixed(2)}%"></span></div>
+    <div class="forecast-mini-foot"><span>${m.progress.toFixed(2).replace(".",",")}% des Ziels erreicht</span><span>${escHtml(m.quality)}</span></div>
+  </div>`;
+}
+function forecastFullHtml(m){
+  const eta=m.days===null?"Nicht berechenbar":m.days===0?"Bereits erreicht":`${fmt(m.days)} Tage`;
+  const predicted=m.predicted?formatForecastDate(m.predicted):"Noch offen";
+  const note=`${m.quality}${m.estimatedCount?` · ${m.estimatedCount} geschätzte Offline-Tage`:""}${m.usedToday?" · heutiges Tempo hochgerechnet":""}`;
+  return `<div class="forecast-wrap">
+    <div class="forecast-beta"><b>BETA-TEST</b><span>Die Hochrechnung basiert ausschließlich auf lokal gespeicherten Verbandsständen. Ab 3 bis 7 vollständigen Tagen wird sie deutlich belastbarer; leichte Abweichungen durch Offline-Zeiten, Events und wechselnde Aktivität bleiben möglich.</span></div>
+    <div class="forecast-head"><div><div class="forecast-title">Verbandsprognose</div><div class="forecast-sub">Der Meilenstein lässt sich oben oder in den Einstellungen ändern. Resttage und Erreichungsdatum werden automatisch berechnet.<br>${escHtml(note)}</div></div><span class="forecast-status ${m.statusClass}">${escHtml(m.status)}</span></div>
+    <div class="forecast-kpis">
+      <div class="forecast-kpi"><span class="forecast-k">Aktueller Stand</span><span class="forecast-v blue">${fmtMoney(m.current)}</span></div>
+      <div class="forecast-kpi"><span class="forecast-k">Meilenstein</span><span class="forecast-v">${fmtMoney(m.target)}</span></div>
+      <div class="forecast-kpi"><span class="forecast-k">Noch benötigt</span><span class="forecast-v amber">${fmtMoney(m.remaining)}</span></div>
+      <div class="forecast-kpi"><span class="forecast-k">Ø pro Tag</span><span class="forecast-v green">${m.avg?fmtMoney(m.avg):"-"}</span></div>
+      <div class="forecast-kpi"><span class="forecast-k">Prognose</span><span class="forecast-v green">${escHtml(eta)}</span></div>
+      <div class="forecast-kpi"><span class="forecast-k">Voraussichtliches Datum</span><span class="forecast-v">${escHtml(predicted)}</span></div>
+    </div>
+    <div><div class="forecast-progress"><div class="forecast-progress-fill" style="width:${m.progress.toFixed(2)}%"></div></div><div class="forecast-progress-meta"><span>${m.progress.toFixed(2).replace(".",",")}% erreicht</span><span>${fmtMoney(m.remaining)} verbleibend</span></div></div>
+    <div class="forecast-chart-box"><div class="forecast-chart-head"><span>Credit-Verlauf und Hochrechnung</span><span>Ist / Prognose / Ziel</span></div><canvas id="forecast-chart-full" class="forecast-canvas"></canvas></div>
+  </div>`;
+}
+function drawForecastChart(id,m){
+  const canvas=document.getElementById(id);if(!canvas)return;
+  const W=canvas.offsetWidth||700,H=canvas.offsetHeight||150,dpr=Math.min(2,window.devicePixelRatio||1);
+  canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
+  const ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  const p={l:12,r:12,t:12,b:22},cw=W-p.l-p.r,ch=H-p.t-p.b;
+  const rows=m.rows.filter(r=>r.earn>0);
+  const totalEarn=rows.reduce((s,r)=>s+r.earn,0);
+  let cumulative=Math.max(0,m.current-totalEarn);
+  const actual=[cumulative];rows.forEach(r=>{cumulative+=r.earn;actual.push(cumulative);});
+  const min=Math.min(...actual,m.current),max=Math.max(m.target,m.current,min+1),range=max-min||1;
+  const xActual=i=>p.l+(cw*.68)*(actual.length<=1?1:i/(actual.length-1));
+  const y=v=>p.t+ch-((v-min)/range)*ch;
+  ctx.strokeStyle="rgba(255,255,255,.07)";ctx.lineWidth=1;
+  for(let i=0;i<4;i++){const gy=p.t+(ch/3)*i;ctx.beginPath();ctx.moveTo(p.l,gy);ctx.lineTo(W-p.r,gy);ctx.stroke();}
+  ctx.strokeStyle="#60a5fa";ctx.lineWidth=2;ctx.beginPath();actual.forEach((v,i)=>{const x=xActual(i),yy=y(v);i?ctx.lineTo(x,yy):ctx.moveTo(x,yy);});ctx.stroke();
+  ctx.fillStyle="#60a5fa";actual.forEach((v,i)=>{ctx.beginPath();ctx.arc(xActual(i),y(v),2.5,0,Math.PI*2);ctx.fill();});
+  if(m.avg>0 && m.remaining>0){ctx.save();ctx.setLineDash([6,5]);ctx.strokeStyle="#fbbf24";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(xActual(actual.length-1),y(m.current));ctx.lineTo(W-p.r,y(m.target));ctx.stroke();ctx.restore();}
+  ctx.strokeStyle="rgba(134,239,172,.75)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(p.l,y(m.target));ctx.lineTo(W-p.r,y(m.target));ctx.stroke();
+  ctx.font="9px Inter,sans-serif";ctx.fillStyle="rgba(216,225,236,.65)";ctx.textAlign="left";ctx.fillText("Ist",p.l,H-6);ctx.fillStyle="#fbbf24";ctx.textAlign="center";ctx.fillText("Prognose",W*.78,H-6);ctx.fillStyle="#86efac";ctx.textAlign="right";ctx.fillText("Ziel",W-p.r,H-6);
+}
+function renderForecast(){
+  const m=allianceForecastModel();
+  $("#forecast-board").toggle(S.settings.forecastEnabled!==false);
+  $("#forecast-overview-view").html(forecastOverviewHtml(m));
+  $("#forecast-full-view").html(forecastFullHtml(m));
+  $("#sb-forecast-target,#forecast-target-main").val(S.settings.forecastTarget);
+  setTimeout(()=>drawForecastChart("forecast-chart-full",m),40);
+}
+function applyForecastSettings(target){
+  S.settings.forecastTarget=Math.max(1,Math.round(Number(target)||30000000000));
+  save();renderForecast();
 }
 
 function pushHist(val){
@@ -2256,6 +2841,7 @@ function renderOverview(d){
   setV("#sv-rank",    d.rank||"-");
   setV("#sv-daily",   fmtMoney(S.dailyEarn));
   renderAllianceDailyBoard();
+  renderForecast();
 
   const mc=d.user_count||0,maxM=100;
   const pct=Math.min(100,Math.round(mc/maxM*100));
@@ -2530,6 +3116,7 @@ function buildUI(){
           <button id="lss7-x" title="Schliessen">×</button>
         </div>
       </div>
+      <div id="lss7-update-note" class="lss7-update-note"><span id="lss7-update-note-text"></span><button id="lss7-update-patches" type="button">Patch-Notes ansehen</button></div>
     </div>`);
 
   panel.append(`
@@ -2549,6 +3136,9 @@ function buildUI(){
           <span id="prof-reward" class="prof-reward"></span>
         </div>
       </div>
+    </div>
+    <div id="lss-profile-events" class="prof-event-strip idle">
+      ${profileGameEventIdleHtml()}
     </div>`);
 
   // â”€â”€ Quick-Stats Strip (4 Zellen) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -2579,6 +3169,7 @@ function buildUI(){
   // â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const TABS=[
     {id:"tp-overview",  icon:"", label:"Uebersicht"},
+    {id:"tp-forecast",  icon:"", label:"Verbands Prognose [BETA]"},
     {id:"tp-vehicles",  icon:"", label:"Fahrzeuge"},
     {id:"tp-schoolings",icon:"", label:"Lehrgänge"},
     {id:"tp-aao",       icon:"", label:"AAO"},
@@ -2640,6 +3231,13 @@ function buildUI(){
           <div class="alli-earn-empty">Noch keine Tagesdaten.</div>
         </div>
       </div>
+      <div class="sc w2" id="forecast-board">
+        <div class="rank-mini-head">
+          <span class="rank-mini-title">Verbandsprognose</span>
+          <span class="rank-mini-note forecast-beta-badge">BETA</span>
+        </div>
+        <div id="forecast-overview-view"></div>
+      </div>
       <div class="sc w2" id="rank-board">
         <div class="rank-mini-head">
           <span class="rank-mini-title">Platzierungsumfeld</span>
@@ -2653,9 +3251,10 @@ function buildUI(){
       </div>
       <div class="sc w2" id="event-board" style="display:none">
         <div class="rank-mini-head">
-          <span class="rank-mini-title">WM 2026</span>
-          <span class="rank-mini-note">Naechste Spiele</span>
+          <span class="rank-mini-title">Events</span>
+          <span class="rank-mini-note">Live & naechste Spiele</span>
         </div>
+        <div id="lss-live-events-overview" style="display:none"></div>
         <div id="wm-overview-view"><div class="lss7-empty">Spielplan wird geladen...</div></div>
       </div>
     </div>
@@ -2667,6 +3266,13 @@ function buildUI(){
       <canvas id="lss7-chart"></canvas>
     </div>`);
   body.append(tOver);
+
+  const tForecast=$(`<div id="tp-forecast" class="lpanel"></div>`);
+  tForecast.append(`<div class="forecast-controls">
+    <label class="forecast-control"><span>Meilenstein in Credits</span><input id="forecast-target-main" class="lss7-select" type="number" min="1" step="1000000" value="${Math.round(Number(S.settings.forecastTarget)||30000000000)}"></label>
+    <button class="lbtn prime" id="forecast-apply" type="button">Prognose aktualisieren</button>
+  </div><div id="forecast-full-view"></div>`);
+  body.append(tForecast);
 
   // TAB: Fahrzeuge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tVeh=$(`<div id="tp-vehicles" class="lpanel"></div>`);
@@ -2709,7 +3315,14 @@ function buildUI(){
   const tTeam=$(`<div id="tp-team" class="lpanel"><div id="lss7-team"><div class="lss7-empty"><span class="lspin"></span> Lade Team...</div></div></div>`);
   body.append(tTeam);
   const tEvt=$(`<div id="tp-event" class="lpanel"></div>`);
-  tEvt.append(`<div class="event-card">
+  tEvt.append(`<div class="game-events-card" id="lss-game-events-card" style="display:none">
+    <div class="game-events-head">
+      <span class="game-events-title">Leitstellenspiel Live-Events</span>
+      <span class="game-events-live">Live</span>
+    </div>
+    <div class="game-events-list" id="lss-game-events-list"></div>
+  </div>
+  <div class="event-card">
     <div class="event-top">
       <div>
         <div class="event-title">WM 2026</div>
@@ -2722,25 +3335,32 @@ function buildUI(){
       <div class="event-kpi"><span class="event-k">Start</span><span class="event-v">11. Juni 2026</span></div>
       <div class="event-kpi"><span class="event-k">Tipps</span><span class="event-v">Deine Tipps werden lokal gespeichert und bleiben direkt am Spiel sichtbar.</span></div>
       <div class="event-kpi"><span class="event-k">TV</span><span class="event-v">MagentaTV, ARD/ZDF je nach Spiel und Runde.</span></div>
-      <div class="event-kpi"><span class="event-k">Daten</span><span class="event-v">Automatisch aktualisierte Spiele mit Ergebnis, Status und Spielort.</span></div>
+      <div class="event-kpi"><span class="event-k">Daten</span><span class="event-v">Ergebnis, Status, Spielort und Torschützen werden automatisch aktualisiert. Karten erscheinen, sobald die API sie bereitstellt.</span></div>
     </div>
     <div class="event-actions"><button class="lbtn prime" id="wm-refresh" type="button">Spielplan aktualisieren</button><a class="lbtn" href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/scores-fixtures" target="_blank" rel="noopener">FIFA-Spielplan</a></div>
     <div class="wm-list" id="wm-schedule-list"><div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div></div>
     <div class="event-note">Tipps werden aktuell lokal in deinem Browser gespeichert. Damit andere die Tipps sehen koennen, brauchen wir spaeter eine zentrale Datenbank oder ein kleines Backend.</div>
-    <div class="wm-source" id="wm-source">Quelle: worldcup26.ir</div>
+    <div class="wm-source" id="wm-source">Quelle: worldcup26.ir · Torschützen verfügbar · Kartendaten derzeit nicht verfügbar</div>
   </div>`);
   body.append(tEvt);
 
   // TAB: Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tSet=$(`<div id="tp-settings" class="lpanel"></div>`);
   const setWrap=$(`<div class="set-wrap"></div>`);
+  setWrap.append(`<div class="settings-intro"><b>Einstellungen</b><span>Anzeige, Prognose, Wetter und Events sind thematisch getrennt. Änderungen werden automatisch lokal in diesem Browser gespeichert.</span></div>`);
 
-  const grpAct=$(`<div class="set-group"><div class="set-head">Aktionen</div></div>`);
+  const grpAct=$(`<div class="set-group set-wide set-actions"><div class="set-head">Schnellaktionen</div></div>`);
   grpAct.append(mkBtn("Akt.","Alle Daten jetzt aktualisieren","id='sb-refresh' class='lbtn prime'"));
   grpAct.append(mkBtn("00:00","Heutige Spielzeit zurücksetzen","id='sb-playtime-reset' class='lbtn'"));
+  grpAct.append(mkBtn("7T","7-Tage-Verbandsverdienst zurücksetzen","id='sb-alliance-daily-reset' class='lbtn danger'"));
   setWrap.append(grpAct);
 
-  const grpOpt=$(`<div class="set-group"><div class="set-head">Optionen</div></div>`);
+  const grpUpdate=$(`<div class="set-group set-wide"><div class="set-head">Updates</div></div>`);
+  grpUpdate.append(`<div class="update-status" id="sb-update-status"><strong>Automatische Updates</strong><span>Tampermonkey übernimmt Updates über die hinterlegte Update-URL. Beim Start wird zusätzlich geprüft, ob die installierte Version aktuell ist.</span></div>`);
+  grpUpdate.append(`<div class="update-actions"><button class="lbtn prime" id="sb-update-check" type="button">Userscripte auf Updates prüfen</button><a class="lbtn" id="sb-update-install" href="${UPDATE_URL}" target="_blank" rel="noopener" style="display:none">Update manuell installieren</a></div>`);
+  setWrap.append(grpUpdate);
+
+  const grpOpt=$(`<div class="set-group set-wide"><div class="set-head">Darstellung & Bedienung</div></div>`);
   grpOpt.append(mkToggle("tog-notif","Browser-Benachrichtigungen","notifications"));
   grpOpt.append(mkToggle("tog-coins","Coins anzeigen","coins"));
   grpOpt.append(mkToggle("tog-playtime","Spielzeit anzeigen","playtimeEnabled"));
@@ -2773,7 +3393,16 @@ function buildUI(){
   </label>`);
   setWrap.append(grpOpt);
 
-  const grpWx=$(`<div class="set-group"><div class="set-head">Wetter</div></div>`);
+  const grpForecast=$(`<div class="set-group set-wide"><div class="set-head">Verbandsprognose [BETA]</div></div>`);
+  grpForecast.append(mkToggle("tog-forecast","Prognose in Übersicht anzeigen","forecastEnabled"));
+  grpForecast.append(`<label class="tog-row" style="justify-content:space-between;">
+    <span class="tog-lbl">Meilenstein in Credits</span>
+    <input id="sb-forecast-target" class="lss7-select" type="number" min="1" step="1000000" style="max-width:190px" value="${Math.round(Number(S.settings.forecastTarget)||30000000000)}">
+  </label>`);
+  grpForecast.append(`<div class="set-note"><b>BETA-TEST:</b> Nach Eingabe des Meilensteins werden Resttage und voraussichtliches Erreichungsdatum automatisch berechnet. Ab 3 bis 7 vollständigen Tagen wird die Prognose deutlich sicherer. Leichte Abweichungen durch Events, Offline-Zeiten und wechselnde Aktivität bleiben dennoch möglich.</div>`);
+  setWrap.append(grpForecast);
+
+  const grpWx=$(`<div class="set-group set-wide"><div class="set-head">Wetter & Warnungen</div></div>`);
   grpWx.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Ort / PLZ</span>
     <input id="sb-weather-loc" class="lss7-select" style="max-width:180px" value="${String(S.settings.weatherLocation||"").replace(/"/g,"&quot;")}" placeholder="z.B. 70173 Stuttgart">
@@ -2804,7 +3433,7 @@ function buildUI(){
   grpWx.append(`<div class="set-note"><div class="weather-mini" id="wx-settings-view"><span class="w-l">Keine Wetterdaten</span><span class="w-r">-</span></div></div>`);
   setWrap.append(grpWx);
 
-  const grpEvent=$(`<div class="set-group"><div class="set-head">WM / Event</div></div>`);
+  const grpEvent=$(`<div class="set-group set-wide"><div class="set-head">Events / WM</div></div>`);
   grpEvent.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Anzeige</span>
     <select id="sb-event-mode" class="lss7-select">
@@ -2828,15 +3457,15 @@ function buildUI(){
   </div>`);
   setWrap.append(grpContact);
 
-  const grpPn=$(`<div class="set-group"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v6.0.8</b><br>Layout-Box als Standard, Profil/Platzierung/Wetter überarbeitet und mehrere Stabilitätsfixes ergänzt.</div>`);
+  const grpPn=$(`<div class="set-group set-wide"><div class="set-head">Patch-Notes</div></div>`);
+  grpPn.append(`<div class="set-note"><b>v7.0.0</b><br>Prognose, Speicherung, Live-Events, WM-Erweiterungen und das neue automatische Update-System wurden in einem gemeinsamen Release zusammengeführt.</div>`);
   setWrap.append(grpPn);
 
   tSet.append(setWrap);
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v6.0.8",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v7.0.0",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -2865,15 +3494,32 @@ function buildUI(){
     if(id==="tp-schoolings"&& !panel.data("ls")){panel.data("ls",1);fetchSchoolings();}
     if(id==="tp-aao"       && !panel.data("la")){panel.data("la",1);fetchAAOs();}
     if(id==="tp-history"){renderHistTab();}
-    if(id==="tp-event"){renderWmEvent();if(!(S.wm.games||[]).length)fetchWmEvent();}
-    if(id==="tp-overview"){setTimeout(drawChart,50);}
+    if(id==="tp-forecast"){renderForecast();}
+    if(id==="tp-event"){scanGameEvents();renderWmEvent();if(!(S.wm.games||[]).length)fetchWmEvent();}
+    if(id==="tp-overview"){renderForecast();setTimeout(drawChart,50);}
   });
 
   // Settings buttons
   panel.on("click","#sb-refresh",  e=>{ e.stopPropagation(); fetchAllData(); });
+  panel.on("click","#sb-update-check",e=>{
+    e.stopPropagation();e.preventDefault();
+    checkUpdate({manual:true});
+  });
+  panel.on("click","#lss7-update-patches",e=>{
+    e.stopPropagation();e.preventDefault();
+    S.settings.panelCollapsed=false;save();applyPanelMode();
+    const acc=panel.find(".lacc").last().addClass("open");
+    acc.get(0)?.scrollIntoView({behavior:"smooth",block:"nearest"});
+  });
   panel.on("click","#sb-playtime-reset",e=>{
     e.stopPropagation();e.preventDefault();
     resetTodayPlaytime();
+  });
+  panel.on("click","#sb-alliance-daily-reset",e=>{
+    e.stopPropagation();e.preventDefault();
+    if(window.confirm("Den gespeicherten 7-Tage-Verbandsverdienst wirklich zurücksetzen? Die Prognose beginnt danach mit einer neuen Datenbasis.")){
+      resetAllianceDailyCredits();
+    }
   });
   panel.on("click","#qs-playtime-cell",e=>{
     e.stopPropagation();e.preventDefault();
@@ -2894,6 +3540,18 @@ function buildUI(){
   panel.on("change","#sb-theme",e=>{
     S.settings.panelTheme=String($(e.currentTarget).val()||"dark");
     save();applyPanelMode();
+  });
+  panel.on("change","#sb-forecast-target",e=>{
+    applyForecastSettings($(e.currentTarget).val());
+  });
+  panel.on("click","#forecast-apply",e=>{
+    e.stopPropagation();e.preventDefault();
+    applyForecastSettings($("#forecast-target-main").val());
+  });
+  panel.on("keydown","#forecast-target-main",e=>{
+    if(e.key!=="Enter")return;
+    e.preventDefault();
+    $("#forecast-apply").trigger("click");
   });
   panel.on("click","#lss7-col",e=>{
     e.stopPropagation();e.preventDefault();
@@ -2968,12 +3626,15 @@ function buildUI(){
   panel.on("click",".tog-row",function(e){
     e.stopPropagation();
     const key=$(this).data("key");
+    if(!key)return;
     S.settings[key]=!S.settings[key];save();
     $(this).find(".tog-track").toggleClass("on",S.settings[key]);
     if(key==="playtimeEnabled")updatePlaytimeUi();
+    if(key==="forecastEnabled")renderForecast();
   });
 
   $("body").append(panel);
+  renderForecast();
   setTimeout(drawChart,200);
 }
 
@@ -3225,6 +3886,54 @@ function mkAccordion(icon,title,body){
 function patchHTML(){
   const groups=[
     {
+      title:"v7.0.0 — Prognose, Updates, Speicherung, Live-Events & WM",
+      items:[
+        "Das bisherige eigene Update-Popup wurde vollständig entfernt.",
+        "Automatische Updates werden jetzt ausschließlich über die offiziellen Tampermonkey-Metadaten @version, @updateURL und @downloadURL abgewickelt.",
+        "Beim Start wird zusätzlich im Hintergrund geprüft, ob auf GitHub eine neuere Version bereitsteht.",
+        "Nach einer erfolgreich installierten neuen Version erscheint ein dezenter Hinweis im Dashboard-Header mit Verweis auf die Patch-Notes.",
+        "Falls eine neuere Version erkannt wird, erscheint nur noch ein ruhiger Statushinweis im Header statt eines blockierenden Dialogfensters.",
+        "In den Einstellungen wurde der Button Userscripte auf Updates prüfen ergänzt.",
+        "Die manuelle Installation wird nur als Fallback angeboten, wenn tatsächlich eine neuere Version gefunden wurde.",
+        "Der Update-Bereich zeigt an, ob automatische Updates im Userscript-Manager aktiviert sind.",
+        "Die Einstellungen wurden erneut ausgerichtet: wichtige Bereiche nutzen volle Breite, Schnellaktionen stehen in einer stabilen Reihe und mobile Ansichten wechseln sauber auf eine Spalte.",
+        "Neue Verbandsprognose als deutlich gekennzeichneter BETA-Test ergänzt.",
+        "Eigener Menüpunkt Verbands Prognose mit Meilenstein, Restbetrag, Tagesdurchschnitt, Resttagen, prognostiziertem Erreichungsdatum und Diagramm hinzugefügt.",
+        "Die Prognose kann in den Einstellungen für die Übersicht ein- oder ausgeschaltet werden.",
+        "Der gewünschte Meilenstein kann von jedem Spieler lokal selbst festgelegt werden.",
+        "Die Prognose berechnet automatisch, in wie vielen Tagen und an welchem Datum der Meilenstein voraussichtlich erreicht wird.",
+        "Die Prognose-Box in der Übersicht wurde neu gestaltet und zeigt die wichtigsten Werte größer, klarer und übersichtlicher an.",
+        "Der Menüpunkt trägt jetzt den gut sichtbaren Zusatz [BETA] und die BETA-Hinweise wurden optisch deutlich hervorgehoben.",
+        "Hinweis ergänzt: Ab 3 bis 7 vollständigen Tagen wird die Prognose sicherer, leichte Abweichungen bleiben trotzdem möglich.",
+        "Verbandscredits werden beim Schließen des Browsers gespeichert; beim nächsten Öffnen wird eine positive Offline-Differenz anteilig den betroffenen Tagen zugerechnet.",
+        "Geschätzte Offline-Anteile werden in der 7-Tage-Statistik mit einer Tilde gekennzeichnet.",
+        "Die Tagesprognose verwendet einen robusteren Mittelwert, damit einzelne Event- oder Ausreißertage die Hochrechnung weniger stark verzerren.",
+        "In den Einstellungen kann der gespeicherte 7-Tage-Verbandsverdienst jetzt gezielt zurückgesetzt werden, ohne beim nächsten Abruf alte Credits erneut zu zählen.",
+        "Die Einstellungen wurden neu gegliedert, optisch aufgeräumt und für Layout- sowie Floating-Modus übersichtlicher gestaltet.",
+        "Coin-Sale aus der Spielnavigation wird jetzt als separates Live-Event mit Countdown erkannt.",
+        "Coin-Sale-Hover erklärt, dass die Echtgeldwährung Coins aktuell reduziert ist.",
+        "Der Coin-Sale ist jetzt anklickbar und öffnet direkt den Coin-Shop des Leitstellenspiels.",
+        "Spielzeit korrigiert: Beim Schließen oder Ausblenden des Spiels stoppt der Timer und Offline-Zeit wird nicht mehr nachgetragen.",
+        "Spielzeit korrigiert: Beim erneuten Öffnen läuft der Timer mit dem zuletzt gespeicherten Tagesstand weiter.",
+        "Der Tageswechsel wird jetzt direkt durch den Spielzeit-Timer erkannt und setzt die neue Tageszeit zuverlässig um 00:00 Uhr auf null.",
+        "Die abgeschlossene Spielzeit des Vortags bleibt weiterhin in der 7-Tage-Statistik erhalten.",
+        "WM-Spielplan erweitert: Bei gestarteten und beendeten Spielen werden vorhandene Torschützen inklusive Minute angezeigt.",
+        "Gelbe und rote Karten werden automatisch unterstützt, sobald die WM-API entsprechende echte Datenfelder bereitstellt.",
+        "Leitstellenspiel Live-Events ergänzt: laufende Event-Blöcke aus der Spiel-Navbar werden automatisch erkannt.",
+        "Live-Events werden direkt unter dem Spielerprofil angezeigt und nur dann gefüllt, wenn ein Event aktiv ist.",
+        "Mehrere Live-Events werden jetzt getrennt als eigene Zeilen gelistet, zum Beispiel Credit-Boost und Coin-/Einsatz-Event separat.",
+        "Credit-Events zeigen einen Diamant direkt rechts neben dem Eventnamen.",
+        "Diamant-Hover ergänzt: Beim Überfahren erscheint ein Hinweis zu doppelten Credits für reguläre Einsätze.",
+        "Coin-/Einsatz-Events zeigen ein Sirenen-Symbol mit eigenem Hover-Hinweis zum 50%-Rabatt beim sofortigen Beenden von Einsätzen.",
+        "Event-Hover stabilisiert: Countdowns werden aktualisiert, ohne die Symbol-Elemente jede Sekunde neu aufzubauen.",
+        "Event-Tooltip öffnet jetzt nach rechts, damit das Hinweisfenster nicht mehr abgeschnitten wird.",
+        "Flackernde Animationen am Live-Punkt und Diamanten entfernt und durch eine ruhige Statuslinie ersetzt.",
+        "Patch-Notes werden jetzt pro Version separat einklappbar angezeigt.",
+        "Alle Live-Event-Änderungen wurden in den gemeinsamen Patch-Notes von v7.0.0 zusammengeführt.",
+        "Version und Patch-Notes wurden auf v7.0.0 aktualisiert.",
+      ],
+    },
+    {
       title:"v6.0.8 — Spielzeit, Wetter & WM-Event",
       items:[
         "Fehler behoben: Die Spielzeit wird jetzt anhand der lokalen Tagesgrenze um 00:00 Uhr deutscher Zeit zurückgesetzt.",
@@ -3288,9 +3997,12 @@ function patchHTML(){
       ],
     },
   ];
-  return groups.map((g,i)=>`<div style="color:var(--blue);font-weight:700;font-size:11px;margin:${i?12:0}px 0 10px">
-    ${g.title}</div>
-    ${g.items.map(t=>`<div class="patch-i"><span class="patch-b">→</span><span>${t}</span></div>`).join("")}`).join("");
+  return groups.map((g,i)=>`<details class="patch-ver"${i===0?" open":""}>
+    <summary>${escHtml(g.title)}</summary>
+    <div class="patch-ver-body">
+      ${g.items.map(t=>`<div class="patch-i"><span class="patch-b">→</span><span>${escHtml(t)}</span></div>`).join("")}
+    </div>
+  </details>`).join("");
 }
 function infoHTML(){
   const rows=[
@@ -3301,6 +4013,8 @@ function infoHTML(){
     ["Panel-Typ","Layout-Box Standard, Floating optional"],
     ["Alliance-Interval","60s"],
     ["7-Tage-Verdienst","lokal ab erstem Refresh"],
+    ["Verbandsprognose","BETA · lokale Tageswerte und Offline-Differenzen"],
+    ["Updates","Tampermonkey automatisch · manueller Check verfügbar"],
     ["Spielzeit","lokal, 7 Tage"],
     ["Fahrzeugstatus","90s"],
     ["Lehrgänge","300s"],
@@ -3354,55 +4068,84 @@ $(document).on("click.lss7",function(e){
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  UPDATE CHECK                                                â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-function checkUpdate(){
-  const cmpVer=(a,b)=>{
-    const pa=String(a||"0").split(".").map(x=>parseInt(x,10)||0);
-    const pb=String(b||"0").split(".").map(x=>parseInt(x,10)||0);
-    const n=Math.max(pa.length,pb.length);
-    for(let i=0;i<n;i++){
-      const da=pa[i]||0, db=pb[i]||0;
-      if(da>db) return 1;
-      if(da<db) return -1;
-    }
-    return 0;
-  };
+function compareVersions(a,b){
+  const pa=String(a||"0").split(".").map(x=>parseInt(x,10)||0);
+  const pb=String(b||"0").split(".").map(x=>parseInt(x,10)||0);
+  const n=Math.max(pa.length,pb.length);
+  for(let i=0;i<n;i++){
+    const da=pa[i]||0,db=pb[i]||0;
+    if(da>db)return 1;
+    if(da<db)return -1;
+  }
+  return 0;
+}
+function updateManagerInfo(){
+  try{
+    const enabled=GM_info?.scriptWillUpdate!==false && GM_info?.script?.options?.check_for_updates!==false;
+    return {enabled,handler:GM_info?.scriptHandler||"Userscript-Manager"};
+  }catch{return {enabled:true,handler:"Userscript-Manager"};}
+}
+function setUpdateHeader(text,type="updated"){
+  const note=$("#lss7-update-note");
+  if(!note.length)return;
+  note.removeClass("show available");
+  if(!text)return;
+  $("#lss7-update-note-text").text(text);
+  note.toggleClass("available",type==="available").addClass("show");
+}
+function setUpdateSettings(text,type="",showInstall=false){
+  const status=$("#sb-update-status");
+  if(status.length)status.removeClass("good warn").addClass(type).html(text);
+  $("#sb-update-install").toggle(!!showInstall);
+}
+function announceInstalledUpdate(){
+  if(S.update.justUpdated){
+    const text=S.update.previousVersion
+      ? `Verband Statistik Pro wurde von v${S.update.previousVersion} auf v${V} aktualisiert.`
+      : `Verband Statistik Pro wurde auf v${V} aktualisiert.`;
+    setUpdateHeader(text,"updated");
+  }
+  const manager=updateManagerInfo();
+  const mode=manager.enabled?"aktiviert":"im Userscript-Manager deaktiviert";
+  setUpdateSettings(`<strong>Automatische Updates ${escHtml(mode)}</strong><span>${escHtml(manager.handler)} nutzt @updateURL und @downloadURL. Installiert ist v${escHtml(V)}.</span>`,manager.enabled?"good":"warn",false);
+}
+function checkUpdate({manual=false}={}){
+  if(S.update.checking)return;
+  S.update.checking=true;S.update.error="";
+  if(manual)setUpdateSettings(`<strong>Update-Prüfung läuft</strong><span>Die aktuelle GitHub-Version wird geprüft...</span>`,"",false);
   GM_xmlhttpRequest({
-    method:"GET",url:`${UPDATE_URL}?t=${Date.now()}`,
+    method:"GET",url:`${UPDATE_URL}?t=${Date.now()}`,timeout:15000,
     onload(r){
-      if(r.status!==200)return;
+      S.update.checking=false;S.update.lastCheck=Date.now();
+      if(r.status!==200){
+        S.update.error=`HTTP ${r.status}`;
+        if(manual)setUpdateSettings(`<strong>Update-Prüfung fehlgeschlagen</strong><span>GitHub antwortete mit Status ${r.status}. Bitte später erneut versuchen.</span>`,"warn",false);
+        return;
+      }
       const m=r.responseText.match(/@version\s+([\d.]+)/);
-      if(m && cmpVer(m[1],V)>0) showUpdate(m[1]);
+      if(!m){
+        if(manual)setUpdateSettings(`<strong>Version nicht erkannt</strong><span>Die Update-Datei wurde geladen, aber die Versionsnummer konnte nicht ermittelt werden.</span>`,"warn",false);
+        return;
+      }
+      const remote=m[1];S.update.availableVersion=remote;
+      if(compareVersions(remote,V)>0){
+        const manager=updateManagerInfo();
+        setUpdateHeader(`Update v${remote} ist verfügbar. ${manager.handler} übernimmt die Aktualisierung automatisch.`,"available");
+        setUpdateSettings(`<strong>Update v${escHtml(remote)} verfügbar</strong><span>Installiert ist v${escHtml(V)}. Der Userscript-Manager sollte automatisch aktualisieren; die manuelle Installation bleibt als Fallback verfügbar.</span>`,"warn",true);
+      }else if(manual){
+        setUpdateSettings(`<strong>Alles aktuell</strong><span>Installiert ist v${escHtml(V)}. Es ist kein neueres Update verfügbar.</span>`,"good",false);
+      }
+    },
+    onerror(){
+      S.update.checking=false;S.update.error="Netzwerkfehler";
+      if(manual)setUpdateSettings(`<strong>Update-Prüfung fehlgeschlagen</strong><span>Die GitHub-Datei konnte nicht erreicht werden. Bitte später erneut versuchen.</span>`,"warn",false);
+    },
+    ontimeout(){
+      S.update.checking=false;S.update.error="Zeitüberschreitung";
+      if(manual)setUpdateSettings(`<strong>Update-Prüfung abgebrochen</strong><span>Die Anfrage dauerte zu lange. Bitte später erneut versuchen.</span>`,"warn",false);
     }
   });
 }
-function showUpdate(nv){
-  const o=$(`
-    <div id="lss7-uo">
-      <div id="lss7-ub">
-        <button class="ub-x" id="ub-x" title="Schliessen">×</button>
-        <div class="ub-tag">NEUES UPDATE</div>
-        <h2>Update verfuegbar</h2>
-        <p>Es ist eine neue Version verfuegbar.</p>
-        <div class="ub-vers">
-          <span>Neu: <strong>v${nv}</strong></span>
-          <span>Aktuell: <strong>v${V}</strong></span>
-        </div>
-        <div class="ub-row">
-          <button class="ub-btn ub-sk" id="ub-skip">Spaeter</button>
-          <a class="ub-btn ub-ok" id="ub-update" href="${UPDATE_URL}" target="_blank">Aktualisieren</a>
-        </div>
-      </div>
-    </div>`);
-  $("body").append(o);
-  o.on("click","#ub-skip",()=>o.remove());
-  o.on("click","#ub-x",()=>o.remove());
-  o.on("click","#ub-update",()=>{
-    o.remove();
-    setTimeout(()=>window.location.reload(),450);
-  });
-  o.on("click",e=>{if($(e.target).is(o))o.remove();});
-}
-
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  INIT                                                        â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -3412,6 +4155,7 @@ $(document).ready(()=>{
   buildTrigger();
   applyPanelMode();
   updatePlaytimeUi();
+  announceInstalledUpdate();
 
   // Initialer Fetch
   fetchAlliance();
@@ -3420,8 +4164,19 @@ $(document).ready(()=>{
   fetchDailyEarnFromOverview();
   fetchWeather();
   renderWeather();
+  scanGameEvents();
   fetchWmEvent();
   renderWmEvent();
+
+  document.addEventListener("visibilitychange",()=>{
+    S.lastTs=Date.now();
+    if(document.visibilityState==="visible")checkMidnight();
+    save();
+  });
+  window.addEventListener("pageshow",()=>{
+    S.lastTs=Date.now();
+    checkMidnight();
+  });
 
   // Intervals
   setInterval(tickTimer,          ITV.timer);
@@ -3435,6 +4190,7 @@ $(document).ready(()=>{
   setInterval(fetchSchoolings,    ITV.schools);
   setInterval(fetchDailyEarnFromOverview, ITV.dailyEarn);
   setInterval(fetchWeather,       ITV.weather);
+  setInterval(scanGameEvents,     30000);
   setInterval(fetchWmEvent,       300000);
   setInterval(updateFooter,       ITV.footer);
 
@@ -3445,6 +4201,7 @@ $(document).ready(()=>{
 });
 
 window.addEventListener("beforeunload", save);
+window.addEventListener("pagehide", save);
 
 })();
 
