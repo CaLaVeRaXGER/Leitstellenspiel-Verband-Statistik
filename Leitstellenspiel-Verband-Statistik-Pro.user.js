@@ -2,10 +2,11 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      7.0.0
-// @description  Ultimate Premium Dashboard: Floating Panel, Live-Charts, Fahrzeugstatus-Donut, Lehrgänge, 7-Tage-Verbandsverdienst, Spielzeit-Statistik, Team, Wetter, WM-Event und Dark-Design.
+// @version      9.0.1
+// @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/*
+// @match        https://polizei.leitstellenspiel.de/*
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
@@ -16,11 +17,13 @@
 // @connect      github.com
 // @connect      worldcup26.ir
 // @connect      www.leitstellenspiel.de
+// @connect      polizei.leitstellenspiel.de
 // @connect      api.open-meteo.com
 // @connect      geocoding-api.open-meteo.com
 // @connect      api.zippopotam.us
 // @connect      www.dwd.de
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
+// @require      https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js
 // @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
 // @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
 // ==/UserScript==
@@ -31,8 +34,9 @@
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "7.0.0";
-const BASE = "https://www.leitstellenspiel.de";
+const V   = "9.0.1";
+const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
+const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 
 const API = {
@@ -49,10 +53,87 @@ const API = {
   alliancesPage: `${BASE}/alliances`,
   wxGeo: "https://geocoding-api.open-meteo.com/v1/search",
   wxForecast: "https://api.open-meteo.com/v1/forecast",
-  zipGeo: "https://api.zippopotam.us/de",
+  zipGeo: "https://api.zippopotam.us",
   dwdWarnings: "https://www.dwd.de/DWD/warnungen/warnapp/json/warnings.json",
   wmGames: "https://worldcup26.ir/get/games",
   wmStadiums: "https://worldcup26.ir/get/stadiums",
+};
+
+const WEATHER_COUNTRIES = {
+  DE:{label:"Deutschland",zip:/\b\d{5}\b/,language:"de"},
+  AT:{label:"Österreich",zip:/\b\d{4}\b/,language:"de"},
+  CH:{label:"Schweiz",zip:/\b\d{4}\b/,language:"de"},
+  FR:{label:"Frankreich",zip:/\b\d{5}\b/,language:"fr"},
+  NL:{label:"Niederlande",zip:/\b\d{4}\b/i,language:"nl"},
+};
+
+const I18N = {
+  en:{
+    "Übersicht":"Overview","Verbands Prognose [BETA]":"Alliance forecast [BETA]","Fuhrpark & Standorte":"Fleet & locations",
+    "Lehrgänge":"Courses","Verlauf":"History","Team":"Team","Event":"Event","Einstellungen":"Settings",
+    "Spielzeit":"Playtime","Eigene Credits":"Your credits","Tagesverd.":"Daily earnings","Uhrzeit":"Time",
+    "Verband":"Alliance","Credits gesamt":"Total credits","Verbandskasse":"Alliance funds","Platzierung":"Ranking",
+    "Mitglieder":"Members","Coins":"Coins","Tagesverdienst":"Daily earnings","Verbandsverdienst heute":"Alliance earnings today","Verbandsverdienst 7 Tage":"Alliance earnings: 7 days",
+    "Verbandsprognose":"Alliance forecast","Platzierungsumfeld":"Ranking context","Wetter":"Weather","Events":"Events",
+    "Kreditverlauf (heute)":"Credit history (today)","Sammle Daten...":"Collecting data...","Meilenstein in Credits":"Credit milestone",
+    "Prognose aktualisieren":"Update forecast","Fahrzeuge gesamt":"Total vehicles","Gebäude gesamt":"Total buildings",
+    "Gebäudetypen":"Building types","Fahrzeuge je Gebäude":"Vehicles per building","Standorte & Ausbauten":"Locations & extensions",
+    "Verlaufspunkte":"History entries","Erster Eintrag":"First entry","Zeit":"Time","Credits":"Credits","Aenderung":"Change",
+    "Einstellungen":"Settings","Schnellaktionen":"Quick actions","Updates":"Updates","Darstellung & Bedienung":"Appearance & controls",
+    "Browser-Benachrichtigungen":"Browser notifications","Coins anzeigen":"Show coins","Spielzeit anzeigen":"Show playtime",
+    "Menü-Modus":"Menu mode","Panel-Größe":"Panel size","Panel-Theme":"Panel theme","Klein":"Small","Normal":"Normal","Groß":"Large",
+    "Sprache":"Language","Wetter & Warnungen":"Weather & warnings","Land":"Country","Ort / PLZ":"City / postal code",
+    "Anzeige":"Display","Aus":"Off","Nur Settings":"Settings only","Übersicht-Box":"Overview panel","Warnsound":"Warning sound",
+    "An":"On","Warnton":"Warning tone","Informationen":"Information","Kontakt":"Contact","Patch-Notes":"Patch notes",
+    "Keine Wetterdaten":"No weather data","Ort fehlt":"Location missing","Wetterdaten werden geladen...":"Loading weather data...",
+    "Gefühlt":"Feels like","Feuchte":"Humidity","Niederschlag":"Precipitation","Wind":"Wind","Keine Warnung":"No warning","Nächste 7 Stunden":"Next 7 hours","7-Tage-Ausblick":"7-day outlook","Tageswerte: Min / Max":"Daily values: min / max",
+    "Aktuell liegt keine DWD-Warnung für den Ort vor.":"There is currently no DWD warning for this location.",
+    "Amtliche Warnungen sind derzeit nur für Deutschland angebunden.":"Official warnings are currently connected for Germany only.",
+    "Lehrgang":"Course","Plätze":"Seats","Kosten":"Cost","Fertig":"Finishes","Öffnen":"Open","Aktive Lehrgänge":"Active courses",
+    "Lehrgangsarten":"Course types","Alle Lehrgänge":"All courses","Freie Plätze":"Available seats","Lehrgänge durchsuchen...":"Search courses...",
+    "Mitglied suchen...":"Search members...","Alle Rollen":"All roles","Leitung":"Leadership","Mitglieder ohne Leitungsrolle":"Regular members",
+    "Mitglieder gesamt":"Total members","Leitungsteam":"Leadership team","Sonderrollen":"Special roles","Profil öffnen":"Open profile",
+    "Gruppentabellen":"Group tables","Punkte, Tore und Tordifferenz aller zwölf Gruppen":"Points, goals and goal difference for all twelve groups",
+    "Tabellen anzeigen":"Show tables","Tabellen ausblenden":"Hide tables","Gruppe":"Group","Spiele":"matches","Team":"Team",
+    "Automatisch aus den API-Ergebnissen berechnet.":"Calculated automatically from API results.",
+    "Was zeigt der Verlauf?":"What does History show?","Heute":"Today","Gestern":"Yesterday","Aktualisieren":"Refresh",
+    "Daten werden ausschließlich lokal in diesem Browser gespeichert.":"Data is stored locally in this browser only.",
+    "Der Verlauf zeigt regelmäßig gespeicherte Stände der Verbandscredits.":"History shows regularly saved snapshots of the alliance credits.",
+    "Er ist kein vollständiges Spielprotokoll: Werte entstehen nur, während das Skript Daten abrufen kann.":"It is not a complete game log: entries are created only while the script can retrieve data."
+  },
+  fr:{
+    "Übersicht":"Aperçu","Verbands Prognose [BETA]":"Prévision de l'alliance [BÊTA]","Fuhrpark & Standorte":"Véhicules et sites",
+    "Lehrgänge":"Formations","Verlauf":"Historique","Team":"Équipe","Event":"Événement","Einstellungen":"Paramètres",
+    "Spielzeit":"Temps de jeu","Eigene Credits":"Vos crédits","Tagesverd.":"Gain du jour","Uhrzeit":"Heure",
+    "Verband":"Alliance","Credits gesamt":"Crédits totaux","Verbandskasse":"Caisse de l'alliance","Platzierung":"Classement",
+    "Mitglieder":"Membres","Coins":"Pièces","Tagesverdienst":"Gain du jour","Verbandsverdienst heute":"Gain de l'alliance aujourd'hui","Verbandsverdienst 7 Tage":"Gains de l'alliance sur 7 jours",
+    "Verbandsprognose":"Prévision de l'alliance","Platzierungsumfeld":"Classement voisin","Wetter":"Météo","Events":"Événements",
+    "Kreditverlauf (heute)":"Historique des crédits (aujourd'hui)","Sammle Daten...":"Collecte des données...","Meilenstein in Credits":"Objectif de crédits",
+    "Prognose aktualisieren":"Actualiser la prévision","Fahrzeuge gesamt":"Total des véhicules","Gebäude gesamt":"Total des bâtiments",
+    "Gebäudetypen":"Types de bâtiments","Fahrzeuge je Gebäude":"Véhicules par bâtiment","Standorte & Ausbauten":"Sites et extensions",
+    "Verlaufspunkte":"Entrées d'historique","Erster Eintrag":"Première entrée","Zeit":"Heure","Credits":"Crédits","Aenderung":"Variation",
+    "Schnellaktionen":"Actions rapides","Updates":"Mises à jour","Darstellung & Bedienung":"Affichage et utilisation",
+    "Browser-Benachrichtigungen":"Notifications du navigateur","Coins anzeigen":"Afficher les pièces","Spielzeit anzeigen":"Afficher le temps de jeu",
+    "Menü-Modus":"Mode du menu","Panel-Größe":"Taille du panneau","Panel-Theme":"Thème du panneau","Klein":"Petit","Normal":"Normal","Groß":"Grand",
+    "Sprache":"Langue","Wetter & Warnungen":"Météo et alertes","Land":"Pays","Ort / PLZ":"Ville / code postal",
+    "Anzeige":"Affichage","Aus":"Désactivé","Nur Settings":"Paramètres uniquement","Übersicht-Box":"Bloc d'aperçu","Warnsound":"Son d'alerte",
+    "An":"Activé","Warnton":"Sonnerie","Informationen":"Informations","Kontakt":"Contact","Patch-Notes":"Notes de version",
+    "Keine Wetterdaten":"Aucune donnée météo","Ort fehlt":"Lieu manquant","Wetterdaten werden geladen...":"Chargement des données météo...",
+    "Gefühlt":"Ressenti","Feuchte":"Humidité","Niederschlag":"Précipitations","Wind":"Vent","Keine Warnung":"Aucune alerte","Nächste 7 Stunden":"7 prochaines heures","7-Tage-Ausblick":"Prévisions sur 7 jours","Tageswerte: Min / Max":"Valeurs journalières : min / max",
+    "Aktuell liegt keine DWD-Warnung für den Ort vor.":"Aucune alerte DWD n'est actuellement active pour ce lieu.",
+    "Amtliche Warnungen sind derzeit nur für Deutschland angebunden.":"Les alertes officielles sont actuellement disponibles uniquement pour l'Allemagne.",
+    "Lehrgang":"Formation","Plätze":"Places","Kosten":"Coût","Fertig":"Fin","Öffnen":"Ouvrir","Aktive Lehrgänge":"Formations actives",
+    "Lehrgangsarten":"Types de formation","Alle Lehrgänge":"Toutes les formations","Freie Plätze":"Places disponibles","Lehrgänge durchsuchen...":"Rechercher une formation...",
+    "Mitglied suchen...":"Rechercher un membre...","Alle Rollen":"Tous les rôles","Leitung":"Direction","Mitglieder ohne Leitungsrolle":"Membres réguliers",
+    "Mitglieder gesamt":"Total des membres","Leitungsteam":"Équipe dirigeante","Sonderrollen":"Rôles spéciaux","Profil öffnen":"Ouvrir le profil",
+    "Gruppentabellen":"Classements des groupes","Punkte, Tore und Tordifferenz aller zwölf Gruppen":"Points, buts et différence de buts des douze groupes",
+    "Tabellen anzeigen":"Afficher les tableaux","Tabellen ausblenden":"Masquer les tableaux","Gruppe":"Groupe","Spiele":"matchs",
+    "Automatisch aus den API-Ergebnissen berechnet.":"Calculé automatiquement à partir des résultats de l'API.",
+    "Was zeigt der Verlauf?":"Que montre l'historique ?","Heute":"Aujourd'hui","Gestern":"Hier","Aktualisieren":"Actualiser",
+    "Daten werden ausschließlich lokal in diesem Browser gespeichert.":"Les données sont enregistrées uniquement dans ce navigateur.",
+    "Der Verlauf zeigt regelmäßig gespeicherte Stände der Verbandscredits.":"L'historique affiche des instantanés réguliers des crédits de l'alliance.",
+    "Er ist kein vollständiges Spielprotokoll: Werte entstehen nur, während das Skript Daten abrufen kann.":"Il ne s'agit pas d'un journal complet : les valeurs sont créées uniquement lorsque le script peut récupérer les données."
+  }
 };
 
 const WM_START = new Date("2026-06-11T00:00:00+02:00").getTime();
@@ -99,6 +180,18 @@ const LEVELS = [
   {rank:"Internationaler Branddirektor(in)", need:100000000000, reward:"10 Coins"}
 ];
 
+const ALLIANCE_ROLE_DEFS = [
+  {id:"owner",label:"Owner",color:"#d8a91f",text:"#211800",aliases:["owner"]},
+  {id:"admin",label:"Administrator",color:"#8f1d2c",text:"#ffffff",aliases:["admin","administrator","verbands_admin","alliance_admin"]},
+  {id:"coadmin",label:"Co. Administrator",color:"#e44752",text:"#ffffff",aliases:["coadmin","co_admin","coadministrator"]},
+  {id:"radio",label:"Sprechwunsch Admin",color:"#72c8f2",text:"#082536",aliases:["speaker","radio","radio_admin","sprech_request","speak_request","mission"]},
+  {id:"board",label:"Aufsichtsrat",color:"#ed8a2f",text:"#2d1500",aliases:["board","supervisor","oversight","aufsichtsrat"]},
+  {id:"finance",label:"Finanzminister",color:"#8b5bd0",text:"#ffffff",aliases:["finance","treasurer","financial","finanzminister"]},
+  {id:"schooling",label:"Lehrgangsmeister",color:"#438bf2",text:"#ffffff",aliases:["schooling","schooling_admin","schooling_master","education","educator","lehrgangsmeister"]},
+  {id:"personnel",label:"Personal",color:"#aeb8c6",text:"#17202b",aliases:["staff","personnel","personal","member_admin"]},
+  {id:"event",label:"Eventmanager",color:"#a96835",text:"#ffffff",aliases:["event_manager","eventmanager","event"]},
+];
+
 const ITV = {
   clock:    1000,
   timer:    1000,
@@ -130,6 +223,27 @@ const BICONS = {0:"B",1:"B",2:"B",3:"B",4:"B",5:"B",6:"B",7:"B",
   8:"B",9:"B",11:"B",12:"B",13:"B",14:"B",15:"B",
   18:"B",20:"B",21:"B",25:"B"};
 
+const BUILDING_TYPES = {
+  0:"Feuerwache",1:"Feuerwehrschule",2:"Rettungswache",3:"Rettungsschule",
+  4:"Krankenhaus",5:"Rettungshubschrauber-Station",6:"Polizeiwache",7:"Leitstelle",
+  8:"Polizeischule",9:"THW-Ortsverband",10:"THW-Bundesschule",11:"Bereitschaftspolizei",
+  12:"Schnelleinsatzgruppe (SEG)",13:"Polizeihubschrauberstation",14:"Bereitstellungsraum",
+  15:"Wasserrettung",16:"Verbandszellen",17:"Polizei-Sondereinheiten",
+  18:"Feuerwache (Kleinwache)",19:"Polizeiwache (Kleinwache)",20:"Rettungswache (Kleinwache)",
+  21:"Rettungshundestaffel",22:"Großer Komplex",23:"Kleiner Komplex",24:"Reiterstaffel",
+  25:"Bergrettungswache",26:"Seenotrettungswache",27:"Schule für Seefahrt und Seenotrettung",
+  28:"Hubschrauberstation (Seenotrettung)",29:"Autobahnpolizei"
+};
+
+const BUILDING_CATEGORIES = [
+  {name:"Feuerwehr",color:"#ef4444",types:[0,1,18]},
+  {name:"Rettung & Medizin",color:"#f59e0b",types:[2,3,4,5,12,20,21,25]},
+  {name:"Polizei",color:"#22c55e",types:[6,8,11,13,16,17,19,24,29]},
+  {name:"THW",color:"#3b82f6",types:[9,10]},
+  {name:"Wasserrettung",color:"#22d3ee",types:[15,26,27,28]},
+  {name:"Organisation",color:"#a855f7",types:[7,14,22,23]}
+];
+
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  CSS â€” DESIGN SYSTEM                                         â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -158,7 +272,9 @@ GM_addStyle(`
        0 4px 24px rgba(0,0,0,0.5),
        0 20px 60px rgba(0,0,0,0.6),
        0 0 80px rgba(0,0,0,0.4);
+  box-sizing:border-box;
 }
+#lss7 *{box-sizing:border-box;}
 
 /* â”€â”€ Floating Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #lss7 {
@@ -213,13 +329,25 @@ GM_addStyle(`
   background:linear-gradient(180deg,rgba(255,255,255,.11),rgba(255,255,255,.05)) !important;
   border-color:rgba(255,255,255,.14);
 }
-#lss7-btn img   { height:18px; width:auto; opacity:.94; }
-.lss7-nav-copy{display:flex;flex-direction:column;gap:2px;line-height:1.05;}
+#lss7-btn .lss7-nav-mark{
+  position:relative;width:26px;height:26px;border-radius:7px;flex-shrink:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  color:#eaf5ff;font:900 9px/1 var(--mono);letter-spacing:.5px;
+  background:linear-gradient(145deg,#2563eb,#0891b2 62%,#22c55e);
+  border:1px solid rgba(255,255,255,.24);box-shadow:0 5px 14px rgba(8,145,178,.24),inset 0 1px rgba(255,255,255,.25);
+  overflow:hidden;
+}
+.lss7-nav-mark::before{content:"";position:absolute;inset:3px;border:1px solid rgba(255,255,255,.32);border-radius:4px;transform:rotate(45deg);}
+.lss7-nav-mark span{position:relative;z-index:1;text-shadow:0 1px 3px rgba(0,0,0,.38);}
+.lss7-nav-mark i{position:absolute;right:2px;bottom:2px;width:5px;height:5px;border-radius:50%;background:#8bffba;box-shadow:0 0 8px #3cff91;}
+.lss7-nav-copy{display:flex;flex-direction:column;gap:2px;line-height:1.05;min-width:0;}
 .lss7-nav-lbl{font-size:12px;font-weight:800;color:rgba(255,255,255,.96);letter-spacing:.2px;}
-.lss7-nav-event{font-size:8px;font-weight:800;color:#f9e6a2;letter-spacing:.45px;text-transform:uppercase;}
+.lss7-nav-events{display:flex;align-items:center;gap:3px;max-width:250px;overflow:hidden;}
+.lss7-nav-event{font-size:7px;font-weight:900;color:#f9e6a2;letter-spacing:.25px;text-transform:uppercase;white-space:nowrap;}
+.lss7-nav-event+.lss7-nav-event::before{content:"·";margin-right:3px;color:rgba(255,255,255,.38);}
 .lss7-nav-arr   { font-size:9px; color:rgba(255,255,255,.45); transition:transform .2s; }
 #lss7-btn.open .lss7-nav-arr { transform:rotate(180deg); }
-#lss7-live {
+.lss7-live {
   width:6px; height:6px; border-radius:50%;
   background:var(--green); box-shadow:0 0 5px var(--green);
   animation:lpulse 2.4s ease-in-out infinite;
@@ -234,20 +362,48 @@ GM_addStyle(`
   border-bottom:1px solid var(--b1);
   position:relative; overflow:hidden;
 }
+#lss7-summer-scene{
+  display:none;position:absolute;inset:0;width:100%;height:100%;z-index:0;
+  pointer-events:none;opacity:.92;transition:opacity .25s ease;
+}
+#lss7.theme-summer #lss7-summer-scene,
+#lss7.theme-summer-dark #lss7-summer-scene{display:block;}
+#lss7-hd>.hd-row,#lss7-hd>.lss7-update-note{position:relative;z-index:2;}
 #lss7-hd::after {
   content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse at 80% 30%,rgba(59,130,246,.09) 0%,transparent 60%);
 }
 .hd-row   { display:flex; align-items:center; gap:10px; }
-.hd-ring  {
-  width:36px;height:36px;border-radius:10px;flex-shrink:0;
-  background:var(--blue3);border:1px solid rgba(59,130,246,.35);
-  display:flex;align-items:center;justify-content:center;font-size:18px;
+.hd-mark{
+  position:relative;width:40px;height:40px;border-radius:11px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+  color:#f5fbff;font:950 12px/1 var(--mono);letter-spacing:1px;
+  background:linear-gradient(145deg,#1d4ed8 0%,#0891b2 56%,#16a34a 100%);
+  border:1px solid rgba(125,211,252,.38);
+  box-shadow:0 10px 24px rgba(8,145,178,.19),inset 0 1px rgba(255,255,255,.24),inset 0 -10px 18px rgba(3,15,32,.22);
 }
-.hd-ring img{width:24px;height:24px;object-fit:contain;opacity:.96;}
+.hd-mark::before{content:"";position:absolute;width:24px;height:24px;border:1px solid rgba(255,255,255,.30);border-radius:7px;transform:rotate(45deg);}
+.hd-mark::after{content:"";position:absolute;inset:auto 5px 5px auto;width:7px;height:7px;border-radius:50%;background:#86efac;box-shadow:0 0 12px #22c55e;animation:brand-live 2.2s ease-in-out infinite;}
+.hd-mark span{position:relative;z-index:1;text-shadow:0 2px 5px rgba(0,0,0,.38);}
+@keyframes brand-live{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.72)}}
 .hd-title { font-size:14px;font-weight:700;color:var(--t1);line-height:1.2; }
 .hd-sub   { font-size:10px;color:var(--t3);margin-top:1px; }
-.hd-meta  { margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0; }
+.hd-meta  { margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0;flex-shrink:1; }
+.hd-events{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap;min-width:0;}
+.hd-event-badge{
+  appearance:none;display:inline-flex;align-items:center;gap:5px;min-height:24px;padding:3px 8px;
+  border-radius:7px;border:1px solid var(--b2);color:var(--t1);background:rgba(255,255,255,.045);
+  font:900 8px/1.15 var(--font);letter-spacing:.35px;text-transform:uppercase;white-space:nowrap;
+  cursor:pointer;text-decoration:none!important;transition:transform .15s ease,filter .15s ease,box-shadow .15s ease;
+}
+.hd-event-badge:hover{transform:translateY(-1px);filter:brightness(1.12);color:var(--t1);}
+.hd-event-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;animation:event-dot 1.8s ease-in-out infinite;}
+.hd-event-badge.event-wm{color:#86efac;background:rgba(22,163,74,.14);border-color:rgba(34,197,94,.38);}
+.hd-event-badge.event-sale{color:#e9d5ff;background:rgba(147,51,234,.14);border-color:rgba(192,132,252,.38);}
+.hd-event-badge.event-credit{color:#fde68a;background:rgba(217,119,6,.15);border-color:rgba(251,191,36,.40);}
+.hd-event-badge.event-coin{color:#fecaca;background:rgba(220,38,38,.14);border-color:rgba(248,113,113,.38);}
+.hd-event-badge.event-live{color:#bae6fd;background:rgba(2,132,199,.14);border-color:rgba(56,189,248,.36);}
+@keyframes event-dot{0%,100%{opacity:1}50%{opacity:.42}}
 
 /* Badges */
 .bd {font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
@@ -351,6 +507,16 @@ GM_addStyle(`
 .prof-next{font-size:10px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;font-weight:700;text-align:right;}
 .prof-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:0;border:1px solid rgba(255,255,255,.04);}
 .prof-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--cyan));}
+.prof-roles{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-height:0;}
+.prof-role{
+  display:inline-flex;align-items:center;min-height:20px;padding:3px 8px;border-radius:6px;
+  color:var(--role-text,#fff);background:var(--role-color,#2563eb);border:1px solid rgba(255,255,255,.25);
+  font-size:8px;font-weight:950;letter-spacing:.45px;text-transform:uppercase;
+  box-shadow:0 0 0 1px rgba(255,255,255,.07) inset,0 0 12px color-mix(in srgb,var(--role-color) 52%,transparent);
+  animation:profile-role-glow 2.8s ease-in-out infinite;
+}
+.prof-role:nth-child(2){animation-delay:.4s}.prof-role:nth-child(3){animation-delay:.8s}
+@keyframes profile-role-glow{0%,100%{filter:brightness(1);transform:translateY(0)}50%{filter:brightness(1.15);transform:translateY(-1px)}}
 .prof-event-strip{
   flex-shrink:0;
   position:relative;
@@ -533,12 +699,58 @@ GM_addStyle(`
 /* â”€â”€ Donut â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #donut-wrap{display:flex;align-items:center;gap:14px;padding:14px 14px 10px;}
 #lss7-donut{width:88px;height:88px;flex-shrink:0;}
+#lss7-donut .donut-total{fill:var(--t1);}
+#lss7-donut .donut-label{fill:var(--t4);}
 #donut-leg{flex:1;display:flex;flex-direction:column;gap:4px;}
 .dl-row{display:flex;align-items:center;gap:6px;font-size:11px;}
 .dl-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .dl-lbl{color:var(--t3);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;}
 .dl-val{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--t2);min-width:26px;text-align:right;}
 .dl-pct{font-size:9px;color:var(--t4);min-width:30px;text-align:right;}
+
+.vehicle-summary{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px 14px 4px;
+}
+.vehicle-summary-card{
+  min-width:0;padding:10px 11px;border:1px solid var(--b1);border-radius:8px;
+  background:rgba(255,255,255,.025);display:flex;flex-direction:column;gap:4px;
+}
+.vehicle-summary-label{font-size:8px;color:var(--t4);font-weight:900;text-transform:uppercase;letter-spacing:.6px;}
+.vehicle-summary-value{font-family:var(--mono);font-size:16px;color:var(--t1);font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vehicle-summary-value.green{color:var(--greenh);}.vehicle-summary-value.blue{color:var(--blueh);}.vehicle-summary-value.amber{color:var(--amberh);}
+@media(max-width:620px){.vehicle-summary{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+.asset-section{margin:10px 14px 14px;border:1px solid var(--b1);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.018);}
+.asset-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:11px 12px;border-bottom:1px solid var(--b1);background:rgba(255,255,255,.025);}
+.asset-section-title{display:block;color:var(--t1);font-size:11px;font-weight:900;}
+.asset-section-sub{display:block;margin-top:2px;color:var(--t4);font-size:9px;line-height:1.4;}
+.asset-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:10px 11px;}
+.asset-kpi{min-width:0;padding:8px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);}
+.asset-kpi-label{display:block;color:var(--t4);font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;}
+.asset-kpi-value{display:block;margin-top:3px;color:var(--t1);font-family:var(--mono);font-size:14px;font-weight:900;}
+.building-category-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:0 11px 10px;}
+.building-category-card{position:relative;min-width:0;padding:8px 9px 8px 12px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.018);overflow:hidden;}
+.building-category-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--cat);}
+.building-category-name{display:block;color:var(--t3);font-size:9px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.building-category-count{display:block;margin-top:2px;color:var(--t1);font-family:var(--mono);font-size:13px;font-weight:900;}
+.asset-subhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 11px;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);color:var(--t3);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;background:rgba(255,255,255,.018);}
+.building-detail-row{display:grid;grid-template-columns:minmax(130px,1.5fr) repeat(4,minmax(54px,.55fr));gap:8px;align-items:center;padding:8px 11px;border-bottom:1px solid var(--b0);}
+.building-detail-row:last-child{border-bottom:0;}
+.building-detail-row:hover{background:var(--bgh);}
+.building-detail-name{min-width:0;color:var(--t1);font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.building-detail-stat{min-width:0;text-align:right;color:var(--t2);font-family:var(--mono);font-size:9px;font-weight:800;}
+.building-detail-stat small{display:block;color:var(--t4);font-family:var(--font);font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.25px;}
+.extension-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:10px 11px;}
+.extension-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 8px;border:1px solid var(--b1);border-radius:6px;background:rgba(255,255,255,.018);}
+.extension-name{min-width:0;color:var(--t2);font-size:9px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.extension-count{color:var(--t1);font-family:var(--mono);font-size:9px;font-weight:900;white-space:nowrap;}
+.extension-count em{color:var(--greenh);font-style:normal;}
+@media(max-width:680px){
+  .asset-kpis,.building-category-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .building-detail-row{grid-template-columns:minmax(120px,1.4fr) repeat(2,minmax(50px,.6fr));}
+  .building-detail-row .building-detail-stat:nth-child(4),.building-detail-row .building-detail-stat:nth-child(5){display:none;}
+  .extension-list{grid-template-columns:1fr;}
+}
 
 /* â”€â”€ Vehicle Bars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vb-wrap{padding:2px 14px 12px;}
@@ -572,7 +784,7 @@ GM_addStyle(`
 }
 .lrow-sub{font-size:10px;color:var(--t4);flex-shrink:0;}
 .sch-row{
-  display:grid;grid-template-columns:minmax(0,1fr) 54px 92px 96px;
+  display:grid;grid-template-columns:minmax(0,1fr) 58px 92px 96px 72px;
   gap:8px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--b0);font-size:11px;
 }
 .sch-row:last-child{border-bottom:none;}
@@ -581,6 +793,13 @@ GM_addStyle(`
 .sch-sub{display:block;margin-top:2px;color:var(--t3);font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .sch-seats,.sch-cost,.sch-finish{font-family:var(--mono);font-size:10px;text-align:right;color:var(--t2);font-weight:700;}
 .sch-seats{color:var(--greenh);}
+.schooling-toolbar,.team-toolbar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--b1);background:rgba(255,255,255,.018);}
+.schooling-toolbar .lss7-select,.team-toolbar .lss7-select{flex:1 1 180px;max-width:none;}
+.schooling-toolbar button{width:auto;flex:0 0 auto;}
+.sch-open{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:0 9px;border:1px solid rgba(59,130,246,.34);border-radius:6px;background:var(--blue3);color:var(--blueh);font-size:9px;font-weight:900;text-decoration:none;}
+.sch-open:hover{background:rgba(59,130,246,.2);color:var(--t1);}
+.sch-row.is-hidden,.team-card.is-hidden{display:none;}
+@media(max-width:650px){.sch-row{grid-template-columns:minmax(0,1fr) 54px 68px}.sch-cost,.sch-finish{display:none}.schooling-toolbar,.team-toolbar{flex-wrap:wrap}}
 
 /* Verbandsverdienst */
 #alliance-earn-board{padding:10px 12px;}
@@ -655,6 +874,7 @@ GM_addStyle(`
 .hist-t{color:var(--t4);min-width:54px;font-family:var(--mono);font-size:10px;}
 .hist-v{flex:1;font-weight:600;color:var(--t2);font-family:var(--mono);}
 .hist-d{min-width:72px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;}
+.history-explain{margin:10px 12px;}
 
 /* â”€â”€ KM-Tabelle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .km-row{
@@ -697,6 +917,27 @@ GM_addStyle(`
   font-size:9px;font-weight:700;padding:1px 6px;
   border-radius:4px;letter-spacing:.4px;flex-shrink:0;
 }
+.team-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px;}
+.team-summary-card{padding:10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.022);}
+.team-summary-card span{display:block;color:var(--t4);font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.55px;}
+.team-summary-card b{display:block;margin-top:4px;color:var(--t1);font:900 18px/1 var(--mono);}
+.team-category{margin:0 12px 10px;border:1px solid var(--b1);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.012);}
+.team-category-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--b1);background:rgba(255,255,255,.025);}
+.team-category-title{display:flex;align-items:center;gap:7px;color:var(--t1);font-size:10px;font-weight:900;}
+.team-category-dot{width:9px;height:9px;border-radius:50%;background:var(--role-color);box-shadow:0 0 7px var(--role-color);}
+.team-category-count{color:var(--t4);font:800 9px/1 var(--mono);}
+.team-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:9px;}
+.team-card{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:9px;align-items:center;padding:10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.02);transition:background .15s,border-color .15s,transform .15s;}
+.team-card:hover{background:var(--bgh);border-color:var(--b3);transform:translateY(-1px);}
+.team-avatar{width:38px;height:38px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,var(--blue3),var(--green3));border:1px solid var(--b2);color:var(--t1);font-size:12px;font-weight:950;}
+.team-main{min-width:0;}.team-name{display:block;color:var(--t1);font-size:11px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.team-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;}.team-role{padding:2px 5px;border-radius:4px;border:1px solid var(--b2);background:rgba(255,255,255,.04);color:var(--role-color);font-size:8px;font-weight:900;}
+.team-role-owner{--role-color:#d8a91f;background:rgba(216,169,31,.14);border-color:rgba(216,169,31,.42)}.team-role-admin{--role-color:#c74a58;background:rgba(143,29,44,.18);border-color:rgba(143,29,44,.48)}.team-role-coadmin{--role-color:#e96670;background:rgba(228,71,82,.15);border-color:rgba(228,71,82,.44)}.team-role-radio{--role-color:#72c8f2;background:rgba(114,200,242,.14);border-color:rgba(114,200,242,.42)}.team-role-board{--role-color:#ed8a2f;background:rgba(237,138,47,.14);border-color:rgba(237,138,47,.42)}.team-role-finance{--role-color:#b98af0;background:rgba(165,106,232,.15);border-color:rgba(165,106,232,.44)}.team-role-schooling{--role-color:#6da5f5;background:rgba(67,139,242,.15);border-color:rgba(67,139,242,.44)}.team-role-personnel{--role-color:#c6ced9;background:rgba(174,184,198,.13);border-color:rgba(174,184,198,.40)}.team-role-event{--role-color:#c68b5b;background:rgba(183,121,69,.15);border-color:rgba(183,121,69,.44)}.team-role-member{--role-color:var(--t3)}.team-role-other{--role-color:var(--cyan)}
+.team-open{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;border:1px solid var(--b1);background:rgba(255,255,255,.03);color:var(--blueh);text-decoration:none;font-weight:900;}
+.team-open:hover{background:var(--blue3);color:var(--t1);}
+.team-empty-filter{display:none;margin:0 12px 12px;}.team-category.is-hidden{display:none;}
+@media(max-width:1000px){.team-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:640px){.team-summary{grid-template-columns:repeat(2,minmax(0,1fr));}.team-grid{grid-template-columns:1fr;}}
 
 /* â”€â”€ Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .set-wrap{padding:14px;display:grid;grid-template-columns:1fr;gap:10px;align-items:start;}
@@ -825,16 +1066,20 @@ GM_addStyle(`
 .game-events-mini .game-event-title{font-size:11px;}
 .game-events-mini .game-event-desc{display:none;}
 .game-events-mini .game-event-time{font-size:11px;}
-.wm-list{display:flex;flex-direction:column;gap:7px;}
+.wm-list{display:flex;flex-direction:column;gap:5px;}
 .wm-row{
-  display:grid;grid-template-columns:92px minmax(0,1fr) minmax(190px,230px);gap:10px;align-items:center;
-  padding:9px 10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.025);
+  display:grid;grid-template-columns:78px minmax(0,1fr) minmax(176px,210px);gap:8px;align-items:center;
+  padding:7px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);
 }
 .wm-row.live{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08);}
-.wm-time{font-size:10px;color:var(--t3);line-height:1.45;font-family:var(--mono);}
+.wm-time{font-size:9px;color:var(--t3);line-height:1.35;font-family:var(--mono);}
+.wm-stage{display:inline-flex;margin-top:4px;padding:2px 5px;border-radius:999px;border:1px solid var(--b1);background:rgba(255,255,255,.035);color:var(--t2);font-family:var(--font);font-size:8px;font-weight:850;white-space:nowrap;}
 .wm-main{min-width:0;}
-.wm-teams{font-size:12px;color:var(--t1);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wm-meta{font-size:10px;color:var(--t3);margin-top:3px;line-height:1.4;}
+.wm-teams{font-size:12px;color:var(--t1);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wm-team-vs{display:inline-flex;align-items:center;justify-content:center;margin:0 5px;color:var(--t4);font-size:8px;font-weight:900;text-transform:uppercase;}
+.wm-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:9px;color:var(--t3);margin-top:4px;line-height:1.3;}
+.wm-meta-item{display:inline-flex;align-items:center;min-width:0;padding:2px 5px;border:1px solid var(--b1);border-radius:5px;background:rgba(255,255,255,.025);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wm-meta-item:first-child{max-width:58%;}
 .wm-match-events{display:flex;flex-direction:column;gap:5px;margin-top:7px;padding-top:7px;border-top:1px solid var(--b1);}
 .wm-event-line{display:grid;grid-template-columns:18px 72px minmax(0,1fr);gap:5px;align-items:start;font-size:9px;line-height:1.35;}
 .wm-event-icon{font-size:11px;text-align:center;}
@@ -842,14 +1087,14 @@ GM_addStyle(`
 .wm-event-names{color:var(--t2);font-weight:650;}
 .wm-api-note{margin-top:5px;font-size:9px;color:var(--t4);line-height:1.35;}
 .wm-status{
-  display:inline-flex;margin-top:6px;padding:2px 6px;border-radius:999px;
+  display:inline-flex;margin:0;padding:2px 6px;border-radius:999px;
   border:1px solid rgba(96,165,250,.22);background:rgba(96,165,250,.09);
   color:var(--blueh);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;
 }
 .wm-row.live .wm-status{color:#7cffb2;border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.12);}
 .wm-score{
   display:inline-flex;justify-content:center;align-items:center;min-width:48px;
-  margin-left:auto;padding:4px 7px;border-radius:7px;
+  margin-left:auto;padding:4px 7px;border-radius:6px;
   color:#7cffb2;background:rgba(34,197,94,.16);border:1px solid rgba(34,197,94,.36);
   font-size:14px;font-weight:900;text-align:center;font-family:var(--mono);
   text-shadow:0 0 12px rgba(34,197,94,.35);
@@ -859,14 +1104,14 @@ GM_addStyle(`
   text-shadow:0 0 12px rgba(245,195,92,.25);
 }
 .wm-result-tip{
-  display:grid;grid-template-columns:auto 1fr;gap:9px;align-items:start;justify-items:end;
+  display:grid;grid-template-columns:auto 1fr;gap:7px;align-items:center;justify-items:end;
 }
-.wm-result-box{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.wm-result-box{display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
 .wm-result-label{
   font-size:9px;color:#fff;font-weight:900;text-transform:uppercase;
   letter-spacing:.55px;opacity:.95;white-space:nowrap;
 }
-.wm-tip{display:flex;justify-content:flex-end;align-items:center;gap:5px;margin-top:5px;font-size:10px;color:#fff;font-weight:900;flex-wrap:wrap;}
+.wm-tip{display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-top:4px;font-size:10px;color:#fff;font-weight:900;flex-wrap:wrap;}
 .wm-result-tip .wm-tip{margin-top:0;min-width:104px;}
 .wm-tip span{color:#fff;font-weight:900;}
 .wm-tip-label{
@@ -897,11 +1142,49 @@ GM_addStyle(`
   border:1px solid rgba(96,165,250,.42);font-size:12px;font-weight:900;font-family:var(--mono);
 }
 .wm-tip button{
-  height:26px;padding:0 8px;border-radius:7px;border:1px solid rgba(245,195,92,.42);
-  background:rgba(201,146,36,.18);color:#f9e6a2;font-size:10px;font-weight:900;
+  height:26px;padding:0 8px;border-radius:6px;border:1px solid rgba(245,195,92,.58);
+  background:rgba(201,146,36,.24);color:#fff1b8;font-size:10px;font-weight:900;
   font-family:var(--font);cursor:pointer;
 }
 .wm-tip button:hover{background:rgba(201,146,36,.28);color:#fff;}
+.wm-groups{border:1px solid var(--b1);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.018);}
+.wm-groups-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;background:rgba(255,255,255,.025);}
+.wm-groups-title{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.wm-groups-title b{font-size:12px;color:var(--t1);}
+.wm-groups-title span{font-size:10px;color:var(--t3);}
+.wm-groups-toggle{flex-shrink:0;padding:7px 10px;border:1px solid rgba(96,165,250,.38);border-radius:6px;background:rgba(59,130,246,.12);color:var(--blueh);font-size:10px;font-weight:900;cursor:pointer;}
+.wm-groups-toggle:hover{background:rgba(59,130,246,.2);color:var(--t1);}
+.wm-groups-panel{display:none;padding:10px;}
+.wm-groups.open .wm-groups-panel{display:flex;flex-direction:column;gap:8px;}
+.wm-group-card{min-width:0;border:1px solid var(--b1);border-radius:8px;overflow:auto;background:rgba(255,255,255,.02);box-shadow:0 4px 14px rgba(0,0,0,.08);}
+.wm-group-name{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:0;border-bottom:1px solid transparent;color:var(--t1);font:900 11px/1.3 var(--font);background:linear-gradient(90deg,rgba(59,130,246,.12),rgba(34,197,94,.04));cursor:pointer;text-align:left;}
+.wm-group-card.open .wm-group-name{border-bottom-color:var(--b1);}
+.wm-group-name span{color:var(--t3);font-size:9px;font-weight:800;}
+.wm-group-name-main{display:flex;align-items:center;gap:8px;min-width:0;}.wm-group-arrow{font-size:13px;color:var(--blueh);transition:transform .18s ease;}.wm-group-card.open .wm-group-arrow{transform:rotate(90deg);}
+.wm-group-table-wrap{display:none;overflow-x:auto;}.wm-group-card.open .wm-group-table-wrap{display:block;}
+.wm-table{width:100%;min-width:350px;border-collapse:collapse;table-layout:fixed;}
+.wm-table th,.wm-table td{padding:6px 4px;border-bottom:1px solid var(--b0);font-size:9px;text-align:center;color:var(--t2);}
+.wm-table tr:last-child td{border-bottom:0;}
+.wm-table tbody tr:nth-child(even){background:rgba(255,255,255,.018);}
+.wm-table th{color:var(--t3);font-weight:950;text-transform:uppercase;background:rgba(255,255,255,.035);}
+.wm-table .wm-pos{width:22px;color:var(--t4);font-family:var(--mono);}
+.wm-table .wm-club{width:34%;text-align:left;color:var(--t1);font-size:10px;font-weight:850;white-space:normal;overflow:visible;text-overflow:clip;word-break:normal;}
+.wm-table .wm-pts{color:var(--greenh);font-family:var(--mono);font-weight:900;}
+.wm-table tr.qualify .wm-pos{color:var(--greenh);}
+.wm-table tr.third .wm-pos{color:var(--amberh);}
+.wm-groups-note{grid-column:1/-1;color:var(--t3);font-size:9px;line-height:1.45;text-align:left;padding:4px 2px;}
+.wm-groups-legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1px;grid-column:1/-1;}
+.wm-legend{padding:3px 7px;border-radius:999px;border:1px solid var(--b1);font-size:8px;font-weight:900;color:var(--t3);background:rgba(255,255,255,.025);}
+.wm-legend.qualify{color:var(--greenh);border-color:rgba(34,197,94,.32);background:var(--green3);}
+.wm-legend.third{color:var(--amberh);border-color:rgba(245,158,11,.32);background:var(--amber3);}
+@media(max-width:620px){
+  .wm-row{grid-template-columns:66px minmax(0,1fr);}
+  .wm-result-tip{grid-column:1/-1;display:flex;justify-content:flex-end;border-top:1px solid var(--b1);padding-top:6px;}
+  .wm-table{min-width:460px;}
+}
+#lss7:not(.layout) .wm-row{grid-template-columns:66px minmax(0,1fr);}
+#lss7:not(.layout) .wm-result-tip{grid-column:1/-1;display:flex;justify-content:flex-end;border-top:1px solid var(--b1);padding-top:6px;}
+#lss7:not(.layout) .wm-table{min-width:460px;}
 .wm-mini{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
 .wm-mini-row{display:grid;grid-template-columns:82px 1fr 58px;gap:8px;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);}
 .wm-mini-t{font-size:10px;color:var(--t2);font-family:var(--mono);}
@@ -942,6 +1225,17 @@ GM_addStyle(`
 }
 .wx-chip b{display:block;font-size:9px;color:var(--t3);font-family:var(--mono);margin-bottom:2px;}
 .wx-chip span{display:block;color:var(--t1);font-weight:800;white-space:nowrap;font-size:10px;}
+.wx-chip em{display:block;margin-top:2px;color:var(--t4);font-style:normal;font-size:8px;white-space:nowrap;}
+.wx-forecast-block{min-width:0;}
+.wx-trend-block{grid-column:1/-1;min-width:0;}
+.wx-section-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 5px;color:var(--t3);font-size:8px;font-weight:900;letter-spacing:.65px;text-transform:uppercase;}
+.wx-section-title span{color:var(--t4);font-weight:750;letter-spacing:0;text-transform:none;white-space:nowrap;}
+.wx-trend{display:grid;grid-template-columns:repeat(7,minmax(88px,1fr));gap:7px;padding-top:2px;overflow-x:auto;}
+.wx-day{min-width:88px;padding:8px 7px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.025);text-align:center;}
+.wx-day-name{display:block;color:var(--t3);font-size:9px;font-weight:900;text-transform:uppercase;}
+.wx-day-icon{display:block;margin:4px 0 3px;font-size:18px;line-height:1;}
+.wx-day-temp{display:block;color:var(--t1);font:900 10px/1.3 var(--mono);white-space:nowrap;}
+.wx-day-meta{display:flex;justify-content:center;gap:6px;margin-top:4px;color:var(--t4);font-size:8px;white-space:nowrap;}
 .wx-alert{margin-top:6px;font-size:10px;color:var(--amber);}
 .wx-warn{
   grid-column:1/-1;padding:8px 9px;border-radius:7px;border:1px solid var(--b1);font-size:10px;line-height:1.35;display:block;width:auto;
@@ -952,7 +1246,7 @@ GM_addStyle(`
 .wx-warn.lvl3{background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.35);color:#fb923c;}
 .wx-warn.lvl4{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#f87171;}
 .wx-warn.lvl5{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.35);color:#c084fc;}
-.wx-src{grid-column:1/-1;font-size:9px;color:var(--t4);text-align:right;opacity:.62;margin-top:-4px;}
+.wx-src{grid-column:1/-1;font-size:9px;color:var(--t4);text-align:right;opacity:.72;margin-top:-4px;}
 .wx-details{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
 .wx-detail{padding:6px 8px;border-radius:7px;border:1px solid var(--b1);background:rgba(255,255,255,.025);}
 .wx-detail-k{display:block;font-size:8px;color:var(--t4);text-transform:uppercase;letter-spacing:.6px;font-weight:800;}
@@ -960,10 +1254,12 @@ GM_addStyle(`
 #lss7:not(.layout) .wx-card{grid-template-columns:1fr;max-width:none;}
 #lss7:not(.layout) .weather-forecast{grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible;}
 #lss7:not(.layout) .wx-details{grid-template-columns:repeat(2,minmax(0,1fr));}
+#lss7:not(.layout) .wx-trend{grid-template-columns:repeat(7,minmax(92px,1fr));}
 @media (max-width:640px){
   .wx-card{grid-template-columns:1fr;max-width:none;}
   .weather-forecast{grid-template-columns:repeat(4,minmax(0,1fr));}
   .wx-details{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .wx-trend{grid-template-columns:repeat(7,94px);}
 }
 
 #lss7-changelog{
@@ -984,41 +1280,319 @@ GM_addStyle(`
   box-shadow:0 0 0 1px rgba(15,23,42,.06) inset,0 10px 40px rgba(15,23,42,.18);
 }
 
-#lss7.theme-midnight{
-  --bg0:#050913; --bg1:#0b1324; --bg2:#101a30; --bg3:#16233d; --bg4:#1b2b48;
-  --bgh:#1a2a45; --bgc:#13213a;
-  --blue:#4f8cff; --blueh:#77a5ff; --cyan:#2dd4bf; --cyanh:#5eead4;
+/* Summer 2026 */
+#lss7.theme-summer{
+  --bg0:#f6fbfd; --bg1:#edf8fc; --bg2:#e3f3f8; --bg3:#d8edf3; --bg4:#cce6ee;
+  --bgh:#dcf2ef; --bgc:#fff9e8;
+  --b0:rgba(22,50,73,.045); --b1:rgba(22,50,73,.10);
+  --b2:rgba(22,50,73,.17); --b3:rgba(22,50,73,.25);
+  --blue:#1687c8; --blueh:#0f6fa8; --blue3:rgba(22,135,200,.12);
+  --green:#2f9e5b; --greenh:#247d49; --green3:rgba(47,158,91,.12);
+  --amber:#e6a300; --amberh:#bd7f00; --amber3:rgba(230,163,0,.13);
+  --red:#dc4c56; --redh:#ba3640; --red3:rgba(220,76,86,.11);
+  --purple:#8b62bf; --purpleh:#70499f; --purple3:rgba(139,98,191,.11);
+  --cyan:#0e9c9a; --cyanh:#087c7b; --cyan3:rgba(14,156,154,.11);
+  --pink:#dc5f86; --pinkh:#bd4168; --pink3:rgba(220,95,134,.11);
+  --t1:#163249; --t2:#29495f; --t3:#526d7c; --t4:#738c98;
+  color-scheme:light;
+  box-shadow:0 0 0 1px rgba(22,135,200,.08) inset,0 14px 42px rgba(29,82,104,.22),0 24px 70px rgba(29,82,104,.12);
 }
-#lss7.theme-emerald{
-  --bg0:#07110f; --bg1:#0d1a17; --bg2:#12221e; --bg3:#163029; --bg4:#1b3a32;
-  --bgh:#1d3b33; --bgc:#163028;
-  --blue:#10b981; --blueh:#34d399; --cyan:#2dd4bf; --cyanh:#5eead4;
-  --green:#34d399; --greenh:#6ee7b7;
+#lss7.theme-summer #lss7-hd{
+  background:
+    linear-gradient(115deg,rgba(255,255,255,.78),rgba(255,255,255,.16) 48%,transparent 72%),
+    linear-gradient(135deg,#bcecff 0%,#dcf6f3 56%,#fff1a8 100%);
+  border-bottom-color:rgba(22,135,200,.16);
 }
-#lss7.theme-sunset{
-  --bg0:#14090a; --bg1:#1f0f12; --bg2:#2a1418; --bg3:#361920; --bg4:#40202a;
-  --bgh:#42222d; --bgc:#331a22;
-  --blue:#f97316; --blueh:#fb923c; --cyan:#f59e0b; --cyanh:#fbbf24;
-  --green:#f59e0b; --greenh:#fbbf24;
+#lss7.theme-summer #lss7-hd::before{
+  content:'☀';position:absolute;right:18px;top:-17px;font-size:62px;line-height:1;
+  color:#f2b600;opacity:.22;pointer-events:none;transform:rotate(9deg);
+  filter:drop-shadow(0 4px 10px rgba(230,163,0,.18));
 }
-#lss7.theme-slate{
-  --bg0:#0b0f14; --bg1:#11161d; --bg2:#171d26; --bg3:#1d2632; --bg4:#243042;
-  --bgh:#223043; --bgc:#1b2737;
-  --blue:#60a5fa; --blueh:#93c5fd; --cyan:#22d3ee; --cyanh:#67e8f9;
+#lss7.theme-summer #lss7-hd::after{
+  content:'✿  ✿';inset:auto 132px 5px auto;width:auto;height:auto;
+  background:none;color:rgba(220,95,134,.42);font-size:13px;letter-spacing:7px;
+  pointer-events:none;
 }
-#lss7.theme-premium{
-  --bg0:#0e0a04; --bg1:#171107; --bg2:#1e1609; --bg3:#281c0b; --bg4:#33240e;
-  --bgh:#2f220d; --bgc:#261c0c;
-  --b1:rgba(248,199,101,.16); --b2:rgba(248,199,101,.26); --b3:rgba(248,199,101,.38);
-  --blue:#d9a441; --blueh:#f1c76a; --cyan:#f59e0b; --cyanh:#f8b84a;
-  --green:#f6d377; --greenh:#ffe5a8;
-  box-shadow:0 0 0 1px rgba(248,199,101,.18) inset, 0 20px 60px rgba(0,0,0,.65);
+#lss7.theme-summer.summer-webgl-ready #lss7-hd::before,
+#lss7.theme-summer.summer-webgl-ready #lss7-hd::after{opacity:0;}
+#lss7.theme-summer #lss7-hd .hd-row,
+#lss7.theme-summer #lss7-hd .lss7-update-note{position:relative;z-index:1;}
+#lss7.theme-summer .hd-mark{
+  color:#ffffff;background:linear-gradient(145deg,#1687c8,#19a66a 68%,#e5ad24);
+  border-color:rgba(22,135,200,.34);box-shadow:0 6px 16px rgba(22,135,200,.19),inset 0 1px rgba(255,255,255,.32);
 }
-#lss7.theme-premium #lss7-hd{
-  background:radial-gradient(120% 140% at 100% 0%, rgba(245,190,75,.22), transparent 60%),linear-gradient(180deg, rgba(255,219,130,.09), rgba(255,219,130,0));
+#lss7.theme-summer .prof-strip{
+  background:
+    linear-gradient(120deg,rgba(22,135,200,.10),rgba(47,158,91,.07) 58%,rgba(255,213,79,.13)),
+    rgba(255,255,255,.44);
 }
-#lss7.theme-premium .prof-fill{background:linear-gradient(90deg,#d9a441,#f6d377,#ffe5a8);}
-#lss7.theme-premium .kpi-val,#lss7.theme-premium .stat-num{text-shadow:0 0 18px rgba(245,196,88,.18);}
+#lss7.theme-summer{
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.32),transparent 130px),
+    linear-gradient(145deg,#f7fcfe,#edf9f7 56%,#fff9e7);
+}
+#lss7.theme-summer #lss7-body{
+  background:
+    linear-gradient(90deg,rgba(22,135,200,.025) 1px,transparent 1px),
+    linear-gradient(rgba(47,158,91,.022) 1px,transparent 1px),
+    linear-gradient(145deg,#f8fcfe,#f2faf8 70%,#fffaf0);
+  background-size:34px 34px,34px 34px,auto;
+}
+#lss7.theme-summer #lss7-tabs,
+#lss7.theme-summer #lss7-qs{
+  background:rgba(237,248,252,.94);backdrop-filter:blur(8px);
+}
+#lss7.theme-summer .sc,
+#lss7.theme-summer .set-group,
+#lss7.theme-summer .forecast-controls,
+#lss7.theme-summer .forecast-chart-box{
+  background:rgba(255,255,255,.68);border-color:rgba(22,80,104,.13);
+  box-shadow:0 7px 20px rgba(37,102,126,.07),0 1px 0 rgba(255,255,255,.85) inset;
+}
+#lss7.theme-summer .sc:hover{border-color:rgba(22,135,200,.24);}
+#lss7.theme-summer .qs-cell.clickable:hover{background:rgba(22,135,200,.06);}
+#lss7.theme-summer .prof-fill,
+#lss7.theme-summer .pt-fill{
+  background:linear-gradient(90deg,#19a6c7,#38b66b 58%,#f1bd28);
+}
+#lss7.theme-summer .ltab.active{
+  color:#0f6fa8;background:linear-gradient(180deg,rgba(255,255,255,.62),rgba(22,135,200,.08));
+}
+#lss7.theme-summer .ltab.active::after{background:linear-gradient(90deg,#1687c8,#2f9e5b,#e6a300);}
+#lss7.theme-summer .lbtn.prime{
+  background:linear-gradient(135deg,#1687c8,#0e9c9a);border-color:rgba(15,111,168,.35);color:#fff;
+}
+#lss7.theme-summer .forecast-beta{
+  color:#5a3b00;background:linear-gradient(105deg,#fff0a8,#fff8dc 62%,#fffdf5);
+  border-color:#d18a00;border-left-color:#c87600;
+  box-shadow:0 8px 20px rgba(195,125,0,.10),0 1px 0 rgba(255,255,255,.9) inset;
+  font-size:10.5px;font-weight:650;
+}
+#lss7.theme-summer .forecast-beta b{
+  color:#fff;background:#9a5700;box-shadow:0 2px 7px rgba(126,68,0,.22);
+}
+#lss7.theme-summer .forecast-beta-badge{
+  color:#fff!important;background:#9a5700;border-color:#6f3d00;
+  box-shadow:0 2px 8px rgba(126,68,0,.22);
+}
+#lss7.theme-summer .ltab[data-tab="tp-forecast"]{
+  color:#704400;font-weight:850;background:rgba(255,222,99,.18);
+}
+#lss7.theme-summer .ltab[data-tab="tp-forecast"].active{
+  color:#513000;background:linear-gradient(180deg,#fff1ac,#fff8df);
+}
+#lss7.theme-summer .forecast-status.good{color:#146b3b;background:#e0f6e8;border-color:#55a875;}
+#lss7.theme-summer .forecast-status.warn{color:#754600;background:#fff1bd;border-color:#c58a19;}
+#lss7.theme-summer .forecast-status.bad{color:#922d38;background:#ffe4e7;border-color:#d66a73;}
+#lss7.theme-summer .vehicle-summary-card{
+  background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(231,247,248,.78));
+  border-color:rgba(22,80,104,.16);box-shadow:0 6px 16px rgba(37,102,126,.07);
+}
+#lss7.theme-summer .vehicle-summary-value{color:#163249;}
+#lss7.theme-summer .vehicle-summary-value.green{color:#197442;}
+#lss7.theme-summer .vehicle-summary-value.blue{color:#0f6fa8;}
+#lss7.theme-summer .vehicle-summary-value.amber{color:#8a5600;}
+#lss7.theme-summer .dl-val,
+#lss7.theme-summer .vb-num{
+  color:#15384e;background:#e4f5fa;border:1px solid rgba(15,111,168,.24);
+  border-radius:5px;padding:2px 6px;font-weight:950;min-width:34px;
+}
+#lss7.theme-summer .dl-pct{color:#526674;font-weight:850;}
+#lss7.theme-summer .vb-tv{
+  color:#fff;background:#0f6fa8;border:1px solid #0a5e90;border-radius:7px;
+  padding:3px 9px;text-shadow:none;box-shadow:0 4px 12px rgba(15,111,168,.20);
+}
+#lss7.theme-summer .wm-score.pending,
+#lss7.theme-summer .wm-mini-s.pending{
+  color:#553500;background:#ffe28a;border-color:#b97900;text-shadow:none;
+  box-shadow:0 3px 10px rgba(185,121,0,.15);
+}
+#lss7.theme-summer .wm-score:not(.pending),
+#lss7.theme-summer .wm-mini-s:not(.pending){
+  color:#fff;background:#197442;border-color:#0f5f33;text-shadow:none;
+  box-shadow:0 3px 10px rgba(25,116,66,.20);
+}
+#lss7.theme-summer .wm-result-label,
+#lss7.theme-summer .wm-tip,
+#lss7.theme-summer .wm-tip span,
+#lss7.theme-summer .wm-tip-label{color:#27495c;opacity:1;}
+#lss7.theme-summer .wm-tip button{
+  color:#fff;background:#0f6fa8;border-color:#095886;text-shadow:none;
+  box-shadow:0 3px 9px rgba(15,111,168,.18);
+}
+#lss7.theme-summer .wm-tip button:hover{color:#fff;background:#0b5d8d;border-color:#07486e;}
+#lss7.theme-summer .wm-tip-chip{color:#fff;background:#1687c8;border-color:#0f6fa8;}
+#lss7.theme-summer .wm-tip input{color:#163249;background:#fff;border-color:rgba(15,111,168,.42);}
+#lss7.theme-summer .wm-stage,
+#lss7.theme-summer .wm-meta-item{color:#365c70;background:rgba(255,255,255,.76);border-color:rgba(22,80,104,.15);}
+#lss7.theme-summer .wm-groups,
+#lss7.theme-summer .wm-group-card{background:#fff!important;border-color:rgba(22,80,104,.18);}
+#lss7.theme-summer .wm-groups-head,
+#lss7.theme-summer .wm-group-name{background:linear-gradient(90deg,rgba(22,135,200,.10),rgba(47,158,91,.07));}
+#lss7.theme-summer .wm-groups-toggle{color:#fff;background:#0f6fa8;border-color:#095886;}
+#lss7.theme-summer .wm-group-name{color:#143b52;border-bottom-color:rgba(22,80,104,.18);}
+#lss7.theme-summer .wm-group-name span{color:#4c6d7e;}
+#lss7.theme-summer .wm-table{background:#fff!important;color:#29495f!important;}
+#lss7.theme-summer .wm-table th{color:#35596c!important;background:#eaf5f7!important;border-bottom-color:rgba(22,80,104,.16)!important;}
+#lss7.theme-summer .wm-table td{color:#2d4f62!important;background:#fff!important;border-bottom-color:rgba(22,80,104,.10)!important;}
+#lss7.theme-summer .wm-table tbody tr:nth-child(even) td{background:#f2f9fa!important;}
+#lss7.theme-summer .wm-table .wm-club{color:#173b51!important;}
+#lss7.theme-summer .wm-table .wm-pts{color:#0d6537!important;background:#e8f7ed!important;}
+#lss7.theme-summer .wm-table tr.qualify{box-shadow:inset 3px 0 #2f9e5b;}
+#lss7.theme-summer .wm-table tr.third{box-shadow:inset 3px 0 #d49a16;}
+#lss7.theme-summer .wm-groups-note{color:#426477;}
+#lss7.theme-summer .wm-legend{color:#365b6e;background:#fff;border-color:rgba(22,80,104,.16);}
+#lss7.theme-summer .wm-legend.qualify{color:#0d6537;background:#e1f6e9;border-color:#58a978;}
+#lss7.theme-summer .wm-legend.third{color:#754600;background:#fff1bd;border-color:#c58a19;}
+#lss7.theme-summer .prof-event-strip{background:linear-gradient(90deg,#fff9dd,#eef9f1);border-bottom-color:rgba(103,119,73,.22);box-shadow:inset 4px 0 #e5ad24;}
+#lss7.theme-summer .prof-event-strip.idle{background:rgba(255,255,255,.62);box-shadow:inset 4px 0 #8ca2ad;}
+#lss7.theme-summer .prof-event-row{border-top-color:rgba(22,80,104,.12);}
+#lss7.theme-summer .prof-event-label,
+#lss7.theme-summer .prof-event-strip.active .prof-event-label{color:#243f4f;}
+#lss7.theme-summer .prof-event-type{color:#5b7180;}
+#lss7.theme-summer .prof-event-time{color:#0d6537;background:#e1f6e9;border:1px solid #71b68c;border-radius:6px;padding:3px 6px;}
+#lss7.theme-summer .prof-event-strip.idle .prof-event-time{color:#526b79;background:#eef3f5;border-color:#b8c7ce;}
+#lss7.theme-summer .prof-event-gem{color:#744700;background:#fff0b5;border-color:#c58a19;box-shadow:none;}
+#lss7.theme-summer .prof-event-gem.siren{color:#8d2732;background:#ffe4e7;border-color:#d66a73;box-shadow:none;}
+#lss7.theme-summer .prof-event-gem.sale,
+#lss7.theme-summer .game-event-ico.sale{
+  color:#fff;background:#7b3e9d;border-color:#5f287e;text-shadow:none;
+  box-shadow:0 4px 12px rgba(95,40,126,.20);font-weight:950;
+}
+#lss7.theme-summer .bd-gold,
+#lss7.theme-summer .event-pill{
+  color:#634100;background:linear-gradient(180deg,#ffe99d,#ffd96a);border-color:#c99720;
+  text-shadow:none;
+}
+#lss7.theme-summer .ltab[data-tab="tp-event"]{
+  color:#664300;background:linear-gradient(180deg,#fff2bd,#fff9e7);
+  border-color:rgba(184,126,0,.22);
+}
+#lss7.theme-summer .ltab[data-tab="tp-event"].active{
+  color:#4e3200;border-bottom-color:#c48300;background:#ffe9a0;
+}
+#lss7.theme-summer .set-note{color:#425f70;background:rgba(255,255,255,.58);}
+#lss7.theme-summer .set-note b{color:#754600;}
+#lss7.theme-summer .game-event-row,
+#lss7.theme-summer .wm-row{background:rgba(255,255,255,.62);}
+#lss7.theme-summer .game-events-title{color:#704600;}
+#lss7.theme-summer .game-events-live{color:#146b3b;background:#e1f6e9;border-color:#58a978;}
+#lss7.theme-summer .game-event-title,
+#lss7.theme-summer .wm-teams{color:#1d3f54;}
+#lss7.theme-summer .game-event-time,
+#lss7.theme-summer .wm-row.live .wm-status,
+#lss7.theme-summer .wm-live-dot{color:#197442;}
+#lss7.theme-summer .wx-warn.lvl0{color:#146b3b;background:#e1f6e9;border-color:#58a978;}
+#lss7.theme-summer .wx-warn.lvl2{color:#754600;background:#fff1bd;border-color:#c58a19;}
+#lss7.theme-summer .wx-warn.lvl3{color:#983b10;background:#ffe6cc;border-color:#d77b37;}
+#lss7.theme-summer .wx-warn.lvl4{color:#922d38;background:#ffe4e7;border-color:#d66a73;}
+#lss7.theme-summer .lss7-update-note{color:#146b3b;background:#e1f6e9;border-color:#58a978;}
+#lss7.theme-summer .lss7-update-note.available{color:#754600;background:#fff1bd;border-color:#c58a19;}
+#lss7.theme-summer .set-group,
+#lss7.theme-summer .patch-ver,
+#lss7.theme-summer .rank-mini-row{
+  box-shadow:0 1px 0 rgba(255,255,255,.66) inset;
+}
+#lss7.theme-summer .rank-mini-row.me{
+  background:linear-gradient(90deg,rgba(22,135,200,.13),rgba(47,158,91,.08));
+  border-color:rgba(22,135,200,.32);
+}
+#lss7.theme-summer.layout #lss7-summer-scene{opacity:1;filter:saturate(1.08);}
+#lss7.theme-summer.layout .hd-mark{animation:summer-float 3.4s ease-in-out infinite;}
+#lss7.theme-summer.layout .bd-summer{animation:summer-glow 2.8s ease-in-out infinite;}
+#lss7.theme-summer.layout .sc,
+#lss7.theme-summer.layout .vehicle-summary-card{animation:summer-card-in .42s cubic-bezier(.2,.8,.2,1) both;}
+#lss7.theme-summer.layout .sc:nth-child(2n),
+#lss7.theme-summer.layout .vehicle-summary-card:nth-child(2n){animation-delay:.05s;}
+#lss7.theme-summer.layout .prof-fill,
+#lss7.theme-summer.layout .forecast-progress-fill,
+#lss7.theme-summer.layout .vb-fill{position:relative;overflow:hidden;}
+#lss7.theme-summer.layout .prof-fill::after,
+#lss7.theme-summer.layout .forecast-progress-fill::after,
+#lss7.theme-summer.layout .vb-fill::after{
+  content:'';position:absolute;inset:0;transform:translateX(-125%);
+  background:linear-gradient(105deg,transparent 28%,rgba(255,255,255,.62) 48%,transparent 68%);
+  animation:summer-shimmer 3.2s ease-in-out infinite;
+}
+#lss7.theme-summer.layout .game-events-live::before{animation:summer-live 1.8s ease-in-out infinite;}
+#lss7.theme-summer.layout .wx-icon{animation:summer-float 3s ease-in-out infinite;}
+
+/* Summer Dark 2026 */
+#lss7.theme-summer-dark{
+  --bg0:#050814;--bg1:#091124;--bg2:#0e1930;--bg3:#14213c;--bg4:#1a2948;
+  --bgh:#142744;--bgc:#111d35;
+  --b0:rgba(177,205,255,.05);--b1:rgba(177,205,255,.12);--b2:rgba(177,205,255,.20);--b3:rgba(177,205,255,.30);
+  --blue:#70a7ff;--blueh:#9bc2ff;--blue3:rgba(112,167,255,.14);
+  --green:#55d69a;--greenh:#82e8b8;--green3:rgba(85,214,154,.13);
+  --amber:#f3c868;--amberh:#ffe09a;--amber3:rgba(243,200,104,.13);
+  --red:#ff7482;--redh:#ff9ba5;--red3:rgba(255,116,130,.13);
+  --purple:#bb8cff;--purpleh:#d4b5ff;--purple3:rgba(187,140,255,.13);
+  --cyan:#5ad9e8;--cyanh:#91edf5;--cyan3:rgba(90,217,232,.13);
+  --pink:#ff8db7;--pinkh:#ffb7d1;--pink3:rgba(255,141,183,.13);
+  --t1:#f4f7ff;--t2:#d8e2f6;--t3:#9eb0cd;--t4:#7183a3;
+  color-scheme:dark;background:linear-gradient(160deg,#050814,#0a1530 58%,#10152c);
+  box-shadow:0 0 0 1px rgba(130,170,255,.12) inset,0 18px 62px rgba(0,0,0,.68),0 0 42px rgba(82,116,220,.10);
+}
+#lss7.theme-summer-dark #lss7-hd{
+  background:radial-gradient(circle at 82% 18%,rgba(136,169,255,.20),transparent 24%),linear-gradient(135deg,#081329,#111d42 56%,#1c1741);
+  border-bottom-color:rgba(154,190,255,.18);
+}
+#lss7.theme-summer-dark #lss7-hd::before{content:'☾';position:absolute;right:24px;top:-16px;color:#fff0b0;font-size:68px;line-height:1;opacity:.25;filter:drop-shadow(0 0 14px rgba(255,232,145,.45));}
+#lss7.theme-summer-dark #lss7-hd::after{content:'✦  ·  ✧  ·  ✦';position:absolute;inset:8px 118px auto auto;background:none;color:rgba(210,228,255,.50);font-size:12px;letter-spacing:8px;}
+#lss7.theme-summer-dark.summer-webgl-ready #lss7-hd::before,
+#lss7.theme-summer-dark.summer-webgl-ready #lss7-hd::after{opacity:0;}
+#lss7.theme-summer-dark #lss7-body{background:linear-gradient(rgba(120,156,226,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(120,156,226,.025) 1px,transparent 1px),linear-gradient(145deg,#070c1a,#0a1429 68%,#11142b);background-size:36px 36px,36px 36px,auto;}
+#lss7.theme-summer-dark #lss7-tabs,#lss7.theme-summer-dark #lss7-qs{background:rgba(7,14,30,.94);backdrop-filter:blur(10px);}
+#lss7.theme-summer-dark .sc,#lss7.theme-summer-dark .set-group,#lss7.theme-summer-dark .vehicle-summary-card,#lss7.theme-summer-dark .forecast-controls,#lss7.theme-summer-dark .forecast-chart-box{background:rgba(15,28,53,.76);border-color:rgba(154,190,255,.14);box-shadow:0 8px 22px rgba(0,0,0,.20),0 1px 0 rgba(255,255,255,.035) inset;}
+#lss7.theme-summer-dark .prof-strip{background:linear-gradient(120deg,rgba(91,142,255,.13),rgba(74,219,186,.07) 58%,rgba(185,132,255,.12)),rgba(7,14,30,.78);}
+#lss7.theme-summer-dark .prof-event-strip{background:linear-gradient(90deg,rgba(243,200,104,.12),rgba(85,214,154,.055));border-bottom-color:rgba(243,200,104,.18);box-shadow:inset 4px 0 #f3c868;}
+#lss7.theme-summer-dark .prof-event-label,#lss7.theme-summer-dark .prof-event-strip.active .prof-event-label{color:#fff3c7;}
+#lss7.theme-summer-dark .prof-event-time{color:#8af1bf;background:rgba(31,110,75,.26);border:1px solid rgba(85,214,154,.34);border-radius:6px;padding:3px 6px;}
+#lss7.theme-summer-dark .wm-group-card,#lss7.theme-summer-dark .wm-table{background:#0d1930!important;color:#dce7fb!important;}
+#lss7.theme-summer-dark .wm-table th{background:#152746!important;color:#b9cdf0!important;}
+#lss7.theme-summer-dark .wm-table td{background:transparent!important;color:#dce7fb!important;border-color:rgba(177,205,255,.09)!important;}
+#lss7.theme-summer-dark .wm-table .wm-club{color:#f4f7ff!important;}
+#lss7.theme-summer-dark .wm-table .wm-pts{color:#82e8b8!important;}
+#lss7.theme-summer-dark .bd-summer{color:#f5ecff;background:linear-gradient(135deg,rgba(107,85,190,.82),rgba(35,89,149,.76));border-color:rgba(169,196,255,.38);box-shadow:0 0 18px rgba(117,151,255,.18);}
+#lss7.theme-summer-dark.layout #lss7-summer-scene{opacity:1;filter:saturate(1.08);}
+#lss7.theme-summer-dark.layout .hd-mark,#lss7.theme-summer-dark.layout .wx-icon{animation:summer-float 3.6s ease-in-out infinite;}
+@keyframes summer-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes summer-glow{0%,100%{box-shadow:0 3px 10px rgba(230,163,0,.12)}50%{box-shadow:0 4px 18px rgba(230,163,0,.34)}}
+@keyframes summer-card-in{from{opacity:.25;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes summer-shimmer{0%,35%{transform:translateX(-125%)}70%,100%{transform:translateX(125%)}}
+@keyframes summer-live{0%,100%{transform:scale(.85);box-shadow:0 0 5px rgba(34,197,94,.55)}50%{transform:scale(1.18);box-shadow:0 0 15px rgba(34,197,94,.95)}}
+.bd-summer{
+  color:#6f5200;background:linear-gradient(135deg,rgba(255,223,94,.78),rgba(255,255,255,.58));
+  border:1px solid rgba(196,137,0,.34);box-shadow:0 3px 10px rgba(230,163,0,.12);
+}
+@media(max-width:620px){
+  #lss7.theme-summer #lss7-hd::after{display:none;}
+  #lss7.theme-summer #lss7-hd::before{right:8px;opacity:.14;}
+  #lss7-hd{padding:11px 12px 10px;}
+  #lss7-hd .hd-row{display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:8px 10px;}
+  #lss7-hd .hd-mark{grid-column:1;grid-row:1;}
+  #lss7-hd .hd-row>div:nth-child(2){grid-column:2;grid-row:1;min-width:0;}
+  #lss7-hd .hd-title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #lss7-hd .hd-sub{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #lss7-hd .hd-meta{grid-column:1/-1;grid-row:2;margin-left:0;padding-left:48px;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:5px;}
+  #lss7-hd #lss7-col{min-width:92px;}
+  #lss7.theme-summer #lss7-summer-scene,
+  #lss7.theme-summer-dark #lss7-summer-scene{opacity:.82;}
+}
+@media(prefers-reduced-motion:reduce){
+  #lss7.theme-summer.layout .hd-mark,
+  #lss7.theme-summer-dark.layout .hd-mark,
+  #lss7.theme-summer.layout .bd-summer,
+  #lss7.theme-summer-dark.layout .bd-summer,
+  #lss7.theme-summer.layout .sc,
+  #lss7.theme-summer.layout .vehicle-summary-card,
+  #lss7.theme-summer.layout .prof-fill::after,
+  #lss7.theme-summer.layout .forecast-progress-fill::after,
+  #lss7.theme-summer.layout .vb-fill::after,
+  #lss7.theme-summer.layout .game-events-live::before,
+  #lss7.theme-summer.layout .wx-icon,
+  #lss7.theme-summer-dark.layout .wx-icon{animation:none!important;}
+}
 
 /* Accordion */
 .lacc{border-top:1px solid var(--b1);}
@@ -1064,6 +1638,12 @@ GM_addStyle(`
   display:flex;align-items:center;justify-content:space-between;
 }
 .ft-l,.ft-r{font-size:10px;color:var(--t4);}
+.ft-r{display:flex;align-items:center;gap:8px;}
+.ft-version{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;color:var(--blueh);background:var(--blue3);border:1px solid rgba(59,130,246,.28);font-weight:900;font-family:var(--mono);}
+
+@media (prefers-reduced-motion:reduce){
+  .hd-mark::after,.hd-event-badge::before,.prof-role{animation:none!important;}
+}
 
 /* Update status */
 .lss7-update-note{display:none;position:relative;z-index:2;margin-top:10px;padding:8px 10px;border-radius:7px;border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.10);align-items:center;gap:8px;color:#a7f3c2;font-size:10px;font-weight:750;}
@@ -1131,6 +1711,7 @@ GM_addStyle(`
 const S = {
   playtime:0, lastTs:Date.now(),
   lastAlliCreds:0, dailyEarn:0,
+  vehicleTotal:0, buildingTotal:0, buildingTypes:0,
   lastDate:todayStr(),
   creditHist:[],     // [{ts,v}]
   allianceDaily:[],   // [{date,start,end}]
@@ -1143,7 +1724,7 @@ const S = {
   wm:{games:[],stadiums:{},error:null,lastTs:null},
   wmTips:{},
   wmTipEdit:{},
-  profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:""},
+  profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:"",roles:[]},
   weatherAlertKey:"",
   lastApiTs:null,
   update:{previousVersion:"",justUpdated:false,availableVersion:"",checking:false,lastCheck:0,error:""},
@@ -1155,8 +1736,10 @@ const S = {
     panelMode:"embedded",
     panelCollapsed:false,
     panelSize:"normal",
-    panelTheme:"dark",
+    panelTheme:"summer",
+    language:"de",
     weatherLocation:"",
+    weatherCountry:"DE",
     weatherMode:"off", // off | settings | overview
     weatherSound:false,
     weatherTone:"beep",
@@ -1186,21 +1769,23 @@ function save(){
 function saveWmTips(){ GM_setValue("v7_wm_tips", JSON.stringify(S.wmTips||{})); }
 function saveWeatherCache(){
   const loc=(S.settings.weatherLocation||"").trim();
+  const locKey=`${S.settings.weatherCountry||"DE"}|${loc}`;
   if(!loc || !S.weather || S.weather.error) return;
   S.weatherTs=Date.now();
-  S.weatherLoc=loc;
-  GM_setValue("v7_wx_cache", JSON.stringify({loc,ts:S.weatherTs,data:S.weather}));
+  S.weatherLoc=locKey;
+  GM_setValue("v7_wx_cache", JSON.stringify({loc:locKey,ts:S.weatherTs,data:S.weather}));
 }
 function loadWeatherCache(){
   const loc=(S.settings.weatherLocation||"").trim();
+  const locKey=`${S.settings.weatherCountry||"DE"}|${loc}`;
   if(!loc) return;
   try{
     const cache=JSON.parse(GM_getValue("v7_wx_cache","null"));
-    if(!cache || cache.loc!==loc || !cache.data) return;
+    if(!cache || cache.loc!==locKey || !cache.data) return;
     if(Date.now()-(Number(cache.ts)||0)>10800000) return;
     S.weather=cache.data;
     S.weatherTs=Number(cache.ts)||Date.now();
-    S.weatherLoc=loc;
+    S.weatherLoc=locKey;
   }catch{}
 }
 function load(){
@@ -1231,8 +1816,17 @@ function load(){
   if(typeof S.settings.panelCollapsed!=="boolean") S.settings.panelCollapsed=false;
   const validSizes=["small","normal","large"];
   if(!validSizes.includes(S.settings.panelSize)) S.settings.panelSize="normal";
-  const validThemes=["dark","light","midnight","emerald","sunset","slate","premium"];
-  if(!validThemes.includes(S.settings.panelTheme)) S.settings.panelTheme="dark";
+  const validThemes=["dark","light","summer","summer-dark"];
+  if(!validThemes.includes(S.settings.panelTheme)) S.settings.panelTheme="summer";
+  const validLanguages=["de","en","fr"];
+  if(!validLanguages.includes(S.settings.language)) S.settings.language="de";
+  const validWeatherCountries=Object.keys(WEATHER_COUNTRIES);
+  if(!validWeatherCountries.includes(S.settings.weatherCountry)) S.settings.weatherCountry="DE";
+  if(!GM_getValue("v901_summer_theme_done",false)){
+    S.settings.panelTheme="summer";
+    GM_setValue("v901_summer_theme_done",true);
+    GM_setValue("v7_set",JSON.stringify(S.settings));
+  }
   const validWeatherModes=["off","settings","overview"];
   if(!validWeatherModes.includes(S.settings.weatherMode)) S.settings.weatherMode="off";
   const validEventModes=["off","overview"];
@@ -1258,6 +1852,28 @@ function load(){
 // â•‘  UTILITIES                                                   â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function todayStr(){return localDateKey();}
+function uiLocale(){return S.settings.language==="fr"?"fr-FR":S.settings.language==="en"?"en-GB":"de-DE";}
+function tr(text){return I18N[S.settings.language]?.[String(text)]||String(text);}
+function applyTranslations(root){
+  if(!root || S.settings.language==="de")return;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const nodes=[];
+  while(walker.nextNode())nodes.push(walker.currentNode);
+  nodes.forEach(node=>{
+    const raw=node.nodeValue||"";
+    const trimmed=raw.trim();
+    if(!trimmed)return;
+    const translated=I18N[S.settings.language]?.[trimmed];
+    if(translated)node.nodeValue=raw.replace(trimmed,translated);
+  });
+  root.querySelectorAll?.("[placeholder],[title]").forEach(el=>{
+    ["placeholder","title"].forEach(attr=>{
+      const value=el.getAttribute(attr);
+      const translated=value&&I18N[S.settings.language]?.[value];
+      if(translated)el.setAttribute(attr,translated);
+    });
+  });
+}
 function localDateKey(d=new Date()){
   const y=d.getFullYear();
   const m=String(d.getMonth()+1).padStart(2,"0");
@@ -1273,12 +1889,12 @@ function dayLabel(key){
   const d=dateKeyToLocalDate(key);
   const today=localDateKey();
   const yesterday=localDateKey(new Date(Date.now()-86400000));
-  if(key===today)return "Heute";
-  if(key===yesterday)return "Gestern";
-  return d.toLocaleDateString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit"});
+  if(key===today)return tr("Heute");
+  if(key===yesterday)return tr("Gestern");
+  return d.toLocaleDateString(uiLocale(),{weekday:"short",day:"2-digit",month:"2-digit"});
 }
-function fmt(n,u=""){return typeof n==="number"?n.toLocaleString("de-DE")+(u?" "+u:""):"-";}
-function fmtMoney(n){return typeof n==="number"?n.toLocaleString("de-DE")+" ¢":"-";}
+function fmt(n,u=""){return typeof n==="number"?n.toLocaleString(uiLocale())+(u?" "+u:""):"-";}
+function fmtMoney(n){return typeof n==="number"?n.toLocaleString(uiLocale())+" ¢":"-";}
 function fmtKm(n){
   if(typeof n!=="number")return "-";
   return n>=1000000?(n/1000000).toFixed(1)+" Mio km":
@@ -1289,7 +1905,7 @@ function fmtHHMM(s){
   return [h,m,sec].map(x=>String(x).padStart(2,"0")).join(":");
 }
 function fmtClock(){
-  return new Date().toLocaleString("de-DE",{
+  return new Date().toLocaleString(uiLocale(),{
     weekday:"short",day:"2-digit",month:"2-digit",year:"numeric",
     hour:"2-digit",minute:"2-digit",second:"2-digit"
   }).replace(",","");
@@ -1329,7 +1945,7 @@ function parseWmGameDate(g){
 function fmtWmKickoff(g){
   const dt=parseWmGameDate(g);
   if(!dt)return escHtml(g?.local_date||"-");
-  return dt.toLocaleString("de-DE",{timeZone:"Europe/Berlin",weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(",","");
+  return dt.toLocaleString(uiLocale(),{timeZone:"Europe/Berlin",weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(",","");
 }
 function wmTeam(g,side){
   const name=(side==="home"?(g.home_team_name_en||g.home_team_label):(g.away_team_name_en||g.away_team_label)) || "TBD";
@@ -1529,7 +2145,7 @@ function gameEventRowHtml(ev,mini=false){
   const sale=isSaleGameEvent(ev),tag=sale?"a":"div";
   const link=sale?` href="${BASE}/coins" target="_blank" rel="noopener" title="Coin-Shop öffnen"`:"";
   return `<${tag} class="game-event-row${sale?" game-event-row-link":""}"${link}>
-    <span class="game-event-ico">${escHtml(ev.icon)}</span>
+    <span class="game-event-ico${sale?" sale":""}">${escHtml(ev.icon)}</span>
     <span class="game-event-main">
       <span class="game-event-title">${escHtml(ev.title)}</span>
       ${desc}
@@ -1680,13 +2296,12 @@ function todayDeStr(){
   return new Date().toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"});
 }
 function weatherCodeToText(code){
-  const m={
-    0:"Klar",1:"Heiter",2:"Wolkig",3:"Bedeckt",
-    45:"Nebel",48:"Raureif",51:"Niesel",53:"Niesel",55:"Niesel",
-    61:"Regen",63:"Regen",65:"Starkregen",71:"Schnee",73:"Schnee",75:"Starkschnee",
-    80:"Schauer",81:"Schauer",82:"Starkschauer",95:"Gewitter"
+  const maps={
+    de:{0:"Klar",1:"Heiter",2:"Wolkig",3:"Bedeckt",45:"Nebel",48:"Raureif",51:"Niesel",53:"Niesel",55:"Niesel",61:"Regen",63:"Regen",65:"Starkregen",71:"Schnee",73:"Schnee",75:"Starkschnee",80:"Schauer",81:"Schauer",82:"Starkschauer",95:"Gewitter"},
+    en:{0:"Clear",1:"Mostly clear",2:"Cloudy",3:"Overcast",45:"Fog",48:"Rime fog",51:"Drizzle",53:"Drizzle",55:"Drizzle",61:"Rain",63:"Rain",65:"Heavy rain",71:"Snow",73:"Snow",75:"Heavy snow",80:"Showers",81:"Showers",82:"Heavy showers",95:"Thunderstorm"},
+    fr:{0:"Dégagé",1:"Peu nuageux",2:"Nuageux",3:"Couvert",45:"Brouillard",48:"Brouillard givrant",51:"Bruine",53:"Bruine",55:"Bruine",61:"Pluie",63:"Pluie",65:"Forte pluie",71:"Neige",73:"Neige",75:"Forte neige",80:"Averses",81:"Averses",82:"Fortes averses",95:"Orage"}
   };
-  return m[code]||"Wetter";
+  return maps[S.settings.language]?.[code]||maps.de[code]||tr("Wetter");
 }
 function weatherCodeToIcon(code){
   if(code===0) return "☀️";
@@ -1727,8 +2342,12 @@ function playWeatherTone(kind){
 function computeWeatherAlert(current,hourly){
   const cCode=Number(current?.weather_code||0);
   const cWind=Number(current?.wind_speed_10m||0);
-  const hCodes=(hourly?.weather_code||[]).slice(0,6).map(Number);
-  const hWind=(hourly?.wind_speed_10m||[]).slice(0,6).map(Number);
+  const times=hourly?.time||[];
+  const nowTs=new Date(current?.time||Date.now()).getTime();
+  const found=times.findIndex(t=>new Date(t).getTime()>=nowTs);
+  const start=found>=0?found:0;
+  const hCodes=(hourly?.weather_code||[]).slice(start,start+6).map(Number);
+  const hWind=(hourly?.wind_speed_10m||[]).slice(start,start+6).map(Number);
   const severeCode=[65,75,82,95].includes(cCode)||hCodes.some(x=>[65,75,82,95].includes(x));
   const severeWind=cWind>=60||hWind.some(x=>x>=60);
   if(severeCode || severeWind){
@@ -1790,8 +2409,8 @@ function renderWeather(){
   if(!S.weather){
     const pending=(S.settings.weatherLocation||"").trim();
     const h=pending
-      ? `<span class="w-l">Wetterdaten werden geladen...</span><span class="w-r">${escHtml(pending)}</span>`
-      : `<span class="w-l">Keine Wetterdaten</span><span class="w-r">Ort fehlt</span>`;
+      ? `<span class="w-l">${tr("Wetterdaten werden geladen...")}</span><span class="w-r">${escHtml(pending)}</span>`
+      : `<span class="w-l">${tr("Keine Wetterdaten")}</span><span class="w-r">${tr("Ort fehlt")}</span>`;
     elSet.html(h);
     elOv.html(h);
     return;
@@ -1803,54 +2422,82 @@ function renderWeather(){
   const icon=weatherCodeToIcon(S.weather.code);
   const place=escHtml(compactWeatherPlace(S.weather.place));
   const desc=escHtml(weatherCodeToText(S.weather.code));
-  const fc=(S.weather.forecast||[]).map(x=>`<span class="wx-chip"><b>${escHtml(x.t)}</b><span>${weatherCodeToIcon(x.c)} ${escHtml(x.temp)}°</span></span>`).join("");
-  const warn=S.weather.warn||{level:0,title:"Keine Warnung",desc:"Aktuell liegt keine DWD-Warnung für den Ort vor.",src:"DWD"};
+  const fc=(S.weather.forecast||[]).map(x=>`<span class="wx-chip"><b>${escHtml(x.t)}</b><span>${weatherCodeToIcon(x.c)} ${escHtml(x.temp)}°</span>${Number.isFinite(Number(x.rain))?`<em>Regen ${escHtml(x.rain)}%</em>`:""}</span>`).join("");
+  const trend=(S.weather.dailyTrend||[]).map((day,index)=>{
+    const dt=new Date(`${day.date}T12:00:00`);
+    const label=index===0?tr("Heute"):dt.toLocaleDateString(uiLocale(),{weekday:"short"});
+    return `<div class="wx-day" title="${escHtml(weatherCodeToText(day.code))}">
+      <span class="wx-day-name">${escHtml(label)}</span><span class="wx-day-icon">${weatherCodeToIcon(day.code)}</span>
+      <span class="wx-day-temp">${escHtml(day.max)}° / ${escHtml(day.min)}°</span>
+      <span class="wx-day-meta"><span>💧 ${escHtml(day.rain)}%</span><span>↗ ${escHtml(day.wind)} km/h</span></span>
+    </div>`;
+  }).join("");
+  const warn=S.weather.warn||{level:0,title:tr("Keine Warnung"),desc:tr("Aktuell liegt keine DWD-Warnung für den Ort vor."),src:"DWD"};
   const details=[
-    ["Gefühlt",`${S.weather.feels ?? "-"}°C`],
-    ["Feuchte",`${S.weather.humidity ?? "-"}%`],
-    ["Niederschlag",`${S.weather.precip ?? 0} mm`],
-    ["Wind",`${S.weather.wind} km/h`],
+    [tr("Gefühlt"),`${S.weather.feels ?? "-"}°C`],
+    [tr("Feuchte"),`${S.weather.humidity ?? "-"}%`],
+    [tr("Niederschlag"),`${S.weather.precip ?? 0} mm`],
+    [tr("Wind"),`${S.weather.wind} km/h`],
   ].map(([k,v])=>`<div class="wx-detail"><span class="wx-detail-k">${k}</span><span class="wx-detail-v">${escHtml(v)}</span></div>`).join("");
   const alert=`<div class="wx-warn lvl${warn.level}">
     <b>${escHtml(warn.title)}</b><br>${escHtml(warn.desc)}
   </div>`;
+  const provider=escHtml(S.weather.provider||(S.weather.country==="DE"?"DWD ICON via Open-Meteo":"Open-Meteo Best Match"));
   const full=`<div class="wx-card">
     <div class="weather-head">
       <div class="wx-place">
         <span class="wx-icon">${icon}</span>
         <span class="wx-place-main"><span class="wx-city">${place}</span><span class="wx-desc">${desc}</span></span>
       </div>
-      <div class="wx-now"><span class="wx-temp">${escHtml(S.weather.temp)}°C</span><span class="wx-wind">Wind ${escHtml(S.weather.wind)} km/h</span></div>
+      <div class="wx-now"><span class="wx-temp">${escHtml(S.weather.temp)}°C</span><span class="wx-wind">${tr("Wind")} ${escHtml(S.weather.wind)} km/h</span></div>
     </div>
-    <div class="weather-forecast">${fc}</div>
+    <div class="wx-forecast-block"><div class="wx-section-title">Nächste 7 Stunden<span>${provider}</span></div><div class="weather-forecast">${fc}</div></div>
+    ${trend?`<div class="wx-trend-block"><div class="wx-section-title">7-Tage-Ausblick<span>Tageswerte: Min / Max</span></div><div class="wx-trend">${trend}</div></div>`:""}
     <div class="wx-details">${details}</div>
     ${alert}
-    <div class="wx-src">Quelle: DWD Warnungen · Open-Meteo Wetterdaten</div>
+    <div class="wx-src">${S.weather.country==="DE"?`Wetter: ${provider} · Warnungen: Deutscher Wetterdienst (DWD)`:`Wetter: ${provider}`}</div>
   </div>`;
   elSet.html(full);elOv.html(full);
+  applyTranslations(elSet.get(0));applyTranslations(elOv.get(0));
 }
 function fetchWeather(){
   const loc=(S.settings.weatherLocation||"").trim();
+  const country=WEATHER_COUNTRIES[S.settings.weatherCountry] ? S.settings.weatherCountry : "DE";
+  const countryCfg=WEATHER_COUNTRIES[country];
+  const locKey=`${country}|${loc}`;
   if(!loc){ S.weather=null; S.weatherLoc=""; renderWeather(); return; }
-  if(S.weather && S.weatherLoc===loc) renderWeather();
-  const zipMatch=loc.match(/\b\d{5}\b/);
-  const cleanCity=loc.replace(/\b\d{5}\b/g,"").split(/[,(]/)[0].trim();
+  if(S.weather && S.weatherLoc===locKey) renderWeather();
+  const zipMatch=loc.match(countryCfg.zip);
+  const cleanCity=loc.replace(countryCfg.zip,"").split(/[,(]/)[0].trim();
   const geoQueries=Array.from(new Set([loc,cleanCity,loc.split(",")[0].trim()].filter(Boolean)));
   const loadByLatLon=(lat,lon,place,admin1="",zip="")=>{
-    const url=`${API.wxForecast}?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,wind_speed_10m&timezone=auto`;
+    const modelParam=country==="DE"?"&models=icon_seamless":"";
+    const provider=country==="DE"?"DWD ICON via Open-Meteo":"Open-Meteo Best Match";
+    const url=`${API.wxForecast}?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&forecast_days=7&forecast_hours=24&timezone=auto${modelParam}`;
     jsonGet(url,w=>{
       const c=w?.current||{};
       const h=w?.hourly||{};
       const hTimes=(h.time||[]);
       const hCodes=(h.weather_code||[]);
       const hTemps=(h.temperature_2m||[]);
+      const hRain=(h.precipitation_probability||[]);
+      const daily=w?.daily||{};
       const nowTs=new Date(c.time||Date.now()).getTime();
-      const idx=hTimes.findIndex(t=>new Date(t).getTime()>nowTs);
+      const idx=hTimes.findIndex(t=>new Date(t).getTime()>=nowTs);
       const start=idx>=0?idx:0;
       const fc=hTimes.slice(start,start+7).map((t,i)=>({
-        t:(new Date(t)).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),
+        t:(new Date(t)).toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit"}),
         c:Number(hCodes[start+i]||0),
-        temp:Math.round(Number(hTemps[start+i]||0))
+        temp:Math.round(Number(hTemps[start+i]||0)),
+        rain:Math.round(Number(hRain[start+i]||0))
+      }));
+      const dailyTrend=(daily.time||[]).slice(0,7).map((date,i)=>({
+        date,
+        code:Number(daily.weather_code?.[i]||0),
+        max:Math.round(Number(daily.temperature_2m_max?.[i]||0)),
+        min:Math.round(Number(daily.temperature_2m_min?.[i]||0)),
+        rain:Math.round(Number(daily.precipitation_probability_max?.[i]||0)),
+        wind:Math.round(Number(daily.wind_speed_10m_max?.[i]||0))
       }));
       const alert=computeWeatherAlert(c,h);
       const alertKey=`${place}|${alert}|${zip}`;
@@ -1859,20 +2506,26 @@ function fetchWeather(){
         temp: Math.round(Number(c.temperature_2m)||0),
         feels: Math.round(Number(c.apparent_temperature)||Number(c.temperature_2m)||0),
         humidity: Math.round(Number(c.relative_humidity_2m)||0),
-        precip: Number(c.precipitation||0).toLocaleString("de-DE",{maximumFractionDigits:1}),
+        precip: Number(c.precipitation||0).toLocaleString(uiLocale(),{maximumFractionDigits:1}),
         wind: Math.round(Number(c.wind_speed_10m)||0),
         code: Number(c.weather_code)||0,
         forecast:fc,
+        dailyTrend,
         alert,
-        warn:{level:0,title:"DWD wird geprüft",desc:"Warnungen werden im Hintergrund geladen.",src:"DWD"}
+        country,
+        provider,
+        warn:country==="DE"
+          ? {level:0,title:"DWD wird geprüft",desc:"Warnungen werden im Hintergrund geladen.",src:"DWD"}
+          : {level:alert?2:0,title:alert?"Lokaler Wetterhinweis":"Keine amtliche Warnung",desc:alert||tr("Amtliche Warnungen sind derzeit nur für Deutschland angebunden."),src:"Open-Meteo"}
       };
-      S.weatherLoc=loc;
+      S.weatherLoc=locKey;
       saveWeatherCache();
       renderWeather();
       if(alert && S.settings.weatherSound && S.weatherAlertKey!==alertKey){
         playWeatherTone(S.settings.weatherTone||"beep");
       }
       S.weatherAlertKey=alertKey;
+      if(country!=="DE")return;
       fetchDwdWarning({place,admin1,zip},warn=>{
         S.weather.warn=warn;
         saveWeatherCache();
@@ -1883,15 +2536,15 @@ function fetchWeather(){
         renderWeather();
       });
     },()=>{
-      if(!(S.weather && S.weatherLoc===loc)) S.weather={error:"Wetterdaten konnten nicht geladen werden"};
+      if(!(S.weather && S.weatherLoc===locKey)) S.weather={error:"Wetterdaten konnten nicht geladen werden"};
       renderWeather();
     });
   };
   const lookupByName=(queries,idx=0)=>{
     const qRaw=queries[idx];
-    if(!qRaw){ if(!(S.weather && S.weatherLoc===loc)) S.weather={error:"Ort/PLZ nicht gefunden"}; renderWeather(); return; }
+    if(!qRaw){ if(!(S.weather && S.weatherLoc===locKey)) S.weather={error:"Ort/PLZ nicht gefunden"}; renderWeather(); return; }
     const q=encodeURIComponent(qRaw);
-    jsonGet(`${API.wxGeo}?name=${q}&count=3&language=de&format=json`,g=>{
+    jsonGet(`${API.wxGeo}?name=${q}&count=5&language=${encodeURIComponent(S.settings.language||countryCfg.language)}&countryCode=${country}&format=json`,g=>{
       const results=(g?.results||[]).filter(p=>Number.isFinite(Number(p.latitude))&&Number.isFinite(Number(p.longitude)));
       const p=results[0];
       if(!p){ lookupByName(queries,idx+1); return; }
@@ -1901,7 +2554,7 @@ function fetchWeather(){
   };
   if(zipMatch){
     const zip=zipMatch[0];
-    jsonGet(`${API.zipGeo}/${encodeURIComponent(zip)}`,z=>{
+    jsonGet(`${API.zipGeo}/${country.toLowerCase()}/${encodeURIComponent(zip)}`,z=>{
       const p=z?.places?.[0];
       if(!p){ lookupByName(geoQueries); return; }
       const lat=Number(p.latitude),lon=Number(p.longitude);
@@ -1931,6 +2584,53 @@ function wmStadiumText(g){
   const name=s.fifa_name||s.name_en||`Stadion ${g.stadium_id||"-"}`;
   const city=s.city_en?` · ${s.city_en}`:"";
   return `${name}${city}`;
+}
+function wmGroupStandings(){
+  const groups={};
+  (S.wm.games||[]).filter(g=>String(g?.type||"").toLowerCase()==="group" && g?.group).forEach(g=>{
+    const group=String(g.group).toUpperCase();
+    if(!groups[group])groups[group]={group,games:0,played:0,teams:{}};
+    const bucket=groups[group];
+    bucket.games++;
+    const home=wmTeam(g,"home"),away=wmTeam(g,"away");
+    const homeKey=String(g.home_team_id||home),awayKey=String(g.away_team_id||away);
+    if(!bucket.teams[homeKey])bucket.teams[homeKey]={name:home,p:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pts:0};
+    if(!bucket.teams[awayKey])bucket.teams[awayKey]={name:away,p:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pts:0};
+    if(!wmStarted(g))return;
+    const hs=Number(g.home_score),as=Number(g.away_score);
+    if(!Number.isFinite(hs)||!Number.isFinite(as))return;
+    bucket.played++;
+    const h=bucket.teams[homeKey],a=bucket.teams[awayKey];
+    h.p++;a.p++;h.gf+=hs;h.ga+=as;a.gf+=as;a.ga+=hs;
+    if(hs>as){h.w++;a.l++;h.pts+=3;}
+    else if(hs<as){a.w++;h.l++;a.pts+=3;}
+    else{h.d++;a.d++;h.pts++;a.pts++;}
+  });
+  return Object.values(groups).sort((a,b)=>a.group.localeCompare(b.group,"de")).map(group=>{
+    const rows=Object.values(group.teams).map(team=>Object.assign(team,{gd:team.gf-team.ga}))
+      .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf||a.name.localeCompare(b.name,"de"));
+    return Object.assign(group,{rows});
+  });
+}
+function renderWmGroups(){
+  const panel=$("#wm-groups-panel");
+  if(!panel.length)return;
+  const groups=wmGroupStandings();
+  if(!groups.length){panel.html(`<div class="lss7-empty">Noch keine Gruppendaten verfügbar.</div>`);return;}
+  const cards=groups.map((group,groupIndex)=>`<section class="wm-group-card${groupIndex===0?" open":""}">
+    <button class="wm-group-name" type="button" aria-expanded="${groupIndex===0?"true":"false"}">
+      <span class="wm-group-name-main"><i class="wm-group-arrow">›</i><b>${tr("Gruppe")} ${escHtml(group.group)}</b></span><span>${group.played}/${group.games} ${tr("Spiele")}</span>
+    </button>
+    <div class="wm-group-table-wrap"><table class="wm-table">
+      <thead><tr><th class="wm-pos">#</th><th class="wm-club">${tr("Team")}</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>Tore</th><th>TD</th><th>Pkt</th></tr></thead>
+      <tbody>${group.rows.map((team,index)=>`<tr class="${index<2?"qualify":index===2?"third":""}">
+        <td class="wm-pos">${index+1}</td><td class="wm-club" title="${escHtml(team.name)}">${escHtml(team.name)}</td>
+        <td>${team.p}</td><td>${team.w}</td><td>${team.d}</td><td>${team.l}</td><td>${team.gf}:${team.ga}</td><td>${team.gd>0?"+":""}${team.gd}</td><td class="wm-pts">${team.pts}</td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+  </section>`).join("");
+  panel.html(`<div class="wm-groups-legend"><span class="wm-legend qualify">Platz 1-2: direkte Qualifikation</span><span class="wm-legend third">Platz 3: Vergleich der Gruppendritten</span></div>${cards}<div class="wm-groups-note">${tr("Automatisch aus den API-Ergebnissen berechnet.")} Grün markiert sind Platz 1 und 2; Platz 3 nimmt am Vergleich der besten Gruppendritten teil.</div>`);
+  applyTranslations(panel.get(0));
 }
 function wmRowHtml(g,mini=false){
   const home=wmTeamHtml(g,"home");
@@ -1965,10 +2665,10 @@ function wmRowHtml(g,mini=false){
         <button class="wm-tip-edit" data-id="${escHtml(id)}" type="button">Ändern</button>
       </div>`;
   return `<div class="wm-row${cls}" data-wm-id="${escHtml(id)}">
-    <div class="wm-time">${when}<br><span>${stage}</span></div>
+    <div class="wm-time"><strong>${when}</strong><br><span class="wm-stage">${stage}</span></div>
     <div class="wm-main">
-      <div class="wm-teams">${home} - ${away}</div>
-      <div class="wm-meta">${stadium}<br>TV: ${tv}<br><span class="wm-status">${status}</span></div>
+      <div class="wm-teams">${home}<span class="wm-team-vs">vs</span>${away}</div>
+      <div class="wm-meta"><span class="wm-meta-item" title="${stadium}">${stadium}</span><span class="wm-meta-item">TV: ${tv}</span><span class="wm-status">${status}</span></div>
       ${matchEvents}
     </div>
     <div class="wm-result-tip">
@@ -1980,15 +2680,30 @@ function wmRowHtml(g,mini=false){
     </div>
   </div>`;
 }
+function headerGameEventInfo(ev){
+  const title=String(ev?.title||"Leitstellenspiel Event").replace(/\s+/g," ").trim();
+  const type=`${ev?.type||""} ${title}`.toLowerCase();
+  if(isSaleGameEvent(ev))return {label:"Coin Sale Aktiv",cls:"event-sale",href:`${BASE}/coins`};
+  if(type.includes("credit")){
+    const factor=title.match(/x\s*[\d,.]+/i)?.[0]?.replace(/\s+/g,"")||"";
+    return {label:`Doppelt Credits${factor?` ${factor}`:""}`,cls:"event-credit"};
+  }
+  if(type.includes("coin")||type.includes("rabatt"))return {label:title,cls:"event-coin"};
+  return {label:title,cls:"event-live"};
+}
+function headerEventButtonHtml(item){
+  if(item.href)return `<a class="hd-event-badge ${item.cls}" href="${item.href}" target="_blank" rel="noopener">${escHtml(item.label)}</a>`;
+  return `<button class="hd-event-badge ${item.cls}" type="button" data-open-event="1">${escHtml(item.label)}</button>`;
+}
 function renderWmHeader(){
   const active=isWmActive();
   const liveEvents=activeGameEvents();
-  const txt=liveEvents.length
-    ? `${liveEvents.length} LSS-EVENT${liveEvents.length>1?"S":""} LIVE`
-    : active?"EVENT LIVE":"EVENT 11.06";
-  $("#lss7-event-live").text(txt).toggle(true);
-  $("#lss7-nav-event").text(txt);
-  $("#wm-event-pill").text(active?"EVENT LIVE":"EVENT 11.06");
+  const items=[];
+  if(active)items.push({label:"WM-2026 LIVE",cls:"event-wm"});
+  liveEvents.forEach(ev=>items.push(headerGameEventInfo(ev)));
+  $("#lss7-header-events").html(items.map(headerEventButtonHtml).join("")).toggle(items.length>0);
+  $("#lss7-nav-events").html(items.map(item=>`<span class="lss7-nav-event">${escHtml(item.label)}</span>`).join(""));
+  $("#wm-event-pill").text(active?"WM-2026 LIVE":"WM-2026");
 }
 function renderGameEvents(){
   const liveEvents=activeGameEvents();
@@ -2038,6 +2753,7 @@ function renderWmEvent(){
   if(S.wm.error){$("#wm-schedule-list").html(`<div class="lss7-empty">${escHtml(S.wm.error)}</div>`);renderWmOverview();return;}
   if(!list.length){$("#wm-schedule-list").html(`<div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div>`);renderWmOverview();return;}
   $("#wm-schedule-list").html(list.map(g=>wmRowHtml(g)).join(""));
+  renderWmGroups();
   const hasCards=(S.wm.games||[]).some(g=>Object.keys(g||{}).some(k=>/card|booking|dismissal/i.test(k)));
   const cardInfo=hasCards?"Kartendaten verfügbar":"Kartendaten derzeit nicht verfügbar";
   $("#wm-source").text(S.wm.lastTs?`Quelle: worldcup26.ir · Torschützen verfügbar · ${cardInfo} · aktualisiert ${timeAgo(S.wm.lastTs)}`:`Quelle: worldcup26.ir · ${cardInfo}`);
@@ -2139,7 +2855,7 @@ function tickTimer(){
     }
   }
   if(changedDay){
-    setV("#sv-daily",fmtMoney(0));
+    setV("#sv-alliance-daily",fmtMoney(0));
     setV("#qs-daily",fmtMoney(0));
   }
   updatePlaytimeUi();save();
@@ -2153,7 +2869,7 @@ function checkMidnight(){
   if(rollPlaytimeDay(Date.now())){
     save();
     updatePlaytimeUi();
-    setV("#sv-daily",fmtMoney(0));
+    setV("#sv-alliance-daily",fmtMoney(0));
     setV("#qs-daily",fmtMoney(0));
   }
 }
@@ -2260,8 +2976,16 @@ function allianceDailyRows(limit=7){
   }));
 }
 
+function allianceEarnToday(){
+  const today=localDateKey();
+  const row=normalizeAllianceDaily().find(x=>x.date===today);
+  if(!row)return 0;
+  return Math.max(0,Number(row.earned)||((Number(row.end)||0)-(Number(row.start)||0)));
+}
+
 function renderAllianceDailyBoard(){
   const list=$("#alliance-earn-list");
+  setV("#sv-alliance-daily",fmtMoney(allianceEarnToday()));
   if(!list.length)return;
   const rows=allianceDailyRows();
   if(!rows.length){
@@ -2500,14 +3224,60 @@ function drawDonut(data){
   el.innerHTML=`<svg viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg">
     <circle cx="44" cy="44" r="37" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="11"/>
     ${paths}
-    <text x="44" y="41" text-anchor="middle" fill="#f0f6fc" font-size="14" font-weight="700" font-family="JetBrains Mono">${total}</text>
-    <text x="44" y="54" text-anchor="middle" fill="#4a5568" font-size="7.5" font-family="Inter">Fahrzeuge</text>
+    <text class="donut-total" x="44" y="41" text-anchor="middle" font-size="14" font-weight="700" font-family="JetBrains Mono">${total}</text>
+    <text class="donut-label" x="44" y="54" text-anchor="middle" font-size="7.5" font-family="Inter">Fahrzeuge</text>
   </svg>`;
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  API â€” FETCH FUNCTIONS                                       â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function allianceRoleInfo(user){
+  const keys=Object.entries(user?.role_flags||{})
+    .filter(([,value])=>value===true||value===1||value==="1")
+    .map(([key])=>String(key).toLowerCase());
+  const matched=ALLIANCE_ROLE_DEFS.filter(role=>role.aliases.some(alias=>keys.includes(alias)));
+  const known=new Set(ALLIANCE_ROLE_DEFS.flatMap(role=>role.aliases));
+  const unknown=keys.filter(key=>!known.has(key)).map(key=>({
+    id:"other",label:key.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase()),
+    color:"#0891b2",text:"#ffffff",aliases:[key]
+  }));
+  const all=[...matched,...unknown];
+  const primary=matched[0]||unknown[0]||{id:"member",label:"Mitglied",color:"#64748b",text:"#ffffff"};
+  const lead=matched.some(role=>["owner","admin","coadmin"].includes(role.id));
+  return {keys,all,primary,lead,special:all.length>0&&!lead};
+}
+function roleFromLabel(label){
+  const raw=String(label||"").replace(/\s+/g," ").trim();
+  const normalized=normalizeTxt(raw).replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
+  const direct=ALLIANCE_ROLE_DEFS.find(role=>role.aliases.includes(normalized) ||
+    normalizeTxt(role.label).replace(/[^a-z0-9]+/g,"_")===normalized) ||
+    [...ALLIANCE_ROLE_DEFS].sort((a,b)=>Math.max(...b.aliases.map(x=>x.length))-Math.max(...a.aliases.map(x=>x.length)))
+      .find(role=>role.aliases.some(alias=>alias.length>=5&&normalized.includes(alias)));
+  if(direct)return direct;
+  if(!raw || !/[A-Za-zÀ-ÿ0-9]/.test(raw))return null;
+  return {id:"other",label:raw,color:"#0891b2",text:"#ffffff",aliases:[normalized]};
+}
+function mergeProfileRoles(...groups){
+  const seen=new Set(),roles=[];
+  groups.flat().filter(Boolean).forEach(role=>{
+    const key=`${role.id}|${normalizeTxt(role.label)}`;
+    if(seen.has(key))return;
+    seen.add(key);roles.push(role);
+  });
+  return roles;
+}
+function updateProfileRolesFromAlliance(users){
+  const list=Array.isArray(users)?users:[];
+  const navName=normalizeTxt(readOwnProfileFromDom().name||S.profile.name);
+  const own=list.find(user=>Number(S.userId)>0&&Number(user.id)===Number(S.userId)) ||
+    list.find(user=>navName&&normalizeTxt(user.name)===navName);
+  if(!own)return;
+  const roles=allianceRoleInfo(own).all;
+  if(roles.length)S.profile.roles=mergeProfileRoles(roles,S.profile.roles||[]);
+  renderProfileQuick();
+}
+
 function fetchAlliance(){
   apiGet(API.alliance,d=>{
     const apiAllianceId=Number(d.id)||null;
@@ -2520,6 +3290,7 @@ function fetchAlliance(){
     pushHist(tot);
     renderOverview(d);
     loadRankContext();
+    updateProfileRolesFromAlliance(d.users||[]);
     renderTeam(d.users||[]);
     updateFooter();
   });
@@ -2545,7 +3316,6 @@ function fetchDailyEarnFromOverview(){
     if(found === null) return;
     S.dailyEarn = found;
     save();
-    setV("#sv-daily", fmtMoney(S.dailyEarn));
     setV("#qs-daily", fmtMoney(S.dailyEarn));
   });
 }
@@ -2565,6 +3335,10 @@ function fetchUserinfo(){
 function renderProfileQuick(){
   $("#prof-name").text(S.profile.name||"-");
   $("#prof-rank").text(S.profile.rank||"-");
+  const roles=Array.isArray(S.profile.roles)?S.profile.roles:[];
+  $("#prof-roles").html(roles.map(role=>
+    `<span class="prof-role" style="--role-color:${escHtml(role.color||"#2563eb")};--role-text:${escHtml(role.text||"#ffffff")}">${escHtml(role.label||"Mitglied")}</span>`
+  ).join("")).toggle(roles.length>0);
   if(S.profile.reward){
     $("#prof-reward").text(`Level-Up: ${S.profile.reward}`).show();
   }else{
@@ -2617,6 +3391,9 @@ function fetchProfileCard(){
     ).trim();
     const mAvatar=html.match(/<img[^>]*class=["'][^"']*profile-image[^"']*["'][^>]*src=["']([^"']+)["']/i);
     const avatar=((mAvatar&&mAvatar[1])||avatarDom||"").trim();
+    const pageRoles=Array.from(doc.querySelectorAll(".alliance-roles li"))
+      .map(el=>roleFromLabel((el.textContent||"").replace(/\s+/g," ").trim()))
+      .filter(Boolean);
     let since=S.profile.since||"-";
     let grade=S.profile.rank||"-";
     const infoWell=Array.from(doc.querySelectorAll(".well div, .well li, .profile-info div, .well"));
@@ -2666,6 +3443,7 @@ function fetchProfileCard(){
     S.profile.name=name;
     S.profile.since=since;
     S.profile.rank=grade||S.profile.rank;
+    if(pageRoles.length)S.profile.roles=mergeProfileRoles(pageRoles,S.profile.roles||[]);
     if(avatar) S.profile.avatar=avatar;
     renderProfileQuick();
   },()=>renderProfileQuick());
@@ -2717,7 +3495,12 @@ function fetchVehicleStates(){
 }
 
 function fetchBuildings(){
-  apiGet(API.buildings,list=>{ renderBuildings(Array.isArray(list)?list:[]); });
+  apiGet(API.buildings,data=>{
+    const list=Array.isArray(data)?data:
+      Array.isArray(data?.result)?data.result:
+      Array.isArray(data?.buildings)?data.buildings:[];
+    renderBuildings(list);
+  });
 }
 
 function fetchSchoolings(){
@@ -2799,7 +3582,7 @@ function fetchAAOs(){
 }
 
 function fetchAllData(){
-  fetchAlliance(); fetchUserinfo(); fetchVehicleStates();
+  fetchAlliance(); fetchUserinfo(); fetchVehicleStates(); fetchBuildings();
   fetchSchoolings(); fetchAAOs();
   fetchDailyEarnFromOverview();
   fetchWeather();
@@ -2839,7 +3622,7 @@ function renderOverview(d){
   setV("#sv-kasse",   fmtMoney(d.credits_current||0));
   setV("#sv-members", d.user_count||0);
   setV("#sv-rank",    d.rank||"-");
-  setV("#sv-daily",   fmtMoney(S.dailyEarn));
+  setV("#sv-alliance-daily",fmtMoney(allianceEarnToday()));
   renderAllianceDailyBoard();
   renderForecast();
 
@@ -2853,6 +3636,8 @@ function renderOverview(d){
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function renderVehicles(data){
   const total=Object.values(data).reduce((s,v)=>s+(v||0),0);
+  S.vehicleTotal=total;
+  renderVehicleAssetSummary();
   drawDonut(data);
   const leg=$("#donut-leg").empty();
   const bars=$("#lss7-vbars").empty();
@@ -2880,39 +3665,113 @@ function renderVehicles(data){
     <span class="vb-tv">${total}</span></div>`);
 }
 
+function renderVehicleAssetSummary(){
+  setV("#veh-total-count",fmt(S.vehicleTotal||0));
+  setV("#veh-building-count",fmt(S.buildingTotal||0));
+  setV("#veh-building-types",fmt(S.buildingTypes||0));
+  const ratio=S.buildingTotal>0?(S.vehicleTotal/S.buildingTotal).toFixed(1).replace(".",","):"-";
+  setV("#veh-per-building",ratio);
+}
+
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  RENDER â€” BUILDINGS TAB                                      â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function renderBuildings(list){
   const cont=$("#lss7-bld").empty();
+  S.buildingTotal=list.length;
+  S.buildingTypes=new Set(list.map(b=>Number(b?.building_type)||0)).size;
+  renderVehicleAssetSummary();
   setV("#sv-bld-total", list.length);
-  if(!list.length){cont.html(`<div class="lss7-empty">Keine Gebaeudedaten.</div>`);return;}
+  if(!cont.length)return;
+  if(!list.length){cont.html(`<div class="lss7-empty">Keine Gebäudedaten.</div>`);return;}
 
-  const grp={};
+  const groups={};
+  const extensions={};
+  let personnel=0,cells=0,builtExtensions=0,enabledExtensions=0,pendingExtensions=0,storageUpgrades=0;
+
   list.forEach(b=>{
-    const t=b.building_type||0,icon=BICONS[t]||"B";
-    if(!grp[t])grp[t]={icon,name:b.caption||`Typ ${t}`,count:0};
-    grp[t].count++;
+    const type=Number(b?.building_type)||0;
+    const extList=Array.isArray(b?.extensions)?b.extensions:[];
+    const storage=Array.isArray(b?.storage_upgrades)?b.storage_upgrades:[];
+    const built=extList.filter(e=>e?.available===true);
+    const enabled=built.filter(e=>e?.enabled!==false);
+    const pending=extList.filter(e=>e?.available===false);
+    const typeCells=(type===16?1:0)+built.reduce((sum,e)=>{
+      const caption=String(e?.caption||"").toLowerCase();
+      if(caption.includes("großgewahrsam"))return sum+10;
+      if(caption.includes("zelle"))return sum+1;
+      return sum;
+    },0);
+
+    if(!groups[type])groups[type]={
+      type,name:BUILDING_TYPES[type]||`Gebäudetyp ${type}`,count:0,personnel:0,levels:0,
+      built:0,enabled:0,pending:0,cells:0
+    };
+    const g=groups[type];
+    g.count++;
+    g.personnel+=Number(b?.personal_count)||0;
+    g.levels+=Math.max(0,Number(b?.level)||0);
+    g.built+=built.length;
+    g.enabled+=enabled.length;
+    g.pending+=pending.length;
+    g.cells+=typeCells;
+
+    personnel+=Number(b?.personal_count)||0;
+    cells+=typeCells;
+    builtExtensions+=built.length;
+    enabledExtensions+=enabled.length;
+    pendingExtensions+=pending.length;
+    storageUpgrades+=storage.filter(s=>s?.available===true).length;
+
+    extList.forEach(e=>{
+      const name=String(e?.caption||"Unbenannter Ausbau").trim()||"Unbenannter Ausbau";
+      if(!extensions[name])extensions[name]={name,total:0,built:0,enabled:0,pending:0};
+      const x=extensions[name];
+      x.total++;
+      if(e?.available===true){x.built++;if(e?.enabled!==false)x.enabled++;}
+      else x.pending++;
+    });
   });
 
-  const sorted=Object.values(grp).sort((a,b)=>b.count-a.count);
+  const sorted=Object.values(groups).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,"de"));
+  const categoryCards=BUILDING_CATEGORIES.map(category=>{
+    const count=category.types.reduce((sum,type)=>sum+(groups[type]?.count||0),0);
+    return count?`<div class="building-category-card" style="--cat:${category.color}">
+      <span class="building-category-name">${category.name}</span><span class="building-category-count">${fmt(count)}</span>
+    </div>`:"";
+  }).join("");
+  const knownTypes=new Set(BUILDING_CATEGORIES.flatMap(category=>category.types));
+  const otherCount=sorted.filter(g=>!knownTypes.has(g.type)).reduce((sum,g)=>sum+g.count,0);
 
-  // Summary grid
-  const sg=$(`<div class="sg sg3" style="margin-bottom:1px"></div>`);
-  sg.append(`<div class="sc"><span class="sl">Gebaeude gesamt</span><span class="sv c-cy" id="sv-bld-total-inner">${list.length}</span></div>`);
-  sg.append(`<div class="sc"><span class="sl">Typen</span><span class="sv">${sorted.length}</span></div>`);
-  const maxCount=sorted[0]?.count||0;
-  sg.append(`<div class="sc"><span class="sl">Haeufigster Typ</span><span class="sv-sm c-bl">${sorted[0]?.icon||""} ${maxCount}x</span></div>`);
-  cont.append(sg);
+  cont.append(`<div class="asset-kpis">
+    <div class="asset-kpi"><span class="asset-kpi-label">Personal</span><span class="asset-kpi-value">${fmt(personnel)}</span></div>
+    <div class="asset-kpi"><span class="asset-kpi-label">Ausbauten gebaut</span><span class="asset-kpi-value">${fmt(builtExtensions)}</span></div>
+    <div class="asset-kpi"><span class="asset-kpi-label">Ausbauten aktiv</span><span class="asset-kpi-value">${fmt(enabledExtensions)}</span></div>
+    <div class="asset-kpi"><span class="asset-kpi-label">Im Ausbau</span><span class="asset-kpi-value">${fmt(pendingExtensions)}</span></div>
+    <div class="asset-kpi"><span class="asset-kpi-label">Zellen</span><span class="asset-kpi-value">${fmt(cells)}</span></div>
+    <div class="asset-kpi"><span class="asset-kpi-label">Lagerausbauten</span><span class="asset-kpi-value">${fmt(storageUpgrades)}</span></div>
+  </div>`);
+  cont.append(`<div class="building-category-grid">${categoryCards}${otherCount?`<div class="building-category-card" style="--cat:#94a3b8"><span class="building-category-name">Weitere</span><span class="building-category-count">${fmt(otherCount)}</span></div>`:""}</div>`);
+  cont.append(`<div class="asset-subhead"><span>Standorte nach Typ</span><span>${sorted.length} Typen</span></div>`);
 
-  const listDiv=$(`<div></div>`);
-  sorted.forEach(g=>{
-    listDiv.append(`<div class="lrow">
-      <span class="lrow-icon">${g.icon}</span>
-      <span class="lrow-name">${g.name}</span>
-      <span class="lrow-val">${g.count}x</span></div>`);
-  });
-  cont.append(listDiv);
+  const cellTypes=new Set([6,16,19,29]);
+  const typeRows=sorted.map(g=>`<div class="building-detail-row">
+    <span class="building-detail-name" title="${escHtml(g.name)}">${escHtml(g.name)}</span>
+    <span class="building-detail-stat"><small>Standorte</small>${fmt(g.count)}</span>
+    <span class="building-detail-stat"><small>Personal</small>${fmt(g.personnel)}</span>
+    <span class="building-detail-stat"><small>Ausbauten</small>${fmt(g.built)}</span>
+    <span class="building-detail-stat"><small>${cellTypes.has(g.type)?"Zellen":"Im Bau"}</small>${fmt(cellTypes.has(g.type)?g.cells:g.pending)}</span>
+  </div>`).join("");
+  cont.append(`<div>${typeRows}</div>`);
+
+  const extensionRows=Object.values(extensions)
+    .sort((a,b)=>b.built-a.built||b.total-a.total||a.name.localeCompare(b.name,"de"))
+    .map(x=>`<div class="extension-row" title="${x.pending?`${x.pending} Ausbau/Ausbauten im Bau`:""}">
+      <span class="extension-name">${escHtml(x.name)}</span>
+      <span class="extension-count"><em>${fmt(x.enabled)} aktiv</em> / ${fmt(x.built)} gebaut${x.pending?` / ${fmt(x.pending)} im Bau`:""}</span>
+    </div>`).join("");
+  cont.append(`<div class="asset-subhead"><span>Ausbauten im Detail</span><span>${Object.keys(extensions).length} Arten</span></div>`);
+  cont.append(extensionRows?`<div class="extension-list">${extensionRows}</div>`:`<div class="lss7-empty">Keine Ausbauten vorhanden.</div>`);
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -2930,33 +3789,54 @@ function renderSchoolings(list){
   sg.append(`<div class="sc"><span class="sl">Aktive Lehrgänge</span><span class="sv c-cy">${running.length}</span></div>`);
   sg.append(`<div class="sc"><span class="sl">Lehrgangsarten</span><span class="sv">${Object.keys(grp).length}</span></div>`);
   cont.append(sg);
+  cont.append(`<div class="schooling-toolbar">
+    <input id="schooling-search" class="lss7-select" type="search" placeholder="${tr("Lehrgänge durchsuchen...")}">
+    <select id="schooling-filter" class="lss7-select"><option value="all">${tr("Alle Lehrgänge")}</option><option value="free">${tr("Freie Plätze")}</option></select>
+    <button id="schooling-refresh" class="lbtn prime" type="button">Aktualisieren</button>
+  </div>`);
 
   const listDiv=$(`<div></div>`);
   if(running.some(s=>s.fromHtml)){
-    listDiv.append(`<div class="sort-hdr" style="grid-template-columns:minmax(0,1fr) 54px 92px 96px">
-      <span>Lehrgang</span><span style="text-align:right">Plätze</span><span style="text-align:right">Kosten</span><span style="text-align:right">Fertig</span>
+    listDiv.append(`<div class="sort-hdr" style="grid-template-columns:minmax(0,1fr) 58px 92px 96px 72px">
+      <span>${tr("Lehrgang")}</span><span style="text-align:right">${tr("Plätze")}</span><span style="text-align:right">${tr("Kosten")}</span><span style="text-align:right">${tr("Fertig")}</span><span></span>
     </div>`);
     running.forEach(s=>{
-      const name=escHtml(s.caption||"Unbekannter Lehrgang");
+      const rawName=String(s.caption||"Unbekannter Lehrgang");
+      const name=escHtml(rawName);
       const owner=escHtml(s.owner||"");
       const cost=escHtml((s.cost||"-").replace(/\s*\(Tag\/Teilnehmer\)/i,""));
-      const link=s.url?`<a href="${escHtml(s.url)}" target="_blank">${name}</a>`:name;
-      listDiv.append(`<div class="sch-row">
-        <span class="sch-name">${link}${owner?`<span class="sch-sub">${owner}</span>`:""}</span>
+      const seatsNumber=Number(String(s.freeSeats||"").match(/\d+/)?.[0]||0);
+      const action=s.url?`<a class="sch-open" href="${escHtml(s.url)}" target="_blank" rel="noopener">${tr("Öffnen")}</a>`:`<span></span>`;
+      listDiv.append(`<div class="sch-row" data-name="${escHtml(rawName.toLowerCase())}" data-free="${seatsNumber>0?"1":"0"}">
+        <span class="sch-name">${name}${owner?`<span class="sch-sub">${owner}</span>`:""}</span>
         <span class="sch-seats">${escHtml(s.freeSeats||"-")}</span>
         <span class="sch-cost">${cost}</span>
         <span class="sch-finish">${escHtml(s.finish||"-")}</span>
+        ${action}
       </div>`);
     });
   }else{
     Object.entries(grp).sort((a,b)=>b[1]-a[1]).forEach(([name,cnt])=>{
-      listDiv.append(`<div class="lrow">
+      listDiv.append(`<div class="lrow sch-row" data-name="${escHtml(name.toLowerCase())}" data-free="0">
         <span class="lrow-icon">Lg</span>
         <span class="lrow-name">${escHtml(name)}</span>
         <span class="lrow-val">${cnt}x</span></div>`);
     });
   }
-  cont.append(listDiv);
+  cont.append(listDiv).append(`<div class="lss7-empty schooling-empty-filter" style="display:none">Keine passenden Lehrgänge gefunden.</div>`);
+  applyTranslations(cont.get(0));
+}
+
+function filterSchoolingRows(){
+  const q=String($("#schooling-search").val()||"").trim().toLowerCase();
+  const filter=String($("#schooling-filter").val()||"all");
+  let visible=0;
+  $("#lss7-sch .sch-row").each(function(){
+    const row=$(this);
+    const show=(!q||String(row.data("name")||"").includes(q))&&(filter!=="free"||String(row.data("free"))==="1");
+    row.toggleClass("is-hidden",!show);if(show)visible++;
+  });
+  $("#lss7-sch .schooling-empty-filter").toggle(visible===0);
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -3023,7 +3903,7 @@ function renderAAOs(list){
 function renderHistTab(){
   const cont=$("#lss7-hist").empty();
   setV("#sv-hist-cnt",S.creditHist.length);
-  if(!S.creditHist.length){cont.html(`<div class="lss7-empty">Noch keine Verlaufsdaten.</div>`);return;}
+  if(!S.creditHist.length){cont.html(`<div class="lss7-empty">Noch keine Verlaufsdaten.</div>`);applyTranslations(cont.get(0));return;}
 
   const h=[...S.creditHist].reverse();
 
@@ -3043,6 +3923,7 @@ function renderHistTab(){
       <span class="hist-d" style="color:${col}">${diff!==0?sign+fmt(diff):""}</span>
     </div>`);
   });
+  applyTranslations(cont.get(0));
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -3051,46 +3932,245 @@ function renderHistTab(){
 function renderTeam(users){
   const cont=$("#lss7-team").empty();
   if(!users.length){cont.html(`<div class="lss7-empty">Keine Mitgliederdaten.</div>`);return;}
-
-  const roles=[
-    {f:u=>u.role_flags?.owner,  lbl:"Eigentuemer", dot:"#f59e0b", badge:"Owner",    bg:"var(--amber3)", col:"var(--amber)"},
-    {f:u=>u.role_flags?.admin,  lbl:"Admins",      dot:"#3b82f6", badge:"Admin",    bg:"var(--blue3)",  col:"var(--blue)"},
-    {f:u=>u.role_flags?.coadmin,lbl:"Co-Admins",   dot:"#22c55e", badge:"Co-Admin", bg:"var(--green3)", col:"var(--green)"},
-  ];
-
-  const shown=new Set();
-  roles.forEach(({f,lbl,dot,badge,bg,col})=>{
-    const ms=users.filter(f);if(!ms.length)return;
-    const g=$(`<div><div class="tg-head">${lbl}</div></div>`);
-    ms.forEach(u=>{
-      shown.add(u.id);
-      g.append(`<div class="tm-row">
-        <div class="tm-dot" style="background:${dot}"></div>
-        <a class="tm-link" href="${BASE}/profile/${u.id}" target="_blank">${u.name}</a>
-        <span class="tm-badge" style="background:${bg};color:${col};border:1px solid ${col}44">${badge}</span>
-      </div>`);
+  const roles=ALLIANCE_ROLE_DEFS;
+  const rolePriority=Object.fromEntries(roles.map((role,index)=>[role.id,index]));
+  rolePriority.other=roles.length;rolePriority.member=roles.length+1;
+  const enriched=users.map(u=>({u,info:allianceRoleInfo(u)})).sort((a,b)=>(rolePriority[a.info.primary.id]??99)-(rolePriority[b.info.primary.id]??99)||String(a.u.name||"").localeCompare(String(b.u.name||""),uiLocale()));
+  const leadership=enriched.filter(x=>x.info.lead).length;
+  const special=enriched.filter(x=>x.info.special).length;
+  const regular=enriched.length-leadership-special;
+  cont.append(`<div class="team-summary">
+    <div class="team-summary-card"><span>${tr("Mitglieder gesamt")}</span><b>${fmt(users.length)}</b></div>
+    <div class="team-summary-card"><span>${tr("Leitungsteam")}</span><b>${fmt(leadership)}</b></div>
+    <div class="team-summary-card"><span>${tr("Sonderrollen")}</span><b>${fmt(special)}</b></div>
+    <div class="team-summary-card"><span>${tr("Mitglieder ohne Leitungsrolle")}</span><b>${fmt(regular)}</b></div>
+  </div>`);
+  cont.append(`<div class="team-toolbar">
+    <input id="team-search" class="lss7-select" type="search" placeholder="${tr("Mitglied suchen...")}">
+    <select id="team-filter" class="lss7-select">
+      <option value="all">${tr("Alle Rollen")}</option>${roles.map(role=>`<option value="${role.id}">${escHtml(role.label)}</option>`).join("")}<option value="other">Weitere Rollen</option><option value="member">${tr("Mitglieder ohne Leitungsrolle")}</option>
+    </select>
+  </div>`);
+  const categoryOrder=[...roles,{id:"other",label:"Weitere Rollen",color:"#5ad9e8"},{id:"member",label:"Mitglieder",color:"var(--t4)"}];
+  categoryOrder.forEach(category=>{
+    const members=enriched.filter(x=>x.info.primary.id===category.id);
+    if(!members.length)return;
+    const section=$(`<section class="team-category" data-category="${category.id}" style="--role-color:${category.color}">
+      <div class="team-category-head"><span class="team-category-title"><i class="team-category-dot"></i>${escHtml(category.label)}</span><span class="team-category-count">${members.length}</span></div>
+      <div class="team-grid"></div>
+    </section>`);
+    const grid=section.find(".team-grid");
+    members.forEach(({u,info})=>{
+      const name=String(u.name||`#${u.id}`);
+      const initials=name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase().slice(0,2)||"?";
+      const roleIds=(info.all.length?info.all:[info.primary]).map(role=>role.id);
+      const badges=(info.all.length?info.all:[info.primary]).map(role=>`<span class="team-role team-role-${role.id}" style="--role-color:${role.color}">${escHtml(role.label)}</span>`).join("");
+      grid.append(`<article class="team-card" data-name="${escHtml(name.toLowerCase())}" data-roles="${escHtml(roleIds.join(","))}">
+        <div class="team-avatar">${escHtml(initials)}</div>
+        <div class="team-main"><span class="team-name" title="${escHtml(name)}">${escHtml(name)}</span><div class="team-badges">${badges}</div></div>
+        <a class="team-open" href="${BASE}/profile/${encodeURIComponent(u.id)}" target="_blank" rel="noopener" title="${tr("Profil öffnen")}">↗</a>
+      </article>`);
     });
-    cont.append(g);
+    cont.append(section);
   });
+  cont.append(`<div class="lss7-empty team-empty-filter">Keine passenden Mitglieder gefunden.</div>`);
+  applyTranslations(cont.get(0));
+}
 
-  const others=users.filter(u=>!shown.has(u.id));
-  if(others.length){
-    const g=$(`<div><div class="tg-head">Mitglieder (${others.length})</div></div>`);
-    others.slice(0,40).forEach(u=>{
-      g.append(`<div class="tm-row">
-        <div class="tm-dot" style="background:var(--t4)"></div>
-        <a class="tm-link" href="${BASE}/profile/${u.id}" target="_blank">${u.name}</a>
-      </div>`);
-    });
-    if(others.length>40)g.append(`<div class="lss7-empty" style="padding:6px 14px">+${others.length-40} weitere</div>`);
-    cont.append(g);
-  }
+function filterTeamRows(){
+  const q=String($("#team-search").val()||"").trim().toLowerCase();
+  const role=String($("#team-filter").val()||"all");
+  let visible=0;
+  $("#lss7-team .team-card").each(function(){
+    const card=$(this);
+    const roles=String(card.data("roles")||"").split(",");
+    const show=(!q||String(card.data("name")||"").includes(q))&&(role==="all"||roles.includes(role));
+    card.toggleClass("is-hidden",!show);if(show)visible++;
+  });
+  $("#lss7-team .team-category").each(function(){
+    $(this).toggleClass("is-hidden",$(this).find(".team-card:not(.is-hidden)").length===0);
+  });
+  $("#lss7-team .team-empty-filter").toggle(visible===0);
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  FOOTER                                                      â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function updateFooter(){ $("#lss7-upd").text(timeAgo(S.lastApiTs)); }
+
+// Lightweight Three.js scene for the Summer 2026 header.
+let summerSceneCtl=null;
+function initSummerScene(){
+  const canvas=document.getElementById("lss7-summer-scene");
+  const panel=document.getElementById("lss7");
+  const header=document.getElementById("lss7-hd");
+  if(!canvas || !panel || !header || typeof THREE==="undefined") return;
+
+  let renderer;
+  try{
+    renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:"low-power"});
+  }catch{
+    return;
+  }
+  renderer.setClearColor(0x000000,0);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
+
+  const scene=new THREE.Scene();
+  const camera=new THREE.OrthographicCamera(-8,8,3,-3,.1,100);
+  camera.position.z=12;
+  const root=new THREE.Group();
+  scene.add(root);
+  const dayRoot=new THREE.Group();
+  const nightRoot=new THREE.Group();
+  root.add(dayRoot,nightRoot);
+
+  const sun=new THREE.Group();
+  const sunCore=new THREE.Mesh(
+    new THREE.SphereGeometry(1.02,24,16),
+    new THREE.MeshBasicMaterial({color:0xffc928,transparent:true,opacity:.84})
+  );
+  sun.add(sunCore);
+  const rayGeo=new THREE.PlaneGeometry(.16,.72);
+  const rayMat=new THREE.MeshBasicMaterial({color:0xffd85a,transparent:true,opacity:.72,side:THREE.DoubleSide});
+  for(let i=0;i<18;i++){
+    const a=(i/18)*Math.PI*2;
+    const ray=new THREE.Mesh(rayGeo,rayMat);
+    ray.position.set(Math.cos(a)*1.55,Math.sin(a)*1.55,-.1);
+    ray.rotation.z=a-Math.PI/2;
+    sun.add(ray);
+  }
+  dayRoot.add(sun);
+
+  const cloudMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.34});
+  const cloudGeo=new THREE.CircleGeometry(.62,24);
+  const clouds=[];
+  for(let i=0;i<2;i++){
+    const cloud=new THREE.Group();
+    [[-.48,0,.72],[0,.16,.92],[.52,0,.68]].forEach(([x,y,s])=>{
+      const part=new THREE.Mesh(cloudGeo,cloudMat);
+      part.position.set(x,y,0);part.scale.set(s,s,1);cloud.add(part);
+    });
+    dayRoot.add(cloud);clouds.push(cloud);
+  }
+
+  const flowerColors=[0xf56f98,0xffffff,0xffa7c0,0xffdf72,0x8edb9e];
+  const flowers=[];
+  const petalGeo=new THREE.CircleGeometry(.12,12);
+  const centerGeo=new THREE.CircleGeometry(.095,12);
+  for(let i=0;i<16;i++){
+    const flower=new THREE.Group();
+    const color=flowerColors[i%flowerColors.length];
+    const petalMat=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.82,side:THREE.DoubleSide});
+    for(let p=0;p<5;p++){
+      const a=(p/5)*Math.PI*2;
+      const petal=new THREE.Mesh(petalGeo,petalMat);
+      petal.position.set(Math.cos(a)*.18,Math.sin(a)*.18,0);
+      petal.scale.set(.78,1.35,1);petal.rotation.z=a-Math.PI/2;
+      flower.add(petal);
+    }
+    flower.add(new THREE.Mesh(centerGeo,new THREE.MeshBasicMaterial({color:0xf3ad19,transparent:true,opacity:.78})));
+    flower.userData={phase:i*.73,speed:.28+(i%5)*.04,baseY:-2.55+(i%7)*.82};
+    dayRoot.add(flower);flowers.push(flower);
+  }
+
+  const moon=new THREE.Group();
+  const moonGlow=new THREE.Mesh(new THREE.CircleGeometry(1.18,32),new THREE.MeshBasicMaterial({color:0xb7ccff,transparent:true,opacity:.12}));
+  const moonDisc=new THREE.Mesh(new THREE.CircleGeometry(.72,32),new THREE.MeshBasicMaterial({color:0xffefb0,transparent:true,opacity:.92}));
+  const moonShade=new THREE.Mesh(new THREE.CircleGeometry(.70,32),new THREE.MeshBasicMaterial({color:0x111d42,transparent:true,opacity:.98}));
+  moonShade.position.set(.28,.16,.02);moon.add(moonGlow,moonDisc,moonShade);nightRoot.add(moon);
+
+  const starCount=90;
+  const starPositions=new Float32Array(starCount*3);
+  for(let i=0;i<starCount;i++){
+    starPositions[i*3]=(Math.random()-.5)*18;
+    starPositions[i*3+1]=(Math.random()-.5)*6;
+    starPositions[i*3+2]=-1-Math.random()*2;
+  }
+  const starGeo=new THREE.BufferGeometry();starGeo.setAttribute("position",new THREE.BufferAttribute(starPositions,3));
+  const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xdceaff,size:1.7,transparent:true,opacity:.82,sizeAttenuation:false}));
+  nightRoot.add(stars);
+
+  const shootingStars=[];
+  const shootingGeo=new THREE.PlaneGeometry(1.45,.035);
+  for(let i=0;i<3;i++){
+    const shooting=new THREE.Mesh(shootingGeo,new THREE.MeshBasicMaterial({color:0xe9f3ff,transparent:true,opacity:.0,side:THREE.DoubleSide}));
+    shooting.rotation.z=-.42;
+    shooting.userData={phase:i*3.7,speed:.72+i*.13};
+    nightRoot.add(shooting);shootingStars.push(shooting);
+  }
+
+  let viewW=0,viewH=0,enabled=false,nightMode=false;
+  const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)");
+  function resize(){
+    const rect=header.getBoundingClientRect();
+    const w=Math.max(1,Math.round(rect.width));
+    const h=Math.max(1,Math.round(rect.height));
+    if(w===viewW && h===viewH) return;
+    viewW=w;viewH=h;renderer.setSize(w,h,false);
+    const aspect=w/h;
+    camera.left=-aspect*3.15;camera.right=aspect*3.15;camera.top=3.15;camera.bottom=-3.15;
+    camera.updateProjectionMatrix();
+    sun.position.set(camera.right-1.28,1.36,-1);
+    moon.position.set(camera.right-1.25,1.18,-1);
+    stars.scale.x=Math.max(1,(camera.right-camera.left)/18);
+    clouds[0].position.set(camera.left+2.2,1.35,-2);
+    clouds[1].position.set(camera.right-4.4,-1.25,-2);
+    flowers.forEach((flower,i)=>{flower.userData.span=camera.right-camera.left+2;flower.userData.start=camera.left-1+i*flower.userData.span/flowers.length;});
+  }
+  function draw(ms=0){
+    resize();
+    const t=ms*.001;
+    dayRoot.visible=!nightMode;nightRoot.visible=nightMode;
+    sun.rotation.z=t*.12;
+    sunCore.scale.setScalar(1+Math.sin(t*.9)*.045);
+    clouds[0].position.x+=Math.sin(t*.17)*.0018;
+    clouds[1].position.x-=Math.sin(t*.13)*.0014;
+    flowers.forEach((flower,i)=>{
+      const d=flower.userData;
+      const span=d.span||16;
+      flower.position.x=camera.left-1+((t*d.speed+d.phase*1.7)%1)*span;
+      flower.position.y=d.baseY+Math.sin(t*(.7+d.speed)+d.phase)*.28;
+      flower.rotation.z=t*(i%2?-.22:.18)+d.phase;
+      const scale=.72+(i%5)*.11;flower.scale.set(scale,scale,1);
+    });
+    stars.material.opacity=.68+Math.sin(t*1.7)*.14;
+    stars.rotation.z=Math.sin(t*.06)*.018;
+    moonGlow.scale.setScalar(1+Math.sin(t*.8)*.06);
+    shootingStars.forEach((shooting,i)=>{
+      const d=shooting.userData;
+      const cycle=(t*d.speed+d.phase)%8;
+      const active=cycle<1.25;
+      shooting.visible=nightMode&&active;
+      shooting.material.opacity=active?Math.sin((cycle/1.25)*Math.PI)*.82:0;
+      shooting.position.x=camera.right-((cycle/1.25)*(camera.right-camera.left+3));
+      shooting.position.y=1.9-i*.75-(cycle/1.25)*1.6;
+    });
+    renderer.render(scene,camera);
+  }
+  function animate(ms){draw(ms);}
+  function syncLoop(){
+    renderer.setAnimationLoop(null);
+    canvas.style.display=enabled?"block":"none";
+    panel.classList.toggle("summer-webgl-ready",enabled);
+    if(!enabled) return;
+    draw(performance.now());
+    if(!document.hidden && !reduced?.matches) renderer.setAnimationLoop(animate);
+  }
+  function setTheme(theme){nightMode=theme==="summer-dark";enabled=theme==="summer"||nightMode;syncLoop();}
+  const resizeObserver=typeof ResizeObserver!=="undefined"?new ResizeObserver(()=>{if(enabled)draw(performance.now());}):null;
+  resizeObserver?.observe(header);
+  document.addEventListener("visibilitychange",syncLoop);
+  reduced?.addEventListener?.("change",syncLoop);
+  function dispose(){
+    renderer.setAnimationLoop(null);resizeObserver?.disconnect();
+    document.removeEventListener("visibilitychange",syncLoop);
+    reduced?.removeEventListener?.("change",syncLoop);
+    scene.traverse(obj=>{obj.geometry?.dispose?.();if(Array.isArray(obj.material))obj.material.forEach(m=>m.dispose?.());else obj.material?.dispose?.();});
+    renderer.dispose();
+  }
+  summerSceneCtl={setTheme,dispose};
+  setTheme(S.settings.panelTheme);
+}
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  BUILD UI                                                    â•‘
@@ -3101,17 +4181,17 @@ function buildUI(){
   // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
     <div id="lss7-hd">
+      <canvas id="lss7-summer-scene" aria-hidden="true"></canvas>
       <div class="hd-row">
-        <div class="hd-ring"><img src="https://i.postimg.cc/hjsm7tQV/LSSS-Logo-fertig.png" alt="LSS"></div>
+        <div class="hd-mark" aria-hidden="true"><span>VS</span></div>
         <div>
           <div class="hd-title">Verband Statistik Pro</div>
           <div class="hd-sub">Das Dashboard für deinen Verband!</div>
         </div>
         <div class="hd-meta">
-          <div id="lss7-live" title="Live-Daten aktiv"></div>
-          <span id="lss7-event-live" class="bd bd-gold">EVENT 11.06</span>
-          <span class="bd bd-blue">v${V}</span>
-          <span id="lss7-premium" class="bd bd-gold" style="display:${S.settings.panelTheme==="premium"?"inline-flex":"none"}">PREMIUM</span>
+          <div class="lss7-live" title="Live-Daten aktiv"></div>
+          <div id="lss7-header-events" class="hd-events"></div>
+          <span id="lss7-summer" class="bd bd-summer" style="display:${["summer","summer-dark"].includes(S.settings.panelTheme)?"inline-flex":"none"}">${S.settings.panelTheme==="summer-dark"?"SUMMER DARK 2026":"SUMMER 2026"}</span>
           <button id="lss7-col" title="Ein-/Ausklappen">Ausgeklappt</button>
           <button id="lss7-x" title="Schliessen">×</button>
         </div>
@@ -3122,12 +4202,13 @@ function buildUI(){
   panel.append(`
     <div class="prof-strip">
       <div class="prof-row">
-        <img id="prof-av" class="prof-av" src="${S.profile.avatar||"https://www.leitstellenspiel.de/images/user.png"}" alt="Profil">
+        <img id="prof-av" class="prof-av" src="${S.profile.avatar||`${BASE}/images/user.png`}" alt="Profil">
         <div class="prof-meta">
           <div class="prof-top">
             <span id="prof-name" class="prof-name">${S.profile.name}</span>
             <span id="prof-rank" class="prof-rank">${S.profile.rank}</span>
           </div>
+          <div id="prof-roles" class="prof-roles"></div>
           <div class="prof-progress-row">
             <span id="prof-progress" class="prof-sub">${S.profile.progressText}</span>
             <span id="prof-next" class="prof-next"></span>
@@ -3170,13 +4251,13 @@ function buildUI(){
   const TABS=[
     {id:"tp-overview",  icon:"", label:"Uebersicht"},
     {id:"tp-forecast",  icon:"", label:"Verbands Prognose [BETA]"},
-    {id:"tp-vehicles",  icon:"", label:"Fahrzeuge"},
+    {id:"tp-vehicles",  icon:"", label:"Fuhrpark & Standorte"},
     {id:"tp-schoolings",icon:"", label:"Lehrgänge"},
     {id:"tp-aao",       icon:"", label:"AAO"},
     {id:"tp-history",   icon:"", label:"Verlauf"},
     {id:"tp-team",      icon:"", label:"Team"},
     {id:"tp-event",     icon:"", label:"Event"},
-    {id:"tp-settings",  icon:"", label:"Settings"},
+    {id:"tp-settings",  icon:"", label:"Einstellungen"},
   ];
   const tabBar=$(`<div id="lss7-tabs"></div>`);
   TABS.forEach((t,i)=>tabBar.append(
@@ -3219,8 +4300,8 @@ function buildUI(){
         <span class="sv c-pu" id="sv-mycoins"><span class="lspin"></span></span>
       </div>
       <div class="sc">
-        <span class="sl">Tagesverdienst</span>
-        <span class="sv c-gr" id="sv-daily">${fmtMoney(S.dailyEarn)}</span>
+        <span class="sl">Verbandsverdienst heute</span>
+        <span class="sv c-gr" id="sv-alliance-daily">${fmtMoney(allianceEarnToday())}</span>
       </div>
       <div class="sc w2" id="alliance-earn-board">
         <div class="rank-mini-head">
@@ -3277,12 +4358,24 @@ function buildUI(){
   // TAB: Fahrzeuge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tVeh=$(`<div id="tp-vehicles" class="lpanel"></div>`);
   tVeh.append(`
+    <div class="vehicle-summary">
+      <div class="vehicle-summary-card"><span class="vehicle-summary-label">Fahrzeuge gesamt</span><span class="vehicle-summary-value green" id="veh-total-count">-</span></div>
+      <div class="vehicle-summary-card"><span class="vehicle-summary-label">Gebäude gesamt</span><span class="vehicle-summary-value blue" id="veh-building-count">-</span></div>
+      <div class="vehicle-summary-card"><span class="vehicle-summary-label">Gebäudetypen</span><span class="vehicle-summary-value amber" id="veh-building-types">-</span></div>
+      <div class="vehicle-summary-card"><span class="vehicle-summary-label">Fahrzeuge je Gebäude</span><span class="vehicle-summary-value" id="veh-per-building">-</span></div>
+    </div>
     <div id="donut-wrap">
       <div id="lss7-donut"></div>
       <div id="donut-leg"><div class="lss7-empty"><span class="lspin"></span> Lade...</div></div>
     </div>
     <div class="lss7-div"></div>
-    <div class="vb-wrap" id="lss7-vbars"><div class="lss7-empty"><span class="lspin"></span> Lade...</div></div>`);
+    <div class="vb-wrap" id="lss7-vbars"><div class="lss7-empty"><span class="lspin"></span> Lade...</div></div>
+    <section class="asset-section">
+      <div class="asset-section-head">
+        <div><span class="asset-section-title">Standorte & Ausbauten</span><span class="asset-section-sub">Wachentypen, Personal, Zellen und vorhandene Ausbauten aus der Gebäude-API.</span></div>
+      </div>
+      <div id="lss7-bld"><div class="lss7-empty"><span class="lspin"></span> Lade Gebäudedetails...</div></div>
+    </section>`);
   body.append(tVeh);
 
   // TAB: Lehrgänge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -3307,6 +4400,10 @@ function buildUI(){
         <span class="sl">Erster Eintrag</span>
         <span class="sv-sm">${S.creditHist.length?fmtShortTime(S.creditHist[0].ts):"-"}</span>
       </div>
+    </div>
+    <div class="settings-intro history-explain">
+      <b>${tr("Was zeigt der Verlauf?")}</b>
+      <span>${tr("Der Verlauf zeigt regelmäßig gespeicherte Stände der Verbandscredits.")} ${tr("Er ist kein vollständiges Spielprotokoll: Werte entstehen nur, während das Skript Daten abrufen kann.")} ${tr("Daten werden ausschließlich lokal in diesem Browser gespeichert.")}</span>
     </div>
     <div id="lss7-hist"></div>`);
   body.append(tHist);
@@ -3338,6 +4435,13 @@ function buildUI(){
       <div class="event-kpi"><span class="event-k">Daten</span><span class="event-v">Ergebnis, Status, Spielort und Torschützen werden automatisch aktualisiert. Karten erscheinen, sobald die API sie bereitstellt.</span></div>
     </div>
     <div class="event-actions"><button class="lbtn prime" id="wm-refresh" type="button">Spielplan aktualisieren</button><a class="lbtn" href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/scores-fixtures" target="_blank" rel="noopener">FIFA-Spielplan</a></div>
+    <section class="wm-groups" id="wm-groups">
+      <div class="wm-groups-head">
+        <div class="wm-groups-title"><b>Gruppentabellen</b><span>Punkte, Tore und Tordifferenz aller zwölf Gruppen</span></div>
+        <button class="wm-groups-toggle" id="wm-groups-toggle" type="button">Tabellen anzeigen</button>
+      </div>
+      <div class="wm-groups-panel" id="wm-groups-panel"></div>
+    </section>
     <div class="wm-list" id="wm-schedule-list"><div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div></div>
     <div class="event-note">Tipps werden aktuell lokal in deinem Browser gespeichert. Damit andere die Tipps sehen koennen, brauchen wir spaeter eine zentrale Datenbank oder ein kleines Backend.</div>
     <div class="wm-source" id="wm-source">Quelle: worldcup26.ir · Torschützen verfügbar · Kartendaten derzeit nicht verfügbar</div>
@@ -3361,6 +4465,14 @@ function buildUI(){
   setWrap.append(grpUpdate);
 
   const grpOpt=$(`<div class="set-group set-wide"><div class="set-head">Darstellung & Bedienung</div></div>`);
+  grpOpt.append(`<label class="tog-row" style="justify-content:space-between;">
+    <span class="tog-lbl">Sprache</span>
+    <select id="sb-language" class="lss7-select">
+      <option value="de"${S.settings.language==="de"?" selected":""}>Deutsch</option>
+      <option value="en"${S.settings.language==="en"?" selected":""}>English</option>
+      <option value="fr"${S.settings.language==="fr"?" selected":""}>Français</option>
+    </select>
+  </label>`);
   grpOpt.append(mkToggle("tog-notif","Browser-Benachrichtigungen","notifications"));
   grpOpt.append(mkToggle("tog-coins","Coins anzeigen","coins"));
   grpOpt.append(mkToggle("tog-playtime","Spielzeit anzeigen","playtimeEnabled"));
@@ -3384,11 +4496,8 @@ function buildUI(){
     <select id="sb-theme" class="lss7-select">
       <option value="dark"${S.settings.panelTheme==="dark"?" selected":""}>Dark</option>
       <option value="light"${S.settings.panelTheme==="light"?" selected":""}>Light</option>
-      <option value="midnight"${S.settings.panelTheme==="midnight"?" selected":""}>Midnight Blue</option>
-      <option value="emerald"${S.settings.panelTheme==="emerald"?" selected":""}>Emerald Ops</option>
-      <option value="sunset"${S.settings.panelTheme==="sunset"?" selected":""}>Sunset Neon</option>
-      <option value="slate"${S.settings.panelTheme==="slate"?" selected":""}>Slate Pro</option>
-      <option value="premium"${S.settings.panelTheme==="premium"?" selected":""}>Premium Gold</option>
+      <option value="summer"${S.settings.panelTheme==="summer"?" selected":""}>Summer 2026</option>
+      <option value="summer-dark"${S.settings.panelTheme==="summer-dark"?" selected":""}>Summer Dark 2026</option>
     </select>
   </label>`);
   setWrap.append(grpOpt);
@@ -3403,6 +4512,12 @@ function buildUI(){
   setWrap.append(grpForecast);
 
   const grpWx=$(`<div class="set-group set-wide"><div class="set-head">Wetter & Warnungen</div></div>`);
+  grpWx.append(`<label class="tog-row" style="justify-content:space-between;">
+    <span class="tog-lbl">Land</span>
+    <select id="sb-weather-country" class="lss7-select">
+      ${Object.entries(WEATHER_COUNTRIES).map(([code,cfg])=>`<option value="${code}"${S.settings.weatherCountry===code?" selected":""}>${escHtml(cfg.label)}</option>`).join("")}
+    </select>
+  </label>`);
   grpWx.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Ort / PLZ</span>
     <input id="sb-weather-loc" class="lss7-select" style="max-width:180px" value="${String(S.settings.weatherLocation||"").replace(/"/g,"&quot;")}" placeholder="z.B. 70173 Stuttgart">
@@ -3430,6 +4545,7 @@ function buildUI(){
       <option value="chime"${S.settings.weatherTone==="chime"?" selected":""}>Chime</option>
     </select>
   </label>`);
+  grpWx.append(`<div class="set-note">Wetter und Vorhersage werden für Deutschland, Österreich, Schweiz, Frankreich und Niederlande unterstützt. Amtliche DWD-Warnungen sind technisch nur für Orte in Deutschland verfügbar.</div>`);
   grpWx.append(`<div class="set-note"><div class="weather-mini" id="wx-settings-view"><span class="w-l">Keine Wetterdaten</span><span class="w-r">-</span></div></div>`);
   setWrap.append(grpWx);
 
@@ -3452,26 +4568,26 @@ function buildUI(){
   grpContact.append(`<div class="set-note">
     Bug gefunden, Feedback oder Verbesserungsvorschlag? Dann melde dich gern direkt im Spiel.
     <div style="margin-top:8px">
-      <a class="lbtn prime" href="https://www.leitstellenspiel.de/profile/687089" target="_blank" rel="noopener">Kontakt aufnehmen</a>
+      <a class="lbtn prime" href="${BASE}/profile/687089" target="_blank" rel="noopener">Kontakt aufnehmen</a>
     </div>
   </div>`);
   setWrap.append(grpContact);
 
   const grpPn=$(`<div class="set-group set-wide"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v7.0.0</b><br>Prognose, Speicherung, Live-Events, WM-Erweiterungen und das neue automatische Update-System wurden in einem gemeinsamen Release zusammengeführt.</div>`);
+  grpPn.append(`<div class="set-note"><b>v9.0.1</b><br>Sommer- und Sommer-Dark-Design, getrennte Live-Event-Badges, sichtbare Profilrollen, DWD-ICON-Wetter für Deutschland, echter Verbands-Tagesverdienst, verbesserte WM-Tabellen, neue Sprachwahl sowie kategorisierte Teamrollen.</div>`);
   setWrap.append(grpPn);
 
   tSet.append(setWrap);
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v7.0.0",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v9.0.1",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
     <div id="lss7-ft">
       <span class="ft-l">(c) 2025 Fabian (Capt.BobbyNash)</span>
-      <span class="ft-r">Aktualisiert: <span id="lss7-upd">-</span></span>
+      <span class="ft-r"><span class="ft-version">v${V}</span><span>Aktualisiert: <span id="lss7-upd">-</span></span></span>
     </div>`);
 
   // â”€â”€ EVENTS: stopPropagation auf allem im Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -3490,13 +4606,18 @@ function buildUI(){
     panel.find(`#${id}`).addClass("active");
 
     // Lazy fetch beim ersten Ã–ffnen
-    if(id==="tp-vehicles"  && !panel.data("lv")){panel.data("lv",1);fetchVehicleStates();}
+    if(id==="tp-vehicles"  && !panel.data("lv")){panel.data("lv",1);fetchVehicleStates();fetchBuildings();}
     if(id==="tp-schoolings"&& !panel.data("ls")){panel.data("ls",1);fetchSchoolings();}
     if(id==="tp-aao"       && !panel.data("la")){panel.data("la",1);fetchAAOs();}
     if(id==="tp-history"){renderHistTab();}
     if(id==="tp-forecast"){renderForecast();}
     if(id==="tp-event"){scanGameEvents();renderWmEvent();if(!(S.wm.games||[]).length)fetchWmEvent();}
     if(id==="tp-overview"){renderForecast();setTimeout(drawChart,50);}
+  });
+
+  panel.on("click",".hd-event-badge[data-open-event]",function(e){
+    e.stopPropagation();e.preventDefault();
+    panel.find('.ltab[data-tab="tp-event"]').trigger("click");
   });
 
   // Settings buttons
@@ -3541,6 +4662,10 @@ function buildUI(){
     S.settings.panelTheme=String($(e.currentTarget).val()||"dark");
     save();applyPanelMode();
   });
+  panel.on("change","#sb-language",e=>{
+    S.settings.language=String($(e.currentTarget).val()||"de");
+    save();location.reload();
+  });
   panel.on("change","#sb-forecast-target",e=>{
     applyForecastSettings($(e.currentTarget).val());
   });
@@ -3561,6 +4686,11 @@ function buildUI(){
   panel.on("change","#sb-weather-mode",e=>{
     S.settings.weatherMode=String($(e.currentTarget).val()||"off");
     save();renderWeather();
+  });
+  panel.on("change","#sb-weather-country",e=>{
+    S.settings.weatherCountry=String($(e.currentTarget).val()||"DE");
+    S.weather=null;S.weatherLoc="";
+    save();fetchWeather();
   });
   panel.on("change","#sb-weather-loc",e=>{
     S.settings.weatherLocation=String($(e.currentTarget).val()||"").trim();
@@ -3587,6 +4717,20 @@ function buildUI(){
   panel.on("click","#sb-event-refresh,#wm-refresh",e=>{
     e.stopPropagation();e.preventDefault();
     fetchWmEvent();
+  });
+  panel.on("click","#wm-groups-toggle",e=>{
+    e.stopPropagation();e.preventDefault();
+    const groups=$("#wm-groups");
+    const open=!groups.hasClass("open");
+    groups.toggleClass("open",open);
+    $(e.currentTarget).text(tr(open?"Tabellen ausblenden":"Tabellen anzeigen"));
+    if(open)renderWmGroups();
+  });
+  panel.on("click",".wm-group-name",e=>{
+    e.stopPropagation();e.preventDefault();
+    const card=$(e.currentTarget).closest(".wm-group-card");
+    const open=!card.hasClass("open");
+    card.toggleClass("open",open);$(e.currentTarget).attr("aria-expanded",String(open));
   });
   panel.on("click",".wm-tip-save",e=>{
     e.stopPropagation();e.preventDefault();
@@ -3615,6 +4759,13 @@ function buildUI(){
     e.preventDefault();
     $(e.currentTarget).closest(".wm-tip").find(".wm-tip-save").trigger("click");
   });
+  panel.on("input","#team-search",filterTeamRows);
+  panel.on("change","#team-filter",filterTeamRows);
+  panel.on("input","#schooling-search",filterSchoolingRows);
+  panel.on("change","#schooling-filter",filterSchoolingRows);
+  panel.on("click","#schooling-refresh",e=>{
+    e.stopPropagation();e.preventDefault();fetchSchoolings();
+  });
 
   // Close button
   panel.on("click","#lss7-x",      e=>{ e.stopPropagation(); togglePanel(false); });
@@ -3633,6 +4784,7 @@ function buildUI(){
     if(key==="forecastEnabled")renderForecast();
   });
 
+  applyTranslations(panel.get(0));
   $("body").append(panel);
   renderForecast();
   setTimeout(drawChart,200);
@@ -3693,10 +4845,11 @@ function applyPanelMode(){
     const sm=sizeMap[sz]||sizeMap.normal;
     panel.css({top,bottom,right,left,width:`${sm.w}px`,height:`min(${sm.h}px, calc(100vh - 68px))`});
   }
-  panel.removeClass("theme-dark theme-light theme-midnight theme-emerald theme-sunset theme-slate theme-premium");
-  const th=String(S.settings.panelTheme||"dark");
+  panel.removeClass("theme-dark theme-light theme-summer theme-summer-dark");
+  const th=String(S.settings.panelTheme||"summer");
   panel.addClass(`theme-${th}`);
-  $("#lss7-premium").toggle(th==="premium");
+  $("#lss7-summer").toggle(["summer","summer-dark"].includes(th)).text(th==="summer-dark"?"SUMMER DARK 2026":"SUMMER 2026");
+  summerSceneCtl?.setTheme(th);
   $("#lss7-col").text(S.settings.panelCollapsed?"Eingeklappt":"Ausgeklappt");
   renderWeather();
 }
@@ -3886,6 +5039,70 @@ function mkAccordion(icon,title,body){
 function patchHTML(){
   const groups=[
     {
+      title:"v9.0.1 — Summer 2026 Design",
+      items:[
+        "Neues Summer-2026-Theme mit einer frischen Kombination aus Himmelblau, Sonnen-Gelb, Blattgrün und warmen Blütenfarben hinzugefügt.",
+        "Der Dashboard-Header wurde für den Sommerstil mit einer dezenten Sonne und floralen Details erweitert.",
+        "Der Sommer-Header enthält jetzt eine leichte Three.js-Szene mit animierter Sonne, Sonnenstrahlen und schwebenden Blütenelementen.",
+        "Die Animation pausiert bei ausgeblendeter Seite und respektiert die Systemeinstellung Bewegung reduzieren.",
+        "Ein eigener SUMMER-2026-Badge zeigt direkt im Header an, dass das saisonale Design aktiv ist.",
+        "Profilbereich, aktive Tabs, Fortschrittsbalken, Buttons und die eigene Platzierungszeile wurden farblich an das Sommerdesign angepasst.",
+        "BETA-Hinweise, Prognose-Status, Wetterwarnungen, Live-Events und Update-Meldungen wurden für eine klare Lesbarkeit im hellen Sommermodus neu abgestimmt.",
+        "Fahrzeuganzahlen, Fahrzeugstatus-Zähler, das WM-VS und das Prozentzeichen bei Coin-Sales wurden im Sommerdesign kontrastreicher gestaltet.",
+        "Der Fahrzeuge-Bereich zeigt jetzt zusätzlich die Gesamtzahl eigener Gebäude, die Anzahl der Gebäudetypen und Fahrzeuge pro Gebäude.",
+        "Der vorhandene Gebäude-API-Abruf wurde reaktiviert, robuster für unterschiedliche Antwortformate gemacht und wird regelmäßig aktualisiert.",
+        "Die Sommeranimationen wurden verstärkt: mehr Blüten, deutlichere Sonnenstrahlen, lebendigere Tiefenbewegung sowie dezente Karten-, Status- und Fortschrittsanimationen.",
+        "Das Skript unterstützt jetzt sowohl www.leitstellenspiel.de als auch polizei.leitstellenspiel.de ohne manuelle Codeänderungen.",
+        "Die zusätzliche @match-Regel https://polizei.leitstellenspiel.de/* wurde ergänzt.",
+        "API-Aufrufe, Profil- und Verbandslinks, Coin-Shop, Kontakt sowie Bild-Fallbacks verwenden automatisch die aktuell geöffnete Spiel-Domain.",
+        "Der bisherige Menüpunkt Fahrzeuge heißt jetzt Fuhrpark & Standorte.",
+        "Die Gebäudestatistik wurde deutlich erweitert und zeigt Wachentypen, Organisationsbereiche, Personal, Zellen, Lagerausbauten sowie gebaute, aktive und im Bau befindliche Ausbauten.",
+        "Die Zahl in der Mitte des Fahrzeugdiagramms verwendet jetzt die jeweilige Theme-Schriftfarbe und bleibt auch im Sommerdesign lesbar.",
+        "Ergebnisse und gespeicherte Tipps im WM-Spielplan wurden im Sommerthema deutlich kontrastreicher gestaltet; insbesondere der Ändern-Button ist nun klar erkennbar.",
+        "Der WM-Spielplan wurde kompakter aufgebaut und zeigt Uhrzeit, Runde, Teams, Stadion, TV und Status platzsparender in einer professionelleren Zeile.",
+        "Einklappbare Gruppentabellen für alle zwölf WM-Gruppen ergänzt; Punkte, Spiele, Tordifferenz und Platzierung werden automatisch aus den geladenen Ergebnissen berechnet.",
+        "Die WM-Gruppentabellen wurden professioneller und deutlich lesbarer gestaltet; Siege, Unentschieden, Niederlagen, Tore, Tordifferenz und Punkte sind jetzt vollständig sichtbar.",
+        "Die Kontraste der Gruppentabellen sowie der Leitstellenspiel-Live-Events unter dem Spielerprofil wurden speziell für das Sommerdesign verbessert.",
+        "Neue Spracheinstellung ergänzt: Das Dashboard kann auf Deutsch, Englisch oder Französisch angezeigt werden.",
+        "Die Wettersuche unterstützt jetzt Deutschland, Österreich, Schweiz, Frankreich und Niederlande über eine eigene Länderauswahl.",
+        "Die Teamseite wurde mit Kennzahlen, Rollenerkennung, Mitgliedersuche, Rollenfilter und direkten Profillinks neu aufgebaut.",
+        "Der Menüpunkt Verlauf erklärt nun transparent, welche lokalen Credit-Stände gespeichert werden und wo die Grenzen dieser Historie liegen.",
+        "Die Lehrgangsseite wurde um Suche, Filter für freie Plätze, Aktualisierung und direkte Links zu den Lehrgängen erweitert.",
+        "Das Wetter zeigt zusätzlich zur Stundenansicht einen 7-Tage-Trend mit Wetterlage, Höchst- und Tiefsttemperatur, Regenwahrscheinlichkeit und maximalem Wind.",
+        "Neues Summer Dark 2026 Theme mit animiertem Mond, funkelndem Sternenhimmel und ruhigen Sternschnuppen ergänzt.",
+        "Die Theme-Auswahl wurde auf Light, Dark, Summer 2026 und Summer Dark 2026 reduziert.",
+        "Die Teamseite sortiert Mitglieder nun nach Owner, Administrator, Co. Administrator, Sprechwunsch Admin, Aufsichtsrat, Finanzminister, Lehrgangsmeister, Personal und Eventmanager; jede Rolle besitzt eine feste Farbe.",
+        "WM-Gruppentabellen stehen jetzt übersichtlich untereinander und lassen sich pro Gruppe einzeln ein- und ausklappen.",
+        "Schwarze Tabellenflächen und abgeschnittene Ländernamen im hellen Sommerdesign wurden behoben.",
+        "WM-2026, Coin-Sales, Credit-Boosts und weitere Leitstellenspiel-Events werden im Header jetzt als getrennte Live-Badges dargestellt.",
+        "Das Spielerprofil zeigt die erkannten Verbandsrollen als farbige, dezent animierte Rollen-Badges an.",
+        "Das bisherige Bildlogo im Dashboard und im Spiel-Header wurde durch ein modernes, codebasiertes VS-Markenzeichen ersetzt.",
+        "Die Versionsnummer wurde aus dem Dashboard-Header in die untere Statusleiste verschoben.",
+        "Der Tagesverdienst in der Übersicht zeigt jetzt den heutigen Verbandsverdienst; der persönliche Tagesverdienst bleibt in der oberen Schnellanzeige.",
+        "Für deutsche Wetterorte werden Stunden- und 7-Tage-Prognose jetzt gezielt aus dem DWD-ICON-Modell über Open-Meteo geladen; Warnungen stammen weiterhin direkt vom DWD.",
+        "Stundenprognose und 7-Tage-Ausblick sind klar getrennt, beginnen an der aktuellen Stunde und zeigen ihre jeweilige Datenquelle sichtbar an.",
+        "Das Sommerdesign wird beim ersten Start von v9.0.1 einmalig aktiviert und bleibt anschließend frei über die Einstellungen wechselbar.",
+        "Version und Patch-Notes wurden auf v9.0.1 aktualisiert.",
+      ],
+    },
+    {
+      title:"v9.0.0 — Dashboard-Komplettausbau",
+      items:[
+        "Das Verbands-Dashboard wurde als dauerhaft nutzbare Layout-Box und als frei skalierbares Floating-Menü ausgebaut.",
+        "Spielerprofil mit Benutzername, Profilbild, Dienstgrad, Credits, Level-Fortschritt, Prozentanzeige und verbleibenden Credits bis zur Beförderung ergänzt.",
+        "Übersicht um Platzierungsumfeld, 7-Tage-Verbandsverdienst, Kreditverlauf und Verbandsprognose [BETA] erweitert.",
+        "Die Verbandsprognose berechnet aus den lokal gespeicherten Tageswerten Restbetrag, Durchschnitt, voraussichtliche Resttage und das erwartete Erreichungsdatum eines Meilensteins.",
+        "Wettermodul mit Orts- und PLZ-Suche, Stundenprognose, Wetterdetails, DWD-Warnstufen, Warntexten und optionalem Warnton ergänzt.",
+        "WM-Eventbereich mit Spielplan, Ergebnissen, Spielorten, lokalen Tipps, Torschützen und unterstützten Karteninformationen ergänzt.",
+        "Leitstellenspiel-Live-Events, Credit-Boosts, Einsatzrabatte und Coin-Sales werden automatisch aus der Spielnavigation erkannt und mit Countdown angezeigt.",
+        "Spielzeit mit Tageswechsel, 7-Tage-Historie, Ein-/Ausschalter und manueller Rücksetzung ergänzt.",
+        "Lehrgänge, AAO, Team, Verlauf und umfangreiche Darstellungs-, Wetter-, Event- und Update-Einstellungen wurden in einer gemeinsamen Oberfläche zusammengeführt.",
+        "Lokale Speicherung für Einstellungen, Spielzeit, Tipps, Tageswerte, Prognosedaten und den letzten bekannten Verbandsstand stabilisiert.",
+        "Automatische Updates über Tampermonkey-Metadaten sowie eine manuelle Update-Prüfung in den Einstellungen ergänzt.",
+        "Version und Patch-Notes wurden auf v9.0.0 aktualisiert."
+      ]
+    },
+    {
       title:"v7.0.0 — Prognose, Updates, Speicherung, Live-Events & WM",
       items:[
         "Das bisherige eigene Update-Popup wurde vollständig entfernt.",
@@ -4030,12 +5247,12 @@ function buildTrigger(){
   const li=$(`<li></li>`);
   const a=$(`
     <a href="#" id="lss7-btn">
-      <img src="https://i.postimg.cc/hjsm7tQV/LSSS-Logo-fertig.png" alt="LSS">
+      <span class="lss7-nav-mark" aria-hidden="true"><span>VS</span><i></i></span>
       <span class="lss7-nav-copy">
         <span class="lss7-nav-lbl">Dein Verband</span>
-        <span class="lss7-nav-event" id="lss7-nav-event">Event 11.06</span>
+        <span class="lss7-nav-events" id="lss7-nav-events"></span>
       </span>
-      <div id="lss7-live"></div>
+      <div class="lss7-live"></div>
       <span class="lss7-nav-arr">v</span>
     </a>`);
   a.on("click",function(e){ e.preventDefault();e.stopPropagation();togglePanel(); });
@@ -4152,6 +5369,7 @@ function checkUpdate({manual=false}={}){
 $(document).ready(()=>{
   load();
   buildUI();
+  initSummerScene();
   buildTrigger();
   applyPanelMode();
   updatePlaytimeUi();
@@ -4161,6 +5379,7 @@ $(document).ready(()=>{
   fetchAlliance();
   fetchUserinfo();
   fetchProfileCard();
+  fetchBuildings();
   fetchDailyEarnFromOverview();
   fetchWeather();
   renderWeather();
@@ -4187,6 +5406,7 @@ $(document).ready(()=>{
   setInterval(fetchUserinfo,      ITV.userinfo);
   setInterval(fetchProfileCard,   ITV.profile);
   setInterval(fetchVehicleStates, ITV.vstates);
+  setInterval(fetchBuildings,     ITV.buildings);
   setInterval(fetchSchoolings,    ITV.schools);
   setInterval(fetchDailyEarnFromOverview, ITV.dailyEarn);
   setInterval(fetchWeather,       ITV.weather);
@@ -4200,8 +5420,8 @@ $(document).ready(()=>{
   checkUpdate();
 });
 
-window.addEventListener("beforeunload", save);
-window.addEventListener("pagehide", save);
+window.addEventListener("beforeunload",()=>{summerSceneCtl?.dispose();save();});
+window.addEventListener("pagehide",save);
 
 })();
 
