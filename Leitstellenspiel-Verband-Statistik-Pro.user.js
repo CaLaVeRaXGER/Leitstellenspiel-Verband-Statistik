@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.0.1
+// @version      9.1.0
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/*
@@ -31,10 +31,14 @@
 (function () {
 "use strict";
 
+// Das Dashboard gehoert nur in das Hauptfenster. Spiel-Lightboxen und
+// eingebettete Formulare bleiben dadurch vollstaendig unangetastet.
+if(window.top!==window.self)return;
+
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "9.0.1";
+const V   = "9.1.0";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
@@ -51,6 +55,7 @@ const API = {
   aaos:        `${BASE}/api/v1/aaos`,
   creditsOverview: `${BASE}/credits/overview`,
   alliancesPage: `${BASE}/alliances`,
+  toplist: `${BASE}/toplist`,
   wxGeo: "https://geocoding-api.open-meteo.com/v1/search",
   wxForecast: "https://api.open-meteo.com/v1/forecast",
   zipGeo: "https://api.zippopotam.us",
@@ -81,7 +86,7 @@ const I18N = {
     "Verlaufspunkte":"History entries","Erster Eintrag":"First entry","Zeit":"Time","Credits":"Credits","Aenderung":"Change",
     "Einstellungen":"Settings","Schnellaktionen":"Quick actions","Updates":"Updates","Darstellung & Bedienung":"Appearance & controls",
     "Browser-Benachrichtigungen":"Browser notifications","Coins anzeigen":"Show coins","Spielzeit anzeigen":"Show playtime",
-    "Menü-Modus":"Menu mode","Panel-Größe":"Panel size","Panel-Theme":"Panel theme","Klein":"Small","Normal":"Normal","Groß":"Large",
+    "Menü-Modus":"Menu mode","Panel-Theme":"Panel theme","Kopfzeilen-Button":"Header button","Nur Logo":"Only logo","Standard ohne Events":"Standard without events","Nur Dein Verband":"Only Your Alliance",
     "Sprache":"Language","Wetter & Warnungen":"Weather & warnings","Land":"Country","Ort / PLZ":"City / postal code",
     "Anzeige":"Display","Aus":"Off","Nur Settings":"Settings only","Übersicht-Box":"Overview panel","Warnsound":"Warning sound",
     "An":"On","Warnton":"Warning tone","Informationen":"Information","Kontakt":"Contact","Patch-Notes":"Patch notes",
@@ -92,7 +97,7 @@ const I18N = {
     "Lehrgang":"Course","Plätze":"Seats","Kosten":"Cost","Fertig":"Finishes","Öffnen":"Open","Aktive Lehrgänge":"Active courses",
     "Lehrgangsarten":"Course types","Alle Lehrgänge":"All courses","Freie Plätze":"Available seats","Lehrgänge durchsuchen...":"Search courses...",
     "Mitglied suchen...":"Search members...","Alle Rollen":"All roles","Leitung":"Leadership","Mitglieder ohne Leitungsrolle":"Regular members",
-    "Mitglieder gesamt":"Total members","Leitungsteam":"Leadership team","Sonderrollen":"Special roles","Profil öffnen":"Open profile",
+    "Mitglieder gesamt":"Total members","Leitungsteam":"Leadership team","Sonderrollen":"Special roles","Profil öffnen":"Open profile","Verbands-Eigentümer":"Owner","Spielerprognose [BETA]":"Player forecast [BETA]",
     "Gruppentabellen":"Group tables","Punkte, Tore und Tordifferenz aller zwölf Gruppen":"Points, goals and goal difference for all twelve groups",
     "Tabellen anzeigen":"Show tables","Tabellen ausblenden":"Hide tables","Gruppe":"Group","Spiele":"matches","Team":"Team",
     "Automatisch aus den API-Ergebnissen berechnet.":"Calculated automatically from API results.",
@@ -114,7 +119,7 @@ const I18N = {
     "Verlaufspunkte":"Entrées d'historique","Erster Eintrag":"Première entrée","Zeit":"Heure","Credits":"Crédits","Aenderung":"Variation",
     "Schnellaktionen":"Actions rapides","Updates":"Mises à jour","Darstellung & Bedienung":"Affichage et utilisation",
     "Browser-Benachrichtigungen":"Notifications du navigateur","Coins anzeigen":"Afficher les pièces","Spielzeit anzeigen":"Afficher le temps de jeu",
-    "Menü-Modus":"Mode du menu","Panel-Größe":"Taille du panneau","Panel-Theme":"Thème du panneau","Klein":"Petit","Normal":"Normal","Groß":"Grand",
+    "Menü-Modus":"Mode du menu","Panel-Theme":"Thème du panneau","Kopfzeilen-Button":"Bouton d’en-tête","Nur Logo":"Logo uniquement","Standard ohne Events":"Standard sans événements","Nur Dein Verband":"Alliance uniquement",
     "Sprache":"Langue","Wetter & Warnungen":"Météo et alertes","Land":"Pays","Ort / PLZ":"Ville / code postal",
     "Anzeige":"Affichage","Aus":"Désactivé","Nur Settings":"Paramètres uniquement","Übersicht-Box":"Bloc d'aperçu","Warnsound":"Son d'alerte",
     "An":"Activé","Warnton":"Sonnerie","Informationen":"Informations","Kontakt":"Contact","Patch-Notes":"Notes de version",
@@ -125,7 +130,7 @@ const I18N = {
     "Lehrgang":"Formation","Plätze":"Places","Kosten":"Coût","Fertig":"Fin","Öffnen":"Ouvrir","Aktive Lehrgänge":"Formations actives",
     "Lehrgangsarten":"Types de formation","Alle Lehrgänge":"Toutes les formations","Freie Plätze":"Places disponibles","Lehrgänge durchsuchen...":"Rechercher une formation...",
     "Mitglied suchen...":"Rechercher un membre...","Alle Rollen":"Tous les rôles","Leitung":"Direction","Mitglieder ohne Leitungsrolle":"Membres réguliers",
-    "Mitglieder gesamt":"Total des membres","Leitungsteam":"Équipe dirigeante","Sonderrollen":"Rôles spéciaux","Profil öffnen":"Ouvrir le profil",
+    "Mitglieder gesamt":"Total des membres","Leitungsteam":"Équipe dirigeante","Sonderrollen":"Rôles spéciaux","Profil öffnen":"Ouvrir le profil","Verbands-Eigentümer":"Propriétaire de l’alliance","Spielerprognose [BETA]":"Prévision du joueur [BÊTA]",
     "Gruppentabellen":"Classements des groupes","Punkte, Tore und Tordifferenz aller zwölf Gruppen":"Points, buts et différence de buts des douze groupes",
     "Tabellen anzeigen":"Afficher les tableaux","Tabellen ausblenden":"Masquer les tableaux","Gruppe":"Groupe","Spiele":"matchs",
     "Automatisch aus den API-Ergebnissen berechnet.":"Calculé automatiquement à partir des résultats de l'API.",
@@ -181,9 +186,9 @@ const LEVELS = [
 ];
 
 const ALLIANCE_ROLE_DEFS = [
-  {id:"owner",label:"Owner",color:"#d8a91f",text:"#211800",aliases:["owner"]},
+  {id:"owner",label:"Verbands-Eigentümer",color:"#d8a91f",text:"#211800",aliases:["owner","eigentumer","eigentuemer","verbandseigentumer","verbandseigentuemer","verbands_eigentumer","verbands_eigentuemer","alliance_owner"]},
   {id:"admin",label:"Administrator",color:"#8f1d2c",text:"#ffffff",aliases:["admin","administrator","verbands_admin","alliance_admin"]},
-  {id:"coadmin",label:"Co. Administrator",color:"#e44752",text:"#ffffff",aliases:["coadmin","co_admin","coadministrator"]},
+  {id:"coadmin",label:"Co. Administrator",color:"#e44752",text:"#ffffff",aliases:["coadmin","co_admin","coadministrator","verbands_co_admin","alliance_coadmin"]},
   {id:"radio",label:"Sprechwunsch Admin",color:"#72c8f2",text:"#082536",aliases:["speaker","radio","radio_admin","sprech_request","speak_request","mission"]},
   {id:"board",label:"Aufsichtsrat",color:"#ed8a2f",text:"#2d1500",aliases:["board","supervisor","oversight","aufsichtsrat"]},
   {id:"finance",label:"Finanzminister",color:"#8b5bd0",text:"#ffffff",aliases:["finance","treasurer","financial","finanzminister"]},
@@ -212,7 +217,7 @@ const VSTATUS = {
   1:{l:"Einsatzbereit (Wache)",  s:"Wache",   c:"#22c55e"},
   2:{l:"Einsatzbereit (Funk)",   s:"Funk",    c:"#4ade80"},
   3:{l:"Im Einsatz",             s:"Einsatz", c:"#f59e0b"},
-  4:{l:"Einsatz uebernommen",     s:"Uebernom.",c:"#fb923c"},
+  4:{l:"Einsatz übernommen",     s:"Übernom.",c:"#fb923c"},
   5:{l:"Sprechwunsch",           s:"Sprech.", c:"#ef4444"},
   6:{l:"Nicht einsatzbereit",    s:"N.E.",    c:"#475569"},
   7:{l:"RD bereit",              s:"RD",      c:"#60a5fa"},
@@ -234,6 +239,7 @@ const BUILDING_TYPES = {
   25:"Bergrettungswache",26:"Seenotrettungswache",27:"Schule für Seefahrt und Seenotrettung",
   28:"Hubschrauberstation (Seenotrettung)",29:"Autobahnpolizei"
 };
+const VSTATUS_ORDER=[2,4,1,3,5,6,7,9];
 
 const BUILDING_CATEGORIES = [
   {name:"Feuerwehr",color:"#ef4444",types:[0,1,18]},
@@ -279,9 +285,9 @@ GM_addStyle(`
 /* â”€â”€ Floating Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #lss7 {
   position:fixed; top:52px; right:14px;
-  width:500px; max-width:calc(100vw - 24px);
-  height:min(760px, calc(100vh - 68px)); max-height:calc(100vh - 68px);
-  min-width:420px; min-height:320px;
+  width:clamp(560px,48vw,860px); max-width:calc(100vw - 24px);
+  height:calc(100vh - 66px); max-height:calc(100vh - 66px);
+  min-width:480px; min-height:420px;
   background:var(--bg0);
   border:1px solid var(--b2);
   border-radius:var(--rxl);
@@ -292,9 +298,10 @@ GM_addStyle(`
   display:none;
   flex-direction:column;
   overflow:hidden;
-  resize:both;
+  resize:horizontal;
   animation:lss7-in .18s cubic-bezier(.4,0,.2,1) both;
 }
+#lss7:not(.layout){width:clamp(560px,48vw,860px)!important;height:calc(100vh - 66px)!important;max-height:calc(100vh - 66px)!important;}
 #lss7.open { display:flex; }
 #lss7.layout{
   position:relative; top:auto; right:auto; left:auto;
@@ -303,7 +310,10 @@ GM_addStyle(`
   margin:8px 0 12px;
   border-radius:10px;
   z-index:20;
-  resize:both;
+  resize:none;
+}
+@media(max-width:700px){
+  #lss7:not(.layout){top:48px;right:6px;width:calc(100vw - 12px);max-width:none;min-width:0;height:calc(100vh - 54px);max-height:none;border-radius:10px;resize:none;}
 }
 #lss7.layout #lss7-body{max-height:68vh;}
 #lss7.layout #lss7-x{display:none;}
@@ -347,6 +357,16 @@ GM_addStyle(`
 .lss7-nav-event+.lss7-nav-event::before{content:"·";margin-right:3px;color:rgba(255,255,255,.38);}
 .lss7-nav-arr   { font-size:9px; color:rgba(255,255,255,.45); transition:transform .2s; }
 #lss7-btn.open .lss7-nav-arr { transform:rotate(180deg); }
+#lss7-btn.nav-logo-only{padding:4px 6px;gap:0;}
+#lss7-btn.nav-logo-only .lss7-nav-copy,
+#lss7-btn.nav-logo-only .lss7-live,
+#lss7-btn.nav-logo-only .lss7-nav-arr{display:none!important;}
+#lss7-btn.nav-no-events .lss7-nav-events{display:none!important;}
+#lss7-btn.nav-name-only .lss7-nav-mark,
+#lss7-btn.nav-name-only .lss7-nav-events,
+#lss7-btn.nav-name-only .lss7-live,
+#lss7-btn.nav-name-only .lss7-nav-arr{display:none!important;}
+#lss7-btn.nav-name-only .lss7-nav-copy{display:flex;}
 .lss7-live {
   width:6px; height:6px; border-radius:50%;
   background:var(--green); box-shadow:0 0 5px var(--green);
@@ -435,7 +455,6 @@ GM_addStyle(`
 #lss7-col:hover{background:var(--blue3);color:var(--blueh);border-color:rgba(59,130,246,.35);}
 #lss7.layout #lss7-col{display:flex;}
 #lss7.layout.emb-collapsed .prof-strip,
-#lss7.layout.emb-collapsed .prof-event-strip,
 #lss7.layout.emb-collapsed #lss7-qs,
 #lss7.layout.emb-collapsed #lss7-tabs,
 #lss7.layout.emb-collapsed #lss7-body,
@@ -1650,7 +1669,10 @@ GM_addStyle(`
 .lss7-update-note.show{display:flex;}
 .lss7-update-note.available{border-color:rgba(245,158,11,.42);background:rgba(245,158,11,.11);color:#fcd98b;}
 .lss7-update-note span{flex:1;min-width:0;}
-.lss7-update-note button{border:0;background:transparent;color:inherit;font-size:10px;font-weight:900;cursor:pointer;text-decoration:underline;padding:0;white-space:nowrap;}
+.lss7-update-note button{border:0;background:transparent;color:inherit;font-size:10px;font-weight:900;cursor:pointer;padding:0;white-space:nowrap;}
+.lss7-update-note .update-patches{text-decoration:underline;}
+.lss7-update-close{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px!important;border:1px solid currentColor!important;text-decoration:none!important;font-size:15px!important;line-height:1!important;opacity:.78;}
+.lss7-update-close:hover{opacity:1;background:rgba(255,255,255,.10)!important;}
 .update-status{display:flex;flex-direction:column;gap:7px;padding:9px 10px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.02);font-size:10px;color:var(--t3);line-height:1.4;}
 .update-status strong{color:var(--t1);}
 .update-status.good{border-color:rgba(34,197,94,.28);background:rgba(34,197,94,.07);}
@@ -1703,6 +1725,33 @@ GM_addStyle(`
 .rank-mini-r{font-size:11px;color:var(--t3);font-family:var(--mono);}
 .rank-mini-n{font-size:11px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rank-mini-c{font-size:11px;color:var(--green);text-align:right;font-family:var(--mono);}
+
+/* 9.1.0: fleet cockpit */
+.fleet-status-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:10px 12px 4px;}
+.fleet-status-kpi{padding:10px;border:1px solid var(--b1);border-radius:8px;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.012));min-width:0;}
+.fleet-status-kpi b{display:block;color:var(--t1);font:900 17px/1.1 var(--mono);}
+.fleet-status-kpi span{display:block;margin-top:4px;color:var(--t3);font-size:9px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fleet-status-kpi.ready{border-color:rgba(34,197,94,.28);background:var(--green3)}
+.fleet-status-kpi.active{border-color:rgba(245,158,11,.28);background:var(--amber3)}
+.fleet-status-kpi.attention{border-color:rgba(239,68,68,.24);background:var(--red3)}
+.fleet-status-kpi.coverage{border-color:rgba(59,130,246,.28);background:var(--blue3)}
+.vb-row.primary{background:rgba(255,255,255,.025);border:1px solid var(--b1);border-radius:7px;padding:7px 8px;margin-bottom:4px;}
+.vb-row.primary .vb-lbl{color:var(--t1);font-weight:850;}
+.vb-fill.is-zero{min-width:0!important;opacity:.18;}
+@media(max-width:720px){.fleet-status-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* 9.1.0: player forecast */
+.player-forecast{padding:14px;display:flex;flex-direction:column;gap:10px;}
+.player-forecast-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:13px;border:1px solid rgba(34,211,238,.24);border-radius:9px;background:linear-gradient(135deg,rgba(34,211,238,.11),rgba(59,130,246,.05));}
+.player-forecast-title{font-size:14px;font-weight:950;color:var(--t1);}.player-forecast-sub{margin-top:4px;font-size:10px;color:var(--t3);line-height:1.45;}
+.beta-strong{display:inline-flex;padding:4px 8px;border-radius:999px;border:1px solid rgba(245,158,11,.45);background:rgba(245,158,11,.15);color:var(--amberh);font-size:9px;font-weight:950;letter-spacing:.7px;}
+.player-forecast-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+.player-forecast-kpi{padding:11px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.02);min-width:0;}
+.player-forecast-kpi span{display:block;font-size:8px;color:var(--t4);text-transform:uppercase;letter-spacing:.7px;font-weight:850}.player-forecast-kpi b{display:block;margin-top:5px;color:var(--t1);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.player-forecast-progress{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid var(--b1);}.player-forecast-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green));transition:width .35s ease;}
+.player-rank-context{display:flex;flex-direction:column;gap:5px}.player-rank-row{display:grid;grid-template-columns:56px minmax(0,1fr) 150px;gap:8px;padding:7px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.02);font-size:10px;}.player-rank-row.me{border-color:rgba(59,130,246,.42);background:var(--blue3)}.player-rank-row span:last-child{text-align:right;color:var(--greenh);font-family:var(--mono)}
+.prof-placement{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;border:1px solid rgba(245,158,11,.30);background:var(--amber3);color:var(--amberh);font-size:9px;font-weight:900;white-space:nowrap;}
+@media(max-width:720px){.player-forecast-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.player-rank-row{grid-template-columns:46px minmax(0,1fr) 110px;}}
 `);
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -1718,13 +1767,15 @@ const S = {
   allianceSnapshot:null,
   playtimeDaily:[],   // [{date,seconds}]
   userCredits:0, userCoins:0, userId:null,
+  playerDaily:[],
+  playerRanking:{rank:null,status:"",rows:[],lastTs:0,loading:false},
   allianceId:null, allianceName:"", allianceRank:null, allianceCredits:0,
   weather:null, weatherTs:0, weatherLoc:"",
   gameEvents:[],
   wm:{games:[],stadiums:{},error:null,lastTs:null},
   wmTips:{},
   wmTipEdit:{},
-  profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:"",roles:[]},
+  profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:"",roles:[],totalCredits:0},
   weatherAlertKey:"",
   lastApiTs:null,
   update:{previousVersion:"",justUpdated:false,availableVersion:"",checking:false,lastCheck:0,error:""},
@@ -1735,8 +1786,8 @@ const S = {
     panelPlacement:"default",
     panelMode:"embedded",
     panelCollapsed:false,
-    panelSize:"normal",
     panelTheme:"summer",
+    navButtonStyle:"standard",
     language:"de",
     weatherLocation:"",
     weatherCountry:"DE",
@@ -1764,6 +1815,8 @@ function save(){
   GM_setValue("v7_ad",  JSON.stringify(S.allianceDaily));
   GM_setValue("v7_as",  JSON.stringify(S.allianceSnapshot));
   GM_setValue("v7_pd",  JSON.stringify(S.playtimeDaily));
+  GM_setValue("v7_player_daily",JSON.stringify(S.playerDaily));
+  GM_setValue("v7_player_rank",JSON.stringify(S.playerRanking));
   GM_setValue("v7_set", JSON.stringify(S.settings));
 }
 function saveWmTips(){ GM_setValue("v7_wm_tips", JSON.stringify(S.wmTips||{})); }
@@ -1802,6 +1855,9 @@ function load(){
   try{S.allianceDaily=JSON.parse(GM_getValue("v7_ad","[]"))||[];}catch{S.allianceDaily=[];}
   try{S.allianceSnapshot=JSON.parse(GM_getValue("v7_as","null"));}catch{S.allianceSnapshot=null;}
   try{S.playtimeDaily=JSON.parse(GM_getValue("v7_pd","[]"))||[];}catch{S.playtimeDaily=[];}
+  try{S.playerDaily=JSON.parse(GM_getValue("v7_player_daily","[]"))||[];}catch{S.playerDaily=[];}
+  try{Object.assign(S.playerRanking,JSON.parse(GM_getValue("v7_player_rank","{}"))||{});}catch{}
+  S.playerRanking.loading=false;
   if(newDay && saved && storedPlaytime>0)recordPlaytimeDay(saved,storedPlaytime);
   try{S.wmTips=JSON.parse(GM_getValue("v7_wm_tips","{}"))||{};}catch{S.wmTips={};}
   try{Object.assign(S.settings,JSON.parse(GM_getValue("v7_set","{}"))||{});}catch{}
@@ -1814,8 +1870,9 @@ function load(){
   const validModes=["floating","embedded"];
   if(!validModes.includes(S.settings.panelMode)) S.settings.panelMode="embedded";
   if(typeof S.settings.panelCollapsed!=="boolean") S.settings.panelCollapsed=false;
-  const validSizes=["small","normal","large"];
-  if(!validSizes.includes(S.settings.panelSize)) S.settings.panelSize="normal";
+  delete S.settings.panelSize;
+  const validNavStyles=["logo","standard","standard-no-event","name"];
+  if(!validNavStyles.includes(S.settings.navButtonStyle))S.settings.navButtonStyle="standard";
   const validThemes=["dark","light","summer","summer-dark"];
   if(!validThemes.includes(S.settings.panelTheme)) S.settings.panelTheme="summer";
   const validLanguages=["de","en","fr"];
@@ -2169,7 +2226,8 @@ function timeAgo(ts){
   return `vor ${Math.floor(d/3600)}h`;
 }
 function setV(sel,val){
-  const el=$(sel);if(!el.length)return;
+  const root=$("#lss7");
+  const el=root.is(sel)?root:root.find(sel);if(!el.length)return;
   const v=String(val);
   if(el.text()!==v){
     el.text(v);
@@ -2178,8 +2236,8 @@ function setV(sel,val){
     el.addClass("lflash");
   }
 }
-function setH(sel,html){$(sel).html(html);}
-function spin(sel){$(sel).html(`<span class="lspin"></span>`);}
+function setH(sel,html){const root=$("#lss7");(root.is(sel)?root:root.find(sel)).html(html);}
+function spin(sel){const root=$("#lss7");(root.is(sel)?root:root.find(sel)).html(`<span class="lspin"></span>`);}
 
 function apiGet(url,cb,onErr){
   GM_xmlhttpRequest({
@@ -2641,7 +2699,7 @@ function wmRowHtml(g,mini=false){
   const stage=escHtml(wmStage(g));
   const tv=escHtml(wmTv(g));
   const status=escHtml(wmStatusText(g));
-  const cls=wmLive(g)?" live":"";
+  const cls=wmLive(g)?" live":wmStarted(g)?" finished":" planned";
   const scoreCls=wmStarted(g)?"":" pending";
   const matchEvents=wmMatchEventsHtml(g);
   if(mini){
@@ -2704,6 +2762,7 @@ function renderWmHeader(){
   $("#lss7-header-events").html(items.map(headerEventButtonHtml).join("")).toggle(items.length>0);
   $("#lss7-nav-events").html(items.map(item=>`<span class="lss7-nav-event">${escHtml(item.label)}</span>`).join(""));
   $("#wm-event-pill").text(active?"WM-2026 LIVE":"WM-2026");
+  applyNavButtonStyle();
 }
 function renderGameEvents(){
   const liveEvents=activeGameEvents();
@@ -3233,18 +3292,20 @@ function drawDonut(data){
 // â•‘  API â€” FETCH FUNCTIONS                                       â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function allianceRoleInfo(user){
-  const keys=Object.entries(user?.role_flags||{})
-    .filter(([,value])=>value===true||value===1||value==="1")
-    .map(([key])=>String(key).toLowerCase());
-  const matched=ALLIANCE_ROLE_DEFS.filter(role=>role.aliases.some(alias=>keys.includes(alias)));
-  const known=new Set(ALLIANCE_ROLE_DEFS.flatMap(role=>role.aliases));
-  const unknown=keys.filter(key=>!known.has(key)).map(key=>({
-    id:"other",label:key.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase()),
-    color:"#0891b2",text:"#ffffff",aliases:[key]
-  }));
-  const all=[...matched,...unknown];
-  const primary=matched[0]||unknown[0]||{id:"member",label:"Mitglied",color:"#64748b",text:"#ffffff"};
-  const lead=matched.some(role=>["owner","admin","coadmin"].includes(role.id));
+  const assigned=Array.isArray(user?.roles)?user.roles.map(String).filter(Boolean):[];
+  let all=mergeProfileRoles(assigned.map(roleFromLabel).filter(Boolean));
+  // Alte API-Versionen liefern teils keine Rollenliste. In diesem Fall werden
+  // nur die drei eindeutigen Leitungsrollen aus den Flags abgeleitet. Flags wie
+  // finance oder schooling sind Berechtigungen und keine vergebenen Rollen.
+  if(!all.length){
+    const flags=user?.role_flags||{};
+    const enabled=value=>value===true||value===1||value==="1";
+    const fallback=enabled(flags.owner)?"owner":enabled(flags.admin)?"admin":enabled(flags.coadmin)?"coadmin":"";
+    if(fallback)all=[ALLIANCE_ROLE_DEFS.find(role=>role.id===fallback)].filter(Boolean);
+  }
+  const keys=assigned.map(normalizeTxt);
+  const primary=all[0]||{id:"member",label:"Mitglied",color:"#64748b",text:"#ffffff"};
+  const lead=all.some(role=>["owner","admin","coadmin"].includes(role.id));
   return {keys,all,primary,lead,special:all.length>0&&!lead};
 }
 function roleFromLabel(label){
@@ -3274,7 +3335,7 @@ function updateProfileRolesFromAlliance(users){
     list.find(user=>navName&&normalizeTxt(user.name)===navName);
   if(!own)return;
   const roles=allianceRoleInfo(own).all;
-  if(roles.length)S.profile.roles=mergeProfileRoles(roles,S.profile.roles||[]);
+  S.profile.roles=roles;
   renderProfileQuick();
 }
 
@@ -3303,21 +3364,182 @@ function fetchDailyEarnFromOverview(){
 
     const today = todayDeStr();
     let found = null;
+    const daily=[];
     rows.forEach(row => {
       const tds = row.querySelectorAll("td");
       if(tds.length < 4) return;
       const dateTxt = (tds[3].textContent||"").trim();
-      if(dateTxt !== today) return;
       const earnTxt = (tds[2].textContent||"").trim();
       const earnVal = parseDeNum(earnTxt);
+      const dm=dateTxt.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+      if(dm&&earnVal!==null)daily.push({date:`${dm[3]}-${String(dm[2]).padStart(2,"0")}-${String(dm[1]).padStart(2,"0")}`,earn:Math.max(0,earnVal)});
+      if(dateTxt !== today) return;
       if(earnVal !== null) found = earnVal;
     });
+
+    if(daily.length){
+      const map=new Map((S.playerDaily||[]).map(row=>[row.date,row]));
+      daily.forEach(row=>map.set(row.date,row));
+      S.playerDaily=Array.from(map.values()).sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
+    }
 
     if(found === null) return;
     S.dailyEarn = found;
     save();
     setV("#qs-daily", fmtMoney(S.dailyEarn));
+    renderPlayerForecast();
   });
+}
+
+function playerForecastModel(){
+  const current=Math.max(0,Number(S.profile.totalCredits)||Number(S.userCredits)||0);
+  let index=0;
+  LEVELS.forEach((level,i)=>{if(current>=level.need)index=i;});
+  const level=LEVELS[index]||LEVELS[0];
+  const next=LEVELS[index+1]||null;
+  const start=Number(level.need)||0;
+  const target=Number(next?.need)||current;
+  const remaining=next?Math.max(0,target-current):0;
+  const span=Math.max(1,target-start);
+  const progress=next?Math.max(0,Math.min(100,(current-start)/span*100)):100;
+  const today=localDateKey();
+  const completed=(S.playerDaily||[]).filter(row=>row.date!==today&&Number(row.earn)>0).slice(-7);
+  let samples=completed.map(row=>Number(row.earn));
+  if(!samples.length&&S.dailyEarn>0)samples=[Number(S.dailyEarn)];
+  const average=robustDailyAverage(samples);
+  const days=next&&average>0?Math.ceil(remaining/average):null;
+  const eta=days!==null?new Date(Date.now()+days*86400000):null;
+  return {current,level,next,target,remaining,progress,average,days,eta,samples:samples.length};
+}
+
+function playerDailyRows(limit=7){
+  const map=new Map();
+  (Array.isArray(S.playerDaily)?S.playerDaily:[]).forEach(row=>{
+    if(!row?.date||!/^\d{4}-\d{2}-\d{2}$/.test(String(row.date)))return;
+    map.set(String(row.date),Math.max(0,Number(row.earn)||0));
+  });
+  if(Number(S.dailyEarn)>0)map.set(localDateKey(),Math.max(Number(map.get(localDateKey()))||0,Number(S.dailyEarn)||0));
+  return Array.from(map.entries()).sort((a,b)=>a[0].localeCompare(b[0])).slice(-Math.max(1,Number(limit)||7)).map(([date,earn])=>({date,earn,label:dayLabel(date)}));
+}
+
+function playerDailyBoardHtml(){
+  const rows=playerDailyRows(7);
+  if(!rows.length)return `<div class="player-daily-panel"><div class="player-daily-head"><b>Persönlicher Verdienst · 7 Tage</b><span>Datensammlung startet</span></div><div class="lss7-empty">Noch keine persönlichen Tageswerte gespeichert.</div></div>`;
+  const max=Math.max(...rows.map(row=>row.earn),1);
+  const avg=Math.round(rows.reduce((sum,row)=>sum+row.earn,0)/rows.length);
+  return `<div class="player-daily-panel"><div class="player-daily-head"><b>Persönlicher Verdienst · 7 Tage</b><span>${rows.length}/7 Tage · Ø ${fmtMoney(avg)}</span></div>${rows.map(row=>{
+    const pct=row.earn>0?Math.max(5,Math.round(row.earn/max*100)):0;
+    return `<div class="player-daily-row"><span class="player-daily-day">${escHtml(row.label)}</span><span class="player-daily-bar"><i style="width:${pct}%"></i></span><span class="player-daily-val">${fmtMoney(row.earn)}</span></div>`;
+  }).join("")}</div>`;
+}
+
+function renderPlayerForecast(){
+  const root=$("#player-forecast-view");
+  const model=playerForecastModel();
+  const rank=S.playerRanking?.rank;
+  $("#prof-placement").text(rank?`Spielerplatz ${fmt(rank)}`:"Platzierung wird ermittelt");
+  if(!root.length)return;
+  const eta=model.eta?model.eta.toLocaleDateString(uiLocale(),{day:"2-digit",month:"2-digit",year:"numeric"}):"Noch keine Daten";
+  const rows=(S.playerRanking?.rows||[]).map(row=>`<div class="player-rank-row${row.me?" me":""}"><span>#${fmt(row.rank)}</span><b>${escHtml(row.name)}</b><span>${fmtMoney(row.credits)}</span></div>`).join("");
+  root.html(`<div class="player-forecast">
+    <div class="player-forecast-head"><div><div class="player-forecast-title">Spielerprognose</div><div class="player-forecast-sub">Prognose bis zur nächsten Beförderung auf Basis deiner lokal erfassten Tagesverdienste. Ab 3 bis 7 vollständigen Tagen wird die Schätzung belastbarer.</div></div><span class="beta-strong">BETA</span></div>
+    <div class="player-forecast-grid">
+      <div class="player-forecast-kpi"><span>Aktueller Dienstgrad</span><b>${escHtml(model.level.rank)}</b></div>
+      <div class="player-forecast-kpi"><span>Nächste Beförderung</span><b>${escHtml(model.next?.rank||"Höchster Rang")}</b></div>
+      <div class="player-forecast-kpi"><span>Noch benötigt</span><b>${model.next?fmtMoney(model.remaining):"Erreicht"}</b></div>
+      <div class="player-forecast-kpi"><span>Spielerplatzierung</span><b>${rank?`#${fmt(rank)}`:escHtml(S.playerRanking?.status||"Wird geladen")}</b></div>
+      <div class="player-forecast-kpi"><span>Ø pro Tag</span><b>${model.average?fmtMoney(model.average):"Sammle Daten"}</b></div>
+      <div class="player-forecast-kpi"><span>Prognose</span><b>${model.days!==null?`${fmt(model.days)} Tage`:"Noch offen"}</b></div>
+      <div class="player-forecast-kpi"><span>Voraussichtlich</span><b>${escHtml(eta)}</b></div>
+      <div class="player-forecast-kpi"><span>Datenbasis</span><b>${fmt(model.samples)} Tage</b></div>
+    </div>
+    <div class="player-forecast-progress"><div class="player-forecast-fill" style="width:${model.progress.toFixed(2)}%"></div></div>
+    ${playerDailyBoardHtml()}
+    <div class="set-note"><b>Beta-Hinweis:</b> Offline-Zeiten, Events und schwankende Tagesverdienste können zu Abweichungen führen. Die Werte werden nur in diesem Browser gespeichert.</div>
+    <div class="player-rank-context">${rows||`<div class="lss7-empty">${escHtml(S.playerRanking?.status||"Spielerplatzierung wird geladen...")}</div>`}</div>
+  </div>`);
+  applyTranslations(root.get(0));
+}
+
+function parseToplistHtml(html,page){
+  const doc=new DOMParser().parseFromString(html||"","text/html");
+  const rows=Array.from(doc.querySelectorAll("table tbody tr")).map((tr,index)=>{
+    const cells=tr.querySelectorAll("td");
+    if(cells.length<3)return null;
+    const profile=cells[2].querySelector("a[href*='/profile/']")||tr.querySelector("a[href*='/profile/']");
+    const href=profile?.getAttribute("href")||"";
+    const id=Number(href.match(/\/profile\/(\d+)/)?.[1])||null;
+    const credits=parseCreditsValue(cells[1]?.textContent||"");
+    const name=(profile?.textContent||cells[2]?.textContent||"").replace(/\s+/g," ").trim();
+    if(credits===null||!name)return null;
+    return {id,name,credits,rank:(Math.max(1,page)-1)*20+index+1};
+  }).filter(Boolean);
+  let lastPage=1;
+  doc.querySelectorAll("a[href*='page=']").forEach(link=>{
+    const n=Number((link.getAttribute("href")||"").match(/[?&]page=(\d+)/)?.[1]);
+    if(n>lastPage)lastPage=n;
+  });
+  const pageSummary=(doc.body?.textContent||"").replace(/\s+/g," ");
+  const totalPagesText=pageSummary.match(/von\s+insg\.\s*([\d.]+)\s+Seiten/i)?.[1];
+  const totalPages=totalPagesText?Number(totalPagesText.replace(/\./g,"")):0;
+  if(Number.isFinite(totalPages)&&totalPages>lastPage)lastPage=totalPages;
+  return {rows,lastPage};
+}
+
+function toplistPage(page){
+  return new Promise((resolve,reject)=>pageGet(`${API.toplist}?page=${Math.max(1,page)}`,html=>resolve(parseToplistHtml(html,Math.max(1,page))),reject));
+}
+
+function playerRowMatches(row){
+  if(Number(S.userId)>0&&Number(row.id)===Number(S.userId))return true;
+  return normalizeTxt(row.name)===normalizeTxt(S.profile.name);
+}
+
+async function fetchPlayerRanking(force=false){
+  const ranking=S.playerRanking;
+  if(ranking.loading)return;
+  if(!force&&ranking.rank&&Date.now()-Number(ranking.lastTs||0)<1800000){renderPlayerForecast();return;}
+  const target=Math.max(0,Number(S.profile.totalCredits)||Number(S.userCredits)||0);
+  if(!target||(!S.userId&&!S.profile.name)){ranking.status="Profil wird geladen";renderPlayerForecast();return;}
+  ranking.loading=true;ranking.status="Topliste wird durchsucht";renderPlayerForecast();
+  try{
+    const first=await toplistPage(1);
+    let found=first.rows.find(playerRowMatches),candidate=1;
+    let low=1,high=Math.max(1,first.lastPage||1),guard=0;
+    while(!found&&low<=high&&guard++<20){
+      const page=Math.floor((low+high)/2);
+      const data=page===1?first:await toplistPage(page);
+      if(!data.rows.length)break;
+      found=data.rows.find(playerRowMatches);
+      if(found){candidate=page;break;}
+      const highest=data.rows[0].credits,lowest=data.rows[data.rows.length-1].credits;
+      if(target>highest)high=page-1;
+      else if(target<lowest)low=page+1;
+      else{candidate=page;break;}
+      candidate=Math.max(1,Math.min(high||1,low));
+    }
+    const pages=Array.from(new Set([candidate-2,candidate-1,candidate,candidate+1,candidate+2].filter(page=>page>=1&&page<=Math.max(1,first.lastPage||1))));
+    const dataPages=await Promise.all(pages.map(page=>page===1?Promise.resolve(first):toplistPage(page)));
+    const combined=dataPages.flatMap(data=>data.rows).sort((a,b)=>a.rank-b.rank);
+    found=found||combined.find(playerRowMatches);
+    if(found){
+      const idx=combined.findIndex(row=>row.rank===found.rank);
+      ranking.rank=found.rank;
+      ranking.rows=combined.slice(Math.max(0,idx-2),idx+3).map(row=>({...row,me:row.rank===found.rank}));
+      ranking.status="Aktuell";
+    }else{
+      const closest=[...combined].sort((a,b)=>Math.abs(a.credits-target)-Math.abs(b.credits-target))[0];
+      ranking.rank=closest?.rank||null;
+      ranking.rows=closest?[{...closest,me:false}]:[];
+      ranking.status=closest?"Näherungswert":"Nicht gefunden";
+    }
+    ranking.lastTs=Date.now();
+  }catch(e){
+    ranking.status="Topliste derzeit nicht erreichbar";
+    console.warn("[LSS7] player ranking",e);
+  }finally{
+    ranking.loading=false;save();renderPlayerForecast();
+  }
 }
 
 function fetchUserinfo(){
@@ -3443,7 +3665,7 @@ function fetchProfileCard(){
     S.profile.name=name;
     S.profile.since=since;
     S.profile.rank=grade||S.profile.rank;
-    if(pageRoles.length)S.profile.roles=mergeProfileRoles(pageRoles,S.profile.roles||[]);
+    if(pageRoles.length)S.profile.roles=pageRoles;
     if(avatar) S.profile.avatar=avatar;
     renderProfileQuick();
   },()=>renderProfileQuick());
@@ -3476,6 +3698,7 @@ function fetchProfileCard(){
     const needText=mNeed?`Noch ${mNeed[1]} Credits bis zur Beförderung`:needRaw;
     const creditsFromLevel=curAbs!==null?curAbs:null;
     if(creditsFromLevel!==null){
+      S.profile.totalCredits=creditsFromLevel;
       const lv=pickLevelByCredits(creditsFromLevel);
       if(!S.profile.rank || S.profile.rank==="-" || /^(level|rang)$/i.test(S.profile.rank)) S.profile.rank=lv.rank;
       S.profile.reward=lv.reward;
@@ -3487,6 +3710,8 @@ function fetchProfileCard(){
     if(!S.profile.reward) S.profile.reward=reward||"";
     S.profile.needText=needText||"";
     renderProfileQuick();
+    renderPlayerForecast();
+    fetchPlayerRanking();
   },()=>renderProfileQuick());
 }
 
@@ -3504,11 +3729,32 @@ function fetchBuildings(){
 }
 
 function fetchSchoolings(){
-  apiGet(API.schoolings,list=>{
-    const arr=Array.isArray(list)?list:[];
-    if(arr.length){renderSchoolings(arr);return;}
-    fetchSchoolingsFromPage();
+  apiGet(API.schoolings,data=>{
+    const raw=Array.isArray(data)?data:Array.isArray(data?.result)?data.result:null;
+    if(raw===null){fetchSchoolingsFromPage();return;}
+    renderSchoolings(raw.map(normalizeApiSchooling).filter(Boolean));
   },fetchSchoolingsFromPage);
+}
+
+function normalizeApiSchooling(item){
+  if(!item||typeof item!=="object")return null;
+  const id=Number(item.id)||0;
+  const finishRaw=item.finish_time??item.end_time??item.finish??0;
+  const finishNumber=Number(finishRaw);
+  const finishTs=Number.isFinite(finishNumber)&&finishNumber>0
+    ?finishNumber
+    :(typeof finishRaw==="string"?Date.parse(finishRaw)||0:0);
+  return {
+    id,
+    caption:String(item.education_title||item.caption||item.name||"Lehrgang").trim(),
+    freeSeats:String(item.open_spaces??item.free_spaces??item.available_spaces??"-"),
+    cost:String(item.price??item.cost??"-"),
+    finish:finishTs?formatSchoolingRemaining(finishTs):"-",
+    owner:String(item.owner_name||item.user_name||item.owner||"Verband").trim(),
+    url:id?`${BASE}/schoolings/${id}`:"",
+    fromHtml:true,
+    fromApi:true
+  };
 }
 
 function cleanSchoolingCellText(cell){
@@ -3643,8 +3889,17 @@ function renderVehicles(data){
   const bars=$("#lss7-vbars").empty();
   if(!total){leg.html(`<div class="lss7-empty">Keine Fahrzeugdaten.</div>`);return;}
 
-  const keys=Object.keys(VSTATUS).map(Number).filter(k=>(data[k]||0)>0)
-    .sort((a,b)=>(data[b]||0)-(data[a]||0));
+  const ready=(data[2]||0)+(data[1]||0)+(data[7]||0);
+  const active=(data[4]||0)+(data[3]||0)+(data[9]||0);
+  const attention=(data[5]||0)+(data[6]||0);
+  const coverage=total?Math.round(ready/total*100):0;
+  $("#fleet-status-kpis").html(`
+    <div class="fleet-status-kpi ready"><b>${fmt(ready)}</b><span>Einsatzbereit</span></div>
+    <div class="fleet-status-kpi active"><b>${fmt(active)}</b><span>Gebunden / im Einsatz</span></div>
+    <div class="fleet-status-kpi attention"><b>${fmt(attention)}</b><span>Prüfung erforderlich</span></div>
+    <div class="fleet-status-kpi coverage"><b>${coverage}%</b><span>Bereitschaftsquote</span></div>`);
+
+  const keys=VSTATUS_ORDER.filter(k=>Object.prototype.hasOwnProperty.call(VSTATUS,k));
 
   keys.forEach(k=>{
     const {l,c}=VSTATUS[k],cnt=data[k]||0,pct=Math.round(cnt/total*100);
@@ -3653,11 +3908,11 @@ function renderVehicles(data){
       <span class="dl-lbl">${l}</span>
       <span class="dl-pct">${pct}%</span>
       <span class="dl-val">${cnt}</span></div>`);
-    bars.append(`<div class="vb-row">
+    bars.append(`<div class="vb-row${VSTATUS_ORDER.indexOf(k)<4?" primary":""}">
       <div class="vb-dot" style="background:${c}"></div>
       <span class="vb-lbl">${l}</span>
-      <div class="vb-bg"><div class="vb-fill" style="width:${pct}%;background:${c}"></div></div>
-      <span class="vb-num">${cnt}</span></div>`);
+      <div class="vb-bg"><div class="vb-fill${cnt?"":" is-zero"}" style="width:${cnt?pct:0}%;background:${c}"></div></div>
+      <span class="vb-num">${fmt(cnt)} · ${pct}%</span></div>`);
   });
 
   bars.append(`<div class="vb-total">
@@ -3687,7 +3942,9 @@ function renderBuildings(list){
 
   const groups={};
   const extensions={};
-  let personnel=0,cells=0,builtExtensions=0,enabledExtensions=0,pendingExtensions=0,storageUpgrades=0;
+  let personnel=0,personnelTarget=0,cells=0,builtExtensions=0,enabledExtensions=0,pendingExtensions=0,storageUpgrades=0;
+  let enabledLocations=0,missionGenerators=0,automaticHiring=0,activeSpecializations=0,sharedLocations=0,dispatchAssigned=0,smallLocations=0,totalLevels=0;
+  const dispatchCenters=new Set();
 
   list.forEach(b=>{
     const type=Number(b?.building_type)||0;
@@ -3705,23 +3962,44 @@ function renderBuildings(list){
 
     if(!groups[type])groups[type]={
       type,name:BUILDING_TYPES[type]||`Gebäudetyp ${type}`,count:0,personnel:0,levels:0,
-      built:0,enabled:0,pending:0,cells:0
+      target:0,built:0,enabled:0,pending:0,cells:0,operational:0,missions:0,specializations:0
     };
     const g=groups[type];
+    const personal=Number(b?.personal_count)||0;
+    const target=Math.max(0,Number(b?.personal_count_target)||0);
+    const level=Math.max(0,Number(b?.level)||0);
+    const operational=b?.enabled!==false;
+    const ownMissions=b?.generate_own_missions===true;
+    const hiringAuto=b?.hiring_automatic===true;
+    const specialization=b?.specialization?.active===true;
+    const dispatchId=Number(b?.leitstelle_building_id)||0;
     g.count++;
-    g.personnel+=Number(b?.personal_count)||0;
-    g.levels+=Math.max(0,Number(b?.level)||0);
+    g.personnel+=personal;
+    g.target+=target;
+    g.levels+=level;
     g.built+=built.length;
     g.enabled+=enabled.length;
     g.pending+=pending.length;
     g.cells+=typeCells;
+    if(operational)g.operational++;
+    if(ownMissions)g.missions++;
+    if(specialization)g.specializations++;
 
-    personnel+=Number(b?.personal_count)||0;
+    personnel+=personal;
+    personnelTarget+=target;
+    totalLevels+=level;
     cells+=typeCells;
     builtExtensions+=built.length;
     enabledExtensions+=enabled.length;
     pendingExtensions+=pending.length;
     storageUpgrades+=storage.filter(s=>s?.available===true).length;
+    if(operational)enabledLocations++;
+    if(ownMissions)missionGenerators++;
+    if(hiringAuto)automaticHiring++;
+    if(specialization)activeSpecializations++;
+    if(b?.is_alliance_shared===true)sharedLocations++;
+    if(b?.small_building===true)smallLocations++;
+    if(dispatchId>0){dispatchAssigned++;dispatchCenters.add(dispatchId);}
 
     extList.forEach(e=>{
       const name=String(e?.caption||"Unbenannter Ausbau").trim()||"Unbenannter Ausbau";
@@ -3734,34 +4012,45 @@ function renderBuildings(list){
   });
 
   const sorted=Object.values(groups).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,"de"));
+  const maxCategory=Math.max(...BUILDING_CATEGORIES.map(category=>category.types.reduce((sum,type)=>sum+(groups[type]?.count||0),0)),1);
   const categoryCards=BUILDING_CATEGORIES.map(category=>{
     const count=category.types.reduce((sum,type)=>sum+(groups[type]?.count||0),0);
     return count?`<div class="building-category-card" style="--cat:${category.color}">
-      <span class="building-category-name">${category.name}</span><span class="building-category-count">${fmt(count)}</span>
+      <span class="building-category-name">${category.name}</span><span class="building-category-count">${fmt(count)}</span><span class="building-category-bar"><i style="width:${Math.max(5,Math.round(count/maxCategory*100))}%"></i></span>
     </div>`:"";
   }).join("");
   const knownTypes=new Set(BUILDING_CATEGORIES.flatMap(category=>category.types));
   const otherCount=sorted.filter(g=>!knownTypes.has(g.type)).reduce((sum,g)=>sum+g.count,0);
+  const personnelCoverage=personnelTarget>0?Math.round(personnel/personnelTarget*100):null;
+  const operationalRate=list.length?Math.round(enabledLocations/list.length*100):0;
 
-  cont.append(`<div class="asset-kpis">
-    <div class="asset-kpi"><span class="asset-kpi-label">Personal</span><span class="asset-kpi-value">${fmt(personnel)}</span></div>
-    <div class="asset-kpi"><span class="asset-kpi-label">Ausbauten gebaut</span><span class="asset-kpi-value">${fmt(builtExtensions)}</span></div>
-    <div class="asset-kpi"><span class="asset-kpi-label">Ausbauten aktiv</span><span class="asset-kpi-value">${fmt(enabledExtensions)}</span></div>
-    <div class="asset-kpi"><span class="asset-kpi-label">Im Ausbau</span><span class="asset-kpi-value">${fmt(pendingExtensions)}</span></div>
-    <div class="asset-kpi"><span class="asset-kpi-label">Zellen</span><span class="asset-kpi-value">${fmt(cells)}</span></div>
-    <div class="asset-kpi"><span class="asset-kpi-label">Lagerausbauten</span><span class="asset-kpi-value">${fmt(storageUpgrades)}</span></div>
+  cont.append(`<div class="asset-subhead"><span>Standortbetrieb</span><span>${fmt(list.length)} Standorte · ${operationalRate}% aktiv</span></div>`);
+  cont.append(`<div class="asset-kpis asset-kpis-pro">
+    <div class="asset-kpi pro"><span class="asset-kpi-label">Personal</span><span class="asset-kpi-value">${fmt(personnel)}</span><span class="asset-kpi-note">Soll: ${personnelTarget?fmt(personnelTarget):"nicht hinterlegt"}${personnelCoverage!==null?` · ${personnelCoverage}%`:""}</span></div>
+    <div class="asset-kpi pro"><span class="asset-kpi-label">Aktive Standorte</span><span class="asset-kpi-value">${fmt(enabledLocations)}</span><span class="asset-kpi-note">${operationalRate}% des Bestands</span></div>
+    <div class="asset-kpi pro"><span class="asset-kpi-label">Eigene Einsätze</span><span class="asset-kpi-value">${fmt(missionGenerators)}</span><span class="asset-kpi-note">Standorte mit Einsatzgenerierung</span></div>
+    <div class="asset-kpi pro"><span class="asset-kpi-label">Automatische Werbung</span><span class="asset-kpi-value">${fmt(automaticHiring)}</span><span class="asset-kpi-note">Personalgewinnung aktiv</span></div>
+    <div class="asset-kpi pro"><span class="asset-kpi-label">Spezialisierungen</span><span class="asset-kpi-value">${fmt(activeSpecializations)}</span><span class="asset-kpi-note">Aktive Fachausrichtungen</span></div>
+    <div class="asset-kpi pro"><span class="asset-kpi-label">Leitstellenbindung</span><span class="asset-kpi-value">${fmt(dispatchAssigned)}</span><span class="asset-kpi-note">an ${fmt(dispatchCenters.size)} Leitstellen zugeordnet</span></div>
+    <div class="asset-kpi pro"><span class="asset-kpi-label">Ausbauten</span><span class="asset-kpi-value">${fmt(enabledExtensions)} / ${fmt(builtExtensions)}</span><span class="asset-kpi-note">aktiv / gebaut · ${fmt(pendingExtensions)} im Bau</span></div>
+    <div class="asset-kpi pro"><span class="asset-kpi-label">Weitere Kapazitäten</span><span class="asset-kpi-value">${fmt(cells)} Zellen</span><span class="asset-kpi-note">${fmt(storageUpgrades)} Lager · ${fmt(smallLocations)} Kleinwachen · ${fmt(sharedLocations)} geteilt</span></div>
   </div>`);
-  cont.append(`<div class="building-category-grid">${categoryCards}${otherCount?`<div class="building-category-card" style="--cat:#94a3b8"><span class="building-category-name">Weitere</span><span class="building-category-count">${fmt(otherCount)}</span></div>`:""}</div>`);
-  cont.append(`<div class="asset-subhead"><span>Standorte nach Typ</span><span>${sorted.length} Typen</span></div>`);
+  cont.append(`<div class="asset-subhead"><span>Organisationen</span><span>Ø Ausbaustufe ${(totalLevels/list.length).toFixed(1).replace(".",",")}</span></div>`);
+  cont.append(`<div class="building-category-grid">${categoryCards}${otherCount?`<div class="building-category-card" style="--cat:#94a3b8"><span class="building-category-name">Weitere</span><span class="building-category-count">${fmt(otherCount)}</span><span class="building-category-bar"><i style="width:${Math.max(5,Math.round(otherCount/maxCategory*100))}%"></i></span></div>`:""}</div>`);
+  cont.append(`<div class="asset-subhead"><span>Standorte nach Typ</span><span>${sorted.length} Typen · Betriebs- und Personalstatus</span></div>`);
 
   const cellTypes=new Set([6,16,19,29]);
-  const typeRows=sorted.map(g=>`<div class="building-detail-row">
+  const typeRows=sorted.map(g=>{
+    const coverage=g.target>0?`${Math.round(g.personnel/g.target*100)}%`:"-";
+    return `<div class="building-detail-row">
     <span class="building-detail-name" title="${escHtml(g.name)}">${escHtml(g.name)}</span>
     <span class="building-detail-stat"><small>Standorte</small>${fmt(g.count)}</span>
     <span class="building-detail-stat"><small>Personal</small>${fmt(g.personnel)}</span>
-    <span class="building-detail-stat"><small>Ausbauten</small>${fmt(g.built)}</span>
-    <span class="building-detail-stat"><small>${cellTypes.has(g.type)?"Zellen":"Im Bau"}</small>${fmt(cellTypes.has(g.type)?g.cells:g.pending)}</span>
-  </div>`).join("");
+    <span class="building-detail-stat"><small>Abdeckung</small>${coverage}</span>
+    <span class="building-detail-stat"><small>Ausbau</small>${fmt(g.enabled)} / ${fmt(g.built)}</span>
+    <span class="building-detail-stat"><small>${cellTypes.has(g.type)?"Zellen":"Betrieb"}</small>${cellTypes.has(g.type)?fmt(g.cells):`${fmt(g.operational)}/${fmt(g.count)}`}</span>
+  </div>`;
+  }).join("");
   cont.append(`<div>${typeRows}</div>`);
 
   const extensionRows=Object.values(extensions)
@@ -3769,6 +4058,7 @@ function renderBuildings(list){
     .map(x=>`<div class="extension-row" title="${x.pending?`${x.pending} Ausbau/Ausbauten im Bau`:""}">
       <span class="extension-name">${escHtml(x.name)}</span>
       <span class="extension-count"><em>${fmt(x.enabled)} aktiv</em> / ${fmt(x.built)} gebaut${x.pending?` / ${fmt(x.pending)} im Bau`:""}</span>
+      <span class="extension-progress"><i style="width:${x.total?Math.round(x.enabled/x.total*100):0}%"></i></span>
     </div>`).join("");
   cont.append(`<div class="asset-subhead"><span>Ausbauten im Detail</span><span>${Object.keys(extensions).length} Arten</span></div>`);
   cont.append(extensionRows?`<div class="extension-list">${extensionRows}</div>`:`<div class="lss7-empty">Keine Ausbauten vorhanden.</div>`);
@@ -4079,7 +4369,7 @@ function initSummerScene(){
   const moonShade=new THREE.Mesh(new THREE.CircleGeometry(.70,32),new THREE.MeshBasicMaterial({color:0x111d42,transparent:true,opacity:.98}));
   moonShade.position.set(.28,.16,.02);moon.add(moonGlow,moonDisc,moonShade);nightRoot.add(moon);
 
-  const starCount=90;
+  const starCount=190;
   const starPositions=new Float32Array(starCount*3);
   for(let i=0;i<starCount;i++){
     starPositions[i*3]=(Math.random()-.5)*18;
@@ -4092,7 +4382,7 @@ function initSummerScene(){
 
   const shootingStars=[];
   const shootingGeo=new THREE.PlaneGeometry(1.45,.035);
-  for(let i=0;i<3;i++){
+  for(let i=0;i<7;i++){
     const shooting=new THREE.Mesh(shootingGeo,new THREE.MeshBasicMaterial({color:0xe9f3ff,transparent:true,opacity:.0,side:THREE.DoubleSide}));
     shooting.rotation.z=-.42;
     shooting.userData={phase:i*3.7,speed:.72+i*.13};
@@ -4217,9 +4507,6 @@ function buildUI(){
           <span id="prof-reward" class="prof-reward"></span>
         </div>
       </div>
-    </div>
-    <div id="lss-profile-events" class="prof-event-strip idle">
-      ${profileGameEventIdleHtml()}
     </div>`);
 
   // â”€â”€ Quick-Stats Strip (4 Zellen) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -4364,15 +4651,20 @@ function buildUI(){
       <div class="vehicle-summary-card"><span class="vehicle-summary-label">Gebäudetypen</span><span class="vehicle-summary-value amber" id="veh-building-types">-</span></div>
       <div class="vehicle-summary-card"><span class="vehicle-summary-label">Fahrzeuge je Gebäude</span><span class="vehicle-summary-value" id="veh-per-building">-</span></div>
     </div>
-    <div id="donut-wrap">
-      <div id="lss7-donut"></div>
-      <div id="donut-leg"><div class="lss7-empty"><span class="lspin"></span> Lade...</div></div>
-    </div>
-    <div class="lss7-div"></div>
-    <div class="vb-wrap" id="lss7-vbars"><div class="lss7-empty"><span class="lspin"></span> Lade...</div></div>
+    <section class="fleet-panel fleet-readiness">
+      <div class="asset-section-head"><div><span class="asset-section-title">Fahrzeugbereitschaft</span><span class="asset-section-sub">Statusverteilung und operative Einsatzbereitschaft aller Fahrzeuge.</span></div><span class="fleet-panel-live">90s Refresh</span></div>
+      <div id="fleet-status-kpis" class="fleet-status-kpis"></div>
+      <div class="fleet-status-layout">
+        <div id="donut-wrap">
+          <div id="lss7-donut"></div>
+          <div id="donut-leg"><div class="lss7-empty"><span class="lspin"></span> Lade...</div></div>
+        </div>
+        <div class="vb-wrap" id="lss7-vbars"><div class="lss7-empty"><span class="lspin"></span> Lade...</div></div>
+      </div>
+    </section>
     <section class="asset-section">
       <div class="asset-section-head">
-        <div><span class="asset-section-title">Standorte & Ausbauten</span><span class="asset-section-sub">Wachentypen, Personal, Zellen und vorhandene Ausbauten aus der Gebäude-API.</span></div>
+        <div><span class="asset-section-title">Standorte, Personal & Ausbauten</span><span class="asset-section-sub">Betriebsstatus, Personalabdeckung, Spezialisierungen, Leitstellenbindung und vorhandene Kapazitäten aus der Gebäude-API.</span></div><span class="fleet-panel-live">Live API</span>
       </div>
       <div id="lss7-bld"><div class="lss7-empty"><span class="lspin"></span> Lade Gebäudedetails...</div></div>
     </section>`);
@@ -4484,14 +4776,6 @@ function buildUI(){
     </select>
   </label>`);
   grpOpt.append(`<label class="tog-row" style="justify-content:space-between;">
-    <span class="tog-lbl">Panel-Größe</span>
-    <select id="sb-size" class="lss7-select">
-      <option value="small"${S.settings.panelSize==="small"?" selected":""}>Klein</option>
-      <option value="normal"${S.settings.panelSize==="normal"?" selected":""}>Normal</option>
-      <option value="large"${S.settings.panelSize==="large"?" selected":""}>Groß</option>
-    </select>
-  </label>`);
-  grpOpt.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Panel-Theme</span>
     <select id="sb-theme" class="lss7-select">
       <option value="dark"${S.settings.panelTheme==="dark"?" selected":""}>Dark</option>
@@ -4574,14 +4858,14 @@ function buildUI(){
   setWrap.append(grpContact);
 
   const grpPn=$(`<div class="set-group set-wide"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v9.0.1</b><br>Sommer- und Sommer-Dark-Design, getrennte Live-Event-Badges, sichtbare Profilrollen, DWD-ICON-Wetter für Deutschland, echter Verbands-Tagesverdienst, verbesserte WM-Tabellen, neue Sprachwahl sowie kategorisierte Teamrollen.</div>`);
+  grpPn.append(`<div class="set-note"><b>v9.1.0</b><br>Verbandsoffene Lehrgänge, korrigierte Teamrollen, Spielerplatzierung und Spielerprognose, überarbeiteter Fuhrpark, anpassbarer Header-Button sowie zusätzliche Schutzmaßnahmen gegen Eingriffe in fremde Spielinhalte.</div>`);
   setWrap.append(grpPn);
 
   tSet.append(setWrap);
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v9.0.1",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v9.1.0",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -4611,6 +4895,7 @@ function buildUI(){
     if(id==="tp-aao"       && !panel.data("la")){panel.data("la",1);fetchAAOs();}
     if(id==="tp-history"){renderHistTab();}
     if(id==="tp-forecast"){renderForecast();}
+    if(id==="tp-player-forecast"){renderPlayerForecast();fetchPlayerRanking();}
     if(id==="tp-event"){scanGameEvents();renderWmEvent();if(!(S.wm.games||[]).length)fetchWmEvent();}
     if(id==="tp-overview"){renderForecast();setTimeout(drawChart,50);}
   });
@@ -4652,10 +4937,6 @@ function buildUI(){
   });
   panel.on("change","#sb-panel-mode",e=>{
     S.settings.panelMode=String($(e.currentTarget).val()||"floating");
-    save();applyPanelMode();
-  });
-  panel.on("change","#sb-size",e=>{
-    S.settings.panelSize=String($(e.currentTarget).val()||"normal");
     save();applyPanelMode();
   });
   panel.on("change","#sb-theme",e=>{
@@ -4840,10 +5121,7 @@ function applyPanelMode(){
     const bottom=(p.startsWith("bottom")) ? "14px" : "auto";
     const right=(p==="default"||p.endsWith("right")) ? "14px" : "auto";
     const left=(p.endsWith("left")) ? "14px" : "auto";
-    const sz=S.settings.panelSize||"normal";
-    const sizeMap={small:{w:440,h:620},normal:{w:500,h:760},large:{w:620,h:860}};
-    const sm=sizeMap[sz]||sizeMap.normal;
-    panel.css({top,bottom,right,left,width:`${sm.w}px`,height:`min(${sm.h}px, calc(100vh - 68px))`});
+    panel.css({top,bottom,right,left,width:"",height:""});
   }
   panel.removeClass("theme-dark theme-light theme-summer theme-summer-dark");
   const th=String(S.settings.panelTheme||"summer");
@@ -5038,6 +5316,31 @@ function mkAccordion(icon,title,body){
 }
 function patchHTML(){
   const groups=[
+    {
+      title:"v9.1.0 — Stabilität, Spielerprognose & Fuhrpark",
+      items:[
+        "Lehrgänge werden jetzt ohne feste Verbands-ID aus der alliance_schoolings-API des jeweils angemeldeten Verbandes geladen; die API-Antwort wird korrekt aus result gelesen.",
+        "Teamrollen korrigiert: Es werden die tatsächlich zugewiesenen Rollen des Mitglieds ausgewertet. Berechtigungs-Flags erzeugen keine falschen Finanzminister- oder Lehrgangsmeister-Rollen mehr.",
+        "Owner heißt in der deutschen Oberfläche jetzt Verbands-Eigentümer; in der englischen Übersetzung bleibt die Bezeichnung Owner.",
+        "Die Update-Benachrichtigung besitzt nun einen Schließen-Button und merkt sich das Wegklicken für die installierte Version.",
+        "Die doppelte Live-Event-Anzeige unter dem Spielerprofil wurde entfernt. Laufende Events bleiben kompakt im Dashboard- und Spiel-Header sichtbar.",
+        "Fuhrpark & Standorte wurde neu strukturiert: Kennzahlen, klare Statusreihenfolge, funktionsfähige Balken sowie übersichtlichere Standort- und Ausbauinformationen.",
+        "Neue Einstellung für den Spiel-Header: nur Logo, Standard, Standard ohne Events oder nur Dein Verband.",
+        "Neue Spielerprognose [BETA] mit persönlichem Tagesdurchschnitt, Restcredits, geschätzter Dauer bis zur nächsten Beförderung und lokal gespeicherter Datengrundlage.",
+        "Die persönliche Platzierung wird über die Spieler-Topliste gesucht und direkt im Profilbereich angezeigt.",
+        "Schutz vor unerwünschten Änderungen verstärkt: Das Skript läuft nicht mehr in eingebetteten Lightbox-Frames und schreibt sichtbare Werte nur noch innerhalb des eigenen Dashboards.",
+        "Das Floating-Menü nutzt die verfügbare Bildschirmhöhe, ist horizontal anpassbar und die veraltete Panel-Größen-Auswahl wurde entfernt.",
+        "Summer Dark enthält mehr Sterne und häufiger sichtbare Sternschnuppen.",
+        "Die Dashboard-Navigation wurde professionell neu gegliedert: Verbandsfunktionen stehen im Vordergrund, Spielerfunktionen und Werkzeuge sind klar getrennt und kompakter angeordnet.",
+        "Das WM-2026-Live-Badge besitzt im Summer-2026-Theme nun einen deutlich sichtbaren grünen Kontrast.",
+        "Fuhrpark & Standorte wurde erneut grundlegend erweitert und zeigt jetzt Personal-Soll und -Abdeckung, aktive Standorte, Einsatzgenerierung, automatische Werbung, Spezialisierungen, Leitstellenbindung, Kleinwachen und geteilte Standorte.",
+        "Standortkategorien und Ausbauten besitzen nun vergleichbare Fortschrittsbalken; die Standorttypen zeigen Betriebs-, Personal- und Ausbauzustand übersichtlicher.",
+        "Die Spielerprognose enthält jetzt eine persönliche 7-Tage-Verdienststatistik mit Tagesbalken und Durchschnitt.",
+        "Dashboard- und Spiel-Header verwenden ein neues gemeinsames V-Datenlogo mit animiertem Balkensignal.",
+        "Die Einstellung für den Kopfzeilen-Button wurde hervorgehoben und um eine direkte Darstellungsvorschau erweitert.",
+        "Im WM-Spielplan werden beendete Spiele grün und geplante Spiele gelb gekennzeichnet.",
+      ],
+    },
     {
       title:"v9.0.1 — Summer 2026 Design",
       items:[
@@ -5243,11 +5546,166 @@ function infoHTML(){
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  NAV TRIGGER                                                 â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+GM_addStyle(`
+/* v9.1.0 UI refinement */
+#lss7-tabs{display:block;overflow:visible;padding:7px 9px;background:var(--bg1);}
+.lss7-nav-primary,.lss7-nav-secondary{display:flex;gap:6px;min-width:0;}
+.lss7-nav-secondary{display:grid;grid-template-columns:minmax(180px,.72fr) minmax(0,1.28fr);margin-top:5px;}
+.lss7-nav-group{display:flex;align-items:stretch;min-width:0;overflow-x:auto;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);scrollbar-width:thin;}
+.lss7-nav-group-label{display:flex;align-items:center;padding:0 9px;border-right:1px solid var(--b1);color:var(--t4);font-size:7.5px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;}
+.lss7-nav-group-tabs{display:flex;align-items:stretch;min-width:max-content;}
+.lss7-nav-group .ltab{min-height:34px;padding:8px 10px;font-size:9.5px;display:flex;align-items:center;}
+.lss7-nav-alliance{border-color:rgba(59,130,246,.28);background:linear-gradient(90deg,rgba(59,130,246,.07),transparent 38%);}
+.lss7-nav-alliance .lss7-nav-group-label{color:var(--blueh);background:rgba(59,130,246,.08);}
+.lss7-nav-player .lss7-nav-group-label{color:var(--purpleh);background:rgba(168,85,247,.08);}
+.lss7-nav-tools .lss7-nav-group-label{color:var(--t3);background:rgba(148,163,184,.06);}
+.lss7-nav-secondary .ltab{min-height:29px;padding:6px 9px;font-size:8.5px;}
+#lss7.theme-summer .hd-event-badge.event-wm{color:#fff!important;background:#147a45!important;border-color:#0d5d34!important;box-shadow:0 4px 13px rgba(20,122,69,.26)!important;text-shadow:0 1px 1px rgba(0,0,0,.18);}
+.brand-emblem{position:relative;display:inline-flex;align-items:flex-end;justify-content:center;gap:2px;overflow:hidden;border:1px solid rgba(96,165,250,.38);border-radius:8px;background:linear-gradient(145deg,#0c1c36,#173d67 62%,#0e7490);box-shadow:0 6px 18px rgba(2,12,27,.28),inset 0 1px rgba(255,255,255,.18);}
+.brand-emblem::before{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent 18%,rgba(255,255,255,.14) 46%,transparent 70%);transform:translateX(-110%);animation:lss7-brand-sheen 5.4s ease-in-out infinite;}
+.brand-letter{position:relative;z-index:1;color:#fff;font-family:var(--head);font-weight:950;line-height:1;letter-spacing:0;}
+.brand-bars{position:relative;z-index:1;display:flex;align-items:flex-end;gap:1.5px;}
+.brand-bars b{display:block;width:2.5px;border-radius:2px 2px 0 0;background:#5eead4;box-shadow:0 0 5px rgba(94,234,212,.45);}
+.brand-bars b:nth-child(1){height:6px}.brand-bars b:nth-child(2){height:10px}.brand-bars b:nth-child(3){height:14px;background:#60a5fa}
+.hd-mark.brand-emblem{width:39px;height:39px;transform:none;padding:0 7px 8px;flex-shrink:0;}
+.hd-mark.brand-emblem .brand-letter{font-size:21px;}
+.lss7-nav-mark.brand-emblem{width:31px;height:31px;padding:0 5px 6px;transform:none;flex-shrink:0;}
+.lss7-nav-mark.brand-emblem .brand-letter{font-size:16px;}
+.lss7-nav-mark.brand-emblem .brand-bars b{width:2px}.lss7-nav-mark.brand-emblem .brand-bars b:nth-child(1){height:4px}.lss7-nav-mark.brand-emblem .brand-bars b:nth-child(2){height:7px}.lss7-nav-mark.brand-emblem .brand-bars b:nth-child(3){height:10px}
+@keyframes lss7-brand-sheen{0%,64%{transform:translateX(-110%)}82%,100%{transform:translateX(125%)}}
+.fleet-command{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:14px 15px;margin-bottom:8px;border:1px solid var(--b1);border-radius:8px;background:linear-gradient(125deg,rgba(59,130,246,.11),rgba(14,165,233,.035) 58%,transparent);}
+.fleet-command-copy{min-width:0}.fleet-command-eyebrow{display:block;color:var(--blueh);font-size:8px;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.fleet-command-title{display:block;margin-top:3px;color:var(--t1);font:850 17px/1.2 var(--head)}.fleet-command-sub{display:block;margin-top:4px;color:var(--t3);font-size:9.5px;line-height:1.45;max-width:700px}.fleet-command-badge{flex-shrink:0;padding:5px 8px;border:1px solid rgba(34,197,94,.28);border-radius:6px;color:var(--greenh);background:rgba(34,197,94,.08);font:850 9px/1 var(--mono)}
+.fleet-status-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:9px 0;}
+.fleet-status-kpi{padding:10px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);}
+.fleet-status-kpi b{font-size:17px}.fleet-status-kpi span{font-size:8px;line-height:1.3;}
+.fleet-panel{margin-top:9px;padding:12px;border:1px solid var(--b1);border-radius:8px;background:linear-gradient(145deg,rgba(255,255,255,.028),rgba(255,255,255,.008));}
+.fleet-panel-live{position:relative;overflow:hidden;}
+.fleet-panel-live::after{content:'';position:absolute;inset:0 auto 0 0;width:3px;background:linear-gradient(180deg,var(--green),var(--cyan));opacity:.72;}
+.fleet-status-layout{display:grid;grid-template-columns:minmax(235px,.72fr) minmax(320px,1.28fr);gap:12px;align-items:start;}
+.fleet-status-layout>#lss7-donut,.fleet-status-layout>#lss7-vbars{min-width:0;}
+.fleet-panel .sec-h{margin-top:0;}
+.asset-kpis.asset-kpis-pro{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;}
+.asset-kpi.pro{min-height:59px;padding:9px 10px;border-radius:7px;}
+.asset-kpi-note{display:block;margin-top:3px;color:var(--t4);font-size:7.5px;line-height:1.25;}
+.building-category-card{position:relative;overflow:hidden;}
+.building-category-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(148,163,184,.10);}
+.building-category-bar i{display:block;height:100%;background:var(--cat);}
+.building-detail-row{grid-template-columns:minmax(170px,1.5fr) repeat(5,minmax(62px,.45fr));}
+.extension-row{position:relative;overflow:hidden;padding-bottom:10px;}
+.extension-progress{position:absolute;left:10px;right:10px;bottom:4px;height:3px;border-radius:3px;background:rgba(148,163,184,.10);overflow:hidden;}
+.extension-progress i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--cyan));}
+.player-daily-panel{margin-top:10px;padding:11px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);}
+.player-daily-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}.player-daily-head b{color:var(--t1);font-size:10px}.player-daily-head span{color:var(--t4);font-size:8px}
+.player-daily-row{display:grid;grid-template-columns:68px minmax(60px,1fr) 104px;align-items:center;gap:8px;min-height:25px;border-top:1px solid var(--b0);font-size:8.5px}.player-daily-row:first-child{border-top:0}.player-daily-day{color:var(--t3)}.player-daily-bar{height:5px;border-radius:5px;background:rgba(148,163,184,.10);overflow:hidden}.player-daily-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#2563eb,#22c55e)}.player-daily-val{text-align:right;color:var(--greenh);font:800 8.5px/1 var(--mono)}
+.nav-style-setting{position:relative;overflow:hidden;border-color:rgba(59,130,246,.32)!important;background:linear-gradient(135deg,rgba(59,130,246,.10),rgba(14,165,233,.035))!important;box-shadow:0 8px 24px rgba(2,12,27,.10);}
+.nav-style-setting::before{content:'HEADER';position:absolute;right:10px;top:8px;color:rgba(96,165,250,.38);font:900 8px/1 var(--mono);letter-spacing:1px;}
+.nav-style-showcase{display:grid;grid-template-columns:minmax(210px,.72fr) minmax(0,1.28fr);gap:12px;align-items:center;margin:9px 0 10px;}
+.nav-style-preview-shell{padding:11px;border:1px solid var(--b1);border-radius:8px;background:#121923;}
+.nav-style-preview{min-height:42px;display:flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid rgba(148,163,184,.18);border-radius:7px;background:linear-gradient(180deg,#202a38,#141c27);color:#f8fafc;}
+.nav-style-preview .brand-emblem{width:29px;height:29px;padding:0 5px 6px}.nav-style-preview .brand-letter{font-size:15px}.nav-style-preview-copy{min-width:0;display:flex;flex-direction:column;gap:2px}.nav-style-preview-copy b{font-size:10px}.nav-style-preview-copy span{color:#86efac;font-size:7.5px}.nav-style-preview.preview-logo .nav-style-preview-copy,.nav-style-preview.preview-name .nav-style-preview-copy span,.nav-style-preview.preview-no-event .nav-style-preview-copy span{display:none}.nav-style-preview.preview-name .brand-emblem{display:none}
+.lss7-nav-mark.brand-emblem>span,.hd-mark.brand-emblem>span{transform:none!important;filter:none!important;}
+.lss7-nav-mark.brand-emblem .brand-letter,.hd-mark.brand-emblem .brand-letter{display:block!important;}
+.lss7-nav-mark.brand-emblem .brand-bars,.hd-mark.brand-emblem .brand-bars{display:flex!important;}
+.wm-row.finished .wm-status,.wm-mini-row.finished .wm-mini-s{color:#4ade80!important}.wm-row.planned .wm-status,.wm-mini-row.planned .wm-mini-s{color:#fbbf24!important}.wm-status{font-weight:900}.wm-row.finished{border-left:3px solid rgba(34,197,94,.62)}.wm-row.planned{border-left:3px solid rgba(245,158,11,.62)}
+#lss7.theme-summer .wm-row.finished .wm-status{color:#146b3b!important;background:#e1f6e9;border-color:#58a978}#lss7.theme-summer .wm-row.planned .wm-status{color:#754600!important;background:#fff1bd;border-color:#c58a19}
+@media(max-width:900px){.fleet-status-layout{grid-template-columns:1fr}}
+@media(max-width:760px){.lss7-nav-secondary{grid-template-columns:1fr}.asset-kpis.asset-kpis-pro{grid-template-columns:repeat(2,minmax(0,1fr))}.building-detail-row{grid-template-columns:minmax(140px,1fr) repeat(3,60px)}.building-detail-row .building-detail-stat:nth-last-child(-n+2){display:none}.nav-style-showcase{grid-template-columns:1fr}.fleet-command{align-items:stretch;flex-direction:column}.fleet-command-badge{align-self:flex-start}.fleet-panel{padding:9px}}
+`);
+
+function brandMarkHtml(extraClass=""){
+  return `<span class="brand-emblem ${extraClass}" aria-hidden="true"><span class="brand-letter">V</span><span class="brand-bars"><b></b><b></b><b></b></span></span>`;
+}
+function applyNavButtonStyle(){
+  const button=$("#lss7-btn");
+  if(!button.length)return;
+  const style=S.settings.navButtonStyle||"standard";
+  button.removeClass("nav-logo-only nav-no-events nav-name-only");
+  if(style==="logo")button.addClass("nav-logo-only");
+  else if(style==="standard-no-event")button.addClass("nav-no-events");
+  else if(style==="name")button.addClass("nav-name-only");
+}
+
+function organizeDashboardTabs(){
+  const tabs=$("#lss7-tabs");
+  if(!tabs.length||tabs.children(".lss7-nav-primary").length)return;
+  const take=ids=>ids.map(id=>tabs.find(`.ltab[data-tab="${id}"]`).first()).filter(tab=>tab.length);
+  const makeGroup=(cls,label,items)=>{
+    const group=$(`<div class="lss7-nav-group ${cls}"><span class="lss7-nav-group-label">${label}</span><div class="lss7-nav-group-tabs"></div></div>`);
+    items.forEach(tab=>group.find(".lss7-nav-group-tabs").append(tab));
+    return group;
+  };
+  const alliance=makeGroup("lss7-nav-alliance","Verband",take(["tp-overview","tp-forecast","tp-vehicles","tp-schoolings","tp-team"]));
+  const player=makeGroup("lss7-nav-player","Spieler",take(["tp-player-forecast"]));
+  const tools=makeGroup("lss7-nav-tools","Werkzeuge",take(["tp-aao","tp-history","tp-event","tp-settings"]));
+  tabs.empty().append($("<div class=\"lss7-nav-primary\"></div>").append(alliance));
+  tabs.append($("<div class=\"lss7-nav-secondary\"></div>").append(player,tools));
+}
+
+function renderNavStylePreview(){
+  const preview=$("#lss7-nav-style-preview");
+  if(!preview.length)return;
+  const style=S.settings.navButtonStyle||"standard";
+  preview.removeClass("preview-logo preview-standard preview-no-event preview-name");
+  preview.addClass(style==="logo"?"preview-logo":style==="standard-no-event"?"preview-no-event":style==="name"?"preview-name":"preview-standard");
+}
+
+function upgradeUi910(){
+  $("#lss-profile-events").remove();
+  if(!$("#prof-placement").length)$(".prof-top").append(`<span id="prof-placement" class="prof-placement">Platzierung wird ermittelt</span>`);
+  if(!$("#fleet-status-kpis").length)$("#lss7-vbars").before(`<div id="fleet-status-kpis" class="fleet-status-kpis"></div>`);
+  if(!$("#fleet-command").length)$("#tp-vehicles").prepend(`<div id="fleet-command" class="fleet-command">
+    <div class="fleet-command-copy"><span class="fleet-command-eyebrow">Einsatzmittel & Infrastruktur</span><span class="fleet-command-title">Fuhrpark- und Standortlage</span><span class="fleet-command-sub">Fahrzeugbereitschaft, Personal, Ausbauten, Spezialisierungen und Standortbetrieb in einer gemeinsamen Lageübersicht.</span></div>
+    <span class="fleet-command-badge">LIVE-DATEN</span>
+  </div>`);
+  $(".hd-mark").replaceWith(brandMarkHtml("hd-mark"));
+
+  const tabs=$("#lss7-tabs");
+  if(tabs.length&&!tabs.find(`[data-tab="tp-player-forecast"]`).length){
+    const tab=$(`<div class="ltab" data-tab="tp-player-forecast">Spielerprognose [BETA]</div>`);
+    const eventTab=tabs.find(`[data-tab="tp-event"]`).first();
+    eventTab.length?tab.insertBefore(eventTab):tabs.append(tab);
+    $("#lss7-body").append(`<div class="lpanel" id="tp-player-forecast"><div id="player-forecast-view"></div></div>`);
+  }
+  organizeDashboardTabs();
+
+  $("#sb-size").closest("label,.tog-row").remove();
+  if(!$("#sb-nav-style").length){
+    $(".set-wrap").prepend(`<div class="set-group set-wide nav-style-setting" id="lss7-nav-style-setting">
+      <div class="set-head">Kopfzeilen-Button</div>
+      <div class="nav-style-showcase">
+        <div class="nav-style-preview-shell"><div id="lss7-nav-style-preview" class="nav-style-preview">${brandMarkHtml()}<span class="nav-style-preview-copy"><b>Dein Verband</b><span>WM-2026 LIVE</span></span></div></div>
+        <div><label class="tog-row"><span class="tog-lbl">Darstellung</span>
+        <select id="sb-nav-style" class="lss7-select">
+          <option value="logo">Nur Logo</option><option value="standard">Standard</option>
+          <option value="standard-no-event">Standard ohne Events</option><option value="name">Nur Dein Verband</option>
+        </select>
+        </label><div class="set-note">Die Vorschau zeigt direkt, wie dein Dashboard-Button im Spiel-Header wirkt. Laufende Events bleiben im Dashboard-Header sichtbar.</div></div>
+      </div>
+    </div>`);
+    $("#sb-nav-style").val(S.settings.navButtonStyle||"standard").on("change",function(){
+      S.settings.navButtonStyle=String(this.value||"standard");save();applyNavButtonStyle();renderNavStylePreview();
+    });
+  }
+  renderNavStylePreview();
+
+  const updateNote=$("#lss7-update-note");
+  $("#lss7-update-patches").addClass("update-patches");
+  if(updateNote.length&&!$("#lss7-update-close").length){
+    updateNote.append(`<button id="lss7-update-close" class="lss7-update-close" type="button" aria-label="Update-Hinweis schließen" title="Schließen">×</button>`);
+    $("#lss7-update-close").on("click",()=>{
+      GM_setValue("v7_update_note_dismissed",V);
+      updateNote.removeClass("show available");
+    });
+  }
+  renderPlayerForecast();
+  applyTranslations(document.getElementById("lss7"));
+}
+
 function buildTrigger(){
   const li=$(`<li></li>`);
   const a=$(`
     <a href="#" id="lss7-btn">
-      <span class="lss7-nav-mark" aria-hidden="true"><span>VS</span><i></i></span>
+      ${brandMarkHtml("lss7-nav-mark")}
       <span class="lss7-nav-copy">
         <span class="lss7-nav-lbl">Dein Verband</span>
         <span class="lss7-nav-events" id="lss7-nav-events"></span>
@@ -5261,6 +5719,7 @@ function buildTrigger(){
   const nb=$("#navbar-main-collapse .navbar-nav");
   if(nb.length)nb.append(li);
   else console.error("[LSS7] Navbar nicht gefunden.");
+  applyNavButtonStyle();
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -5307,6 +5766,7 @@ function setUpdateHeader(text,type="updated"){
   if(!note.length)return;
   note.removeClass("show available");
   if(!text)return;
+  if(type!=="available"&&String(GM_getValue("v7_update_note_dismissed","")||"")===V)return;
   $("#lss7-update-note-text").text(text);
   note.toggleClass("available",type==="available").addClass("show");
 }
@@ -5369,6 +5829,7 @@ function checkUpdate({manual=false}={}){
 $(document).ready(()=>{
   load();
   buildUI();
+  upgradeUi910();
   initSummerScene();
   buildTrigger();
   applyPanelMode();
@@ -5380,6 +5841,8 @@ $(document).ready(()=>{
   fetchUserinfo();
   fetchProfileCard();
   fetchBuildings();
+  fetchVehicleStates();
+  fetchSchoolings();
   fetchDailyEarnFromOverview();
   fetchWeather();
   renderWeather();
