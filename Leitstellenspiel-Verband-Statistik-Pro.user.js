@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.1.0
+// @version      9.1.1
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/*
@@ -38,7 +38,7 @@ if(window.top!==window.self)return;
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "9.1.0";
+const V   = "9.1.1";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
@@ -75,10 +75,10 @@ const WEATHER_COUNTRIES = {
 const I18N = {
   en:{
     "Übersicht":"Overview","Verbands Prognose [BETA]":"Alliance forecast [BETA]","Fuhrpark & Standorte":"Fleet & locations",
-    "Lehrgänge":"Courses","Verlauf":"History","Team":"Team","Event":"Event","Einstellungen":"Settings",
+    "Lehrgänge":"Courses","Verlauf":"History","Team":"Team","Mitglieder & Verwaltung":"Members & management","Event":"Event","Einstellungen":"Settings",
     "Spielzeit":"Playtime","Eigene Credits":"Your credits","Tagesverd.":"Daily earnings","Uhrzeit":"Time",
     "Verband":"Alliance","Credits gesamt":"Total credits","Verbandskasse":"Alliance funds","Platzierung":"Ranking",
-    "Mitglieder":"Members","Coins":"Coins","Tagesverdienst":"Daily earnings","Verbandsverdienst heute":"Alliance earnings today","Verbandsverdienst 7 Tage":"Alliance earnings: 7 days",
+    "Mitglieder":"Members","Coins":"Coins","Tagesverdienst":"Daily earnings","Verbandsverdienst heute":"Alliance earnings today","Verbandsverdienst 7 Tage":"Alliance earnings: 7 days","Verbandsaktivität heute":"Alliance activity today","Tageslage Verband":"Alliance daily overview","Einsätze":"Missions","Einsätze abgeschlossen":"Missions completed","Patienten":"Patients","Patienten transportiert":"Patients transported","Gefangene":"Prisoners","Gefangene transportiert":"Prisoners transported",
     "Verbandsprognose":"Alliance forecast","Platzierungsumfeld":"Ranking context","Wetter":"Weather","Events":"Events",
     "Kreditverlauf (heute)":"Credit history (today)","Sammle Daten...":"Collecting data...","Meilenstein in Credits":"Credit milestone",
     "Prognose aktualisieren":"Update forecast","Fahrzeuge gesamt":"Total vehicles","Gebäude gesamt":"Total buildings",
@@ -97,7 +97,7 @@ const I18N = {
     "Lehrgang":"Course","Plätze":"Seats","Kosten":"Cost","Fertig":"Finishes","Öffnen":"Open","Aktive Lehrgänge":"Active courses",
     "Lehrgangsarten":"Course types","Alle Lehrgänge":"All courses","Freie Plätze":"Available seats","Lehrgänge durchsuchen...":"Search courses...",
     "Mitglied suchen...":"Search members...","Alle Rollen":"All roles","Leitung":"Leadership","Mitglieder ohne Leitungsrolle":"Regular members",
-    "Mitglieder gesamt":"Total members","Leitungsteam":"Leadership team","Sonderrollen":"Special roles","Profil öffnen":"Open profile","Verbands-Eigentümer":"Owner","Spielerprognose [BETA]":"Player forecast [BETA]",
+    "Mitglieder gesamt":"Total members","Leitungsteam":"Leadership team","Sonderrollen":"Special roles","Profil öffnen":"Open profile","Verbands-Eigentümer":"Owner","Spielerprognose":"Player forecast",
     "Gruppentabellen":"Group tables","Punkte, Tore und Tordifferenz aller zwölf Gruppen":"Points, goals and goal difference for all twelve groups",
     "Tabellen anzeigen":"Show tables","Tabellen ausblenden":"Hide tables","Gruppe":"Group","Spiele":"matches","Team":"Team",
     "Automatisch aus den API-Ergebnissen berechnet.":"Calculated automatically from API results.",
@@ -108,10 +108,10 @@ const I18N = {
   },
   fr:{
     "Übersicht":"Aperçu","Verbands Prognose [BETA]":"Prévision de l'alliance [BÊTA]","Fuhrpark & Standorte":"Véhicules et sites",
-    "Lehrgänge":"Formations","Verlauf":"Historique","Team":"Équipe","Event":"Événement","Einstellungen":"Paramètres",
+    "Lehrgänge":"Formations","Verlauf":"Historique","Team":"Équipe","Mitglieder & Verwaltung":"Membres et gestion","Event":"Événement","Einstellungen":"Paramètres",
     "Spielzeit":"Temps de jeu","Eigene Credits":"Vos crédits","Tagesverd.":"Gain du jour","Uhrzeit":"Heure",
     "Verband":"Alliance","Credits gesamt":"Crédits totaux","Verbandskasse":"Caisse de l'alliance","Platzierung":"Classement",
-    "Mitglieder":"Membres","Coins":"Pièces","Tagesverdienst":"Gain du jour","Verbandsverdienst heute":"Gain de l'alliance aujourd'hui","Verbandsverdienst 7 Tage":"Gains de l'alliance sur 7 jours",
+    "Mitglieder":"Membres","Coins":"Pièces","Tagesverdienst":"Gain du jour","Verbandsverdienst heute":"Gain de l'alliance aujourd'hui","Verbandsverdienst 7 Tage":"Gains de l'alliance sur 7 jours","Verbandsaktivität heute":"Activité de l'alliance aujourd'hui","Tageslage Verband":"Bilan quotidien de l'alliance","Einsätze":"Interventions","Einsätze abgeschlossen":"Interventions terminées","Patienten":"Patients","Patienten transportiert":"Patients transportés","Gefangene":"Prisonniers","Gefangene transportiert":"Prisonniers transportés",
     "Verbandsprognose":"Prévision de l'alliance","Platzierungsumfeld":"Classement voisin","Wetter":"Météo","Events":"Événements",
     "Kreditverlauf (heute)":"Historique des crédits (aujourd'hui)","Sammle Daten...":"Collecte des données...","Meilenstein in Credits":"Objectif de crédits",
     "Prognose aktualisieren":"Actualiser la prévision","Fahrzeuge gesamt":"Total des véhicules","Gebäude gesamt":"Total des bâtiments",
@@ -130,7 +130,7 @@ const I18N = {
     "Lehrgang":"Formation","Plätze":"Places","Kosten":"Coût","Fertig":"Fin","Öffnen":"Ouvrir","Aktive Lehrgänge":"Formations actives",
     "Lehrgangsarten":"Types de formation","Alle Lehrgänge":"Toutes les formations","Freie Plätze":"Places disponibles","Lehrgänge durchsuchen...":"Rechercher une formation...",
     "Mitglied suchen...":"Rechercher un membre...","Alle Rollen":"Tous les rôles","Leitung":"Direction","Mitglieder ohne Leitungsrolle":"Membres réguliers",
-    "Mitglieder gesamt":"Total des membres","Leitungsteam":"Équipe dirigeante","Sonderrollen":"Rôles spéciaux","Profil öffnen":"Ouvrir le profil","Verbands-Eigentümer":"Propriétaire de l’alliance","Spielerprognose [BETA]":"Prévision du joueur [BÊTA]",
+    "Mitglieder gesamt":"Total des membres","Leitungsteam":"Équipe dirigeante","Sonderrollen":"Rôles spéciaux","Profil öffnen":"Ouvrir le profil","Verbands-Eigentümer":"Propriétaire de l’alliance","Spielerprognose":"Prévision du joueur",
     "Gruppentabellen":"Classements des groupes","Punkte, Tore und Tordifferenz aller zwölf Gruppen":"Points, buts et différence de buts des douze groupes",
     "Tabellen anzeigen":"Afficher les tableaux","Tabellen ausblenden":"Masquer les tableaux","Gruppe":"Groupe","Spiele":"matchs",
     "Automatisch aus den API-Ergebnissen berechnet.":"Calculé automatiquement à partir des résultats de l'API.",
@@ -465,10 +465,12 @@ GM_addStyle(`
 /* â”€â”€ Quick-Stats Strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #lss7-qs {
   flex-shrink:0;
-  display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr 1px 1fr;
+  display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr 1px 1fr 1px 1fr;
   background:var(--bg1);border-bottom:1px solid var(--b1);
 }
-#lss7-qs.no-playtime{grid-template-columns:1fr 1px 1fr 1px 1fr;}
+#lss7-qs.no-playtime{grid-template-columns:1fr 1px 1fr 1px 1fr 1px 1fr;}
+#lss7-qs.no-coins{grid-template-columns:1fr 1px 1fr 1px 1fr 1px 1fr;}
+#lss7-qs.no-playtime.no-coins{grid-template-columns:1fr 1px 1fr 1px 1fr;}
 .qs-div{background:var(--b1);}
 .qs-cell{padding:9px 11px;display:flex;flex-direction:column;gap:2px;cursor:default;}
 .qs-cell.clickable{position:relative;cursor:pointer;}
@@ -476,13 +478,18 @@ GM_addStyle(`
 .qs-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t4);}
 .qs-val{font-size:12px;font-weight:700;color:var(--t1);}
 .qs-val.mono{font-family:var(--mono);font-size:12px;letter-spacing:1.2px;color:var(--green);}
-.qs-val.sm  {font-size:10px;font-weight:500;color:var(--t3);}
+.qs-val.sm  {font-size:10px;font-weight:750;color:var(--t1);}
+.qs-clock{display:flex;flex-direction:column;gap:2px;line-height:1.1;}
+.qs-clock-time{color:var(--t1);font:850 11px/1 var(--mono);letter-spacing:.25px;}
+.qs-clock-date{color:var(--t3);font-size:8px;font-weight:750;white-space:nowrap;}
 .pt-pop{
-  position:absolute;top:100%;left:8px;z-index:50;width:230px;
+  position:absolute;top:100%;left:8px;z-index:2147483647;width:250px;
   margin-top:6px;padding:10px;border:1px solid var(--b2);border-radius:8px;
   background:var(--bg2);box-shadow:0 16px 38px rgba(0,0,0,.45);display:none;
 }
 .pt-pop.open{display:block;}
+#lss7-qs{position:relative;z-index:40;overflow:visible!important;}
+#lss7-tabs{position:relative;z-index:10;}
 .pt-pop-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .pt-pop-t{font-size:11px;font-weight:800;color:var(--t1);}
 .pt-pop-s{font-size:10px;color:var(--t4);}
@@ -505,17 +512,17 @@ GM_addStyle(`
     linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01));
   padding:10px 12px;
 }
-.prof-row{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:12px;min-width:0;}
+.prof-row{display:grid;grid-template-columns:74px minmax(0,1fr) minmax(145px,185px);align-items:center;gap:13px;min-width:0;}
 .prof-av{
-  width:66px;height:48px;border-radius:7px;
+  width:74px;height:58px;border-radius:8px;
   object-fit:cover;border:1px solid rgba(96,165,250,.28);background:var(--bg3);flex-shrink:0;
   box-shadow:0 8px 18px rgba(0,0,0,.18);
 }
 .prof-meta{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1;}
-.prof-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0;}
+.prof-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;}
 .prof-name{font-size:14px;font-weight:900;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;}
 .prof-rank{
-  display:inline-flex;align-items:center;max-width:42%;
+  display:inline-flex;align-items:center;max-width:100%;
   padding:3px 7px;border-radius:999px;border:1px solid rgba(34,211,238,.28);
   background:rgba(34,211,238,.09);font-size:10px;color:var(--cyan);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800;
@@ -527,6 +534,23 @@ GM_addStyle(`
 .prof-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:0;border:1px solid rgba(255,255,255,.04);}
 .prof-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--cyan));}
 .prof-roles{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-height:0;}
+.prof-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;}
+.prof-placement{
+  position:relative;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  min-height:62px;padding:9px 12px 9px 48px;border:1px solid rgba(245,158,11,.38);border-radius:8px;
+  background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(59,130,246,.08));color:var(--t1);
+  box-shadow:0 9px 24px rgba(0,0,0,.16),inset 0 1px rgba(255,255,255,.06);cursor:pointer;text-align:left;
+}
+.prof-placement::before{content:'#';position:absolute;left:13px;top:50%;transform:translateY(-52%);font:950 31px/1 var(--mono);color:var(--amber);opacity:.9;}
+.prof-placement-kicker{font-size:7.5px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--amberh);}
+.prof-placement strong{display:block;margin-top:2px;font:950 15px/1.1 var(--mono);color:var(--t1);}
+.prof-placement small{display:block;margin-top:3px;color:var(--t3);font-size:7.5px;}
+.prof-placement:hover{transform:translateY(-1px);border-color:rgba(245,158,11,.62);box-shadow:0 12px 28px rgba(0,0,0,.20),0 0 18px rgba(245,158,11,.10);}
+.prof-subnav{display:flex;align-items:center;gap:5px;margin-top:9px;padding-top:8px;border-top:1px solid var(--b1);}
+.prof-view-btn{min-height:28px;padding:6px 10px;border:1px solid var(--b1);border-radius:6px;background:rgba(255,255,255,.025);color:var(--t2);font-size:8.5px;font-weight:850;cursor:pointer;}
+.prof-view-btn:hover,.prof-view-btn.active{border-color:rgba(59,130,246,.42);background:var(--blue3);color:var(--blueh);}
+.prof-forecast-panel{display:none;margin-top:8px;padding:10px;border:1px solid var(--b1);border-radius:8px;background:rgba(4,10,19,.18);}
+.prof-forecast-panel.open{display:block;}
 .prof-role{
   display:inline-flex;align-items:center;min-height:20px;padding:3px 8px;border-radius:6px;
   color:var(--role-text,#fff);background:var(--role-color,#2563eb);border:1px solid rgba(255,255,255,.25);
@@ -960,8 +984,9 @@ GM_addStyle(`
 
 /* â”€â”€ Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .set-wrap{padding:14px;display:grid;grid-template-columns:1fr;gap:10px;align-items:start;}
-#lss7.layout .set-wrap{grid-template-columns:repeat(2,minmax(0,1fr));}
+#lss7.layout .set-wrap{grid-template-columns:repeat(12,minmax(0,1fr));}
 .settings-intro,.set-wide{grid-column:1/-1;}
+.settings-intro{order:0}.nav-style-setting{order:1}.settings-updates{order:2}.settings-appearance{order:3}.settings-actions{order:4}.settings-feature-grid{order:5}.settings-patch-notes{order:6}.settings-contact{order:7}.settings-info{order:8}
 .settings-intro{padding:12px 13px;border:1px solid rgba(59,130,246,.24);border-radius:8px;background:linear-gradient(135deg,rgba(59,130,246,.10),rgba(34,197,94,.035));}
 .settings-intro b{display:block;color:var(--t1);font-size:13px;margin-bottom:3px;}
 .settings-intro span{font-size:10px;color:var(--t3);line-height:1.45;}
@@ -970,7 +995,14 @@ GM_addStyle(`
 .set-group .tog-row{min-height:40px;}
 .set-group .lss7-select{flex:0 1 220px;min-width:0;}
 .set-group .set-note{margin-top:2px;}
-@media(max-width:760px){#lss7.layout .set-wrap{grid-template-columns:1fr}.set-wide{grid-column:auto}.settings-intro{grid-column:1/-1;}}
+.settings-feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.settings-feature-column{display:flex;flex-direction:column;gap:10px;min-width:0;}
+.settings-feature-column>.set-group{flex:0 0 auto;}
+.settings-info-grid{display:grid;grid-template-columns:minmax(260px,.72fr) minmax(0,1.28fr);gap:18px;align-items:start;}
+.settings-contact .set-note{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;}
+.settings-contact .set-note>div{margin-top:0!important;}.settings-contact .lbtn{min-width:170px;justify-content:center;}
+@media(max-width:920px){.settings-feature-grid,.settings-info-grid{grid-template-columns:1fr}.settings-contact .set-note{grid-template-columns:1fr}.settings-contact .lbtn{width:100%}}
+@media(max-width:760px){#lss7.layout .set-wrap{grid-template-columns:1fr}.set-wide,.settings-intro{grid-column:1;}}
 .lbtn{
   display:flex;align-items:center;gap:8px;padding:9px 12px;
   font-size:12px;font-weight:600;font-family:var(--font);
@@ -1588,12 +1620,12 @@ GM_addStyle(`
   #lss7.theme-summer #lss7-hd::after{display:none;}
   #lss7.theme-summer #lss7-hd::before{right:8px;opacity:.14;}
   #lss7-hd{padding:11px 12px 10px;}
-  #lss7-hd .hd-row{display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:8px 10px;}
+  #lss7-hd .hd-row{display:grid;grid-template-columns:82px minmax(0,1fr);align-items:center;gap:8px 10px;}
   #lss7-hd .hd-mark{grid-column:1;grid-row:1;}
   #lss7-hd .hd-row>div:nth-child(2){grid-column:2;grid-row:1;min-width:0;}
   #lss7-hd .hd-title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #lss7-hd .hd-sub{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  #lss7-hd .hd-meta{grid-column:1/-1;grid-row:2;margin-left:0;padding-left:48px;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:5px;}
+  #lss7-hd .hd-meta{grid-column:1/-1;grid-row:2;margin-left:0;padding-left:92px;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:5px;}
   #lss7-hd #lss7-col{min-width:92px;}
   #lss7.theme-summer #lss7-summer-scene,
   #lss7.theme-summer-dark #lss7-summer-scene{opacity:.82;}
@@ -1751,7 +1783,7 @@ GM_addStyle(`
 .player-forecast-progress{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid var(--b1);}.player-forecast-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green));transition:width .35s ease;}
 .player-rank-context{display:flex;flex-direction:column;gap:5px}.player-rank-row{display:grid;grid-template-columns:56px minmax(0,1fr) 150px;gap:8px;padding:7px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.02);font-size:10px;}.player-rank-row.me{border-color:rgba(59,130,246,.42);background:var(--blue3)}.player-rank-row span:last-child{text-align:right;color:var(--greenh);font-family:var(--mono)}
 .prof-placement{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;border:1px solid rgba(245,158,11,.30);background:var(--amber3);color:var(--amberh);font-size:9px;font-weight:900;white-space:nowrap;}
-@media(max-width:720px){.player-forecast-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.player-rank-row{grid-template-columns:46px minmax(0,1fr) 110px;}}
+@media(max-width:720px){.player-forecast-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.player-rank-row{grid-template-columns:46px minmax(0,1fr) 110px;}.prof-row{grid-template-columns:58px minmax(0,1fr)}.prof-av{width:58px;height:48px}.prof-placement{grid-column:1/-1;min-height:54px}.prof-badges{align-items:flex-start}}
 `);
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -1778,6 +1810,9 @@ const S = {
   profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:"",roles:[],totalCredits:0},
   weatherAlertKey:"",
   lastApiTs:null,
+  teamAdmin:{rights:{},profiles:{},loading:false,lastTs:0,error:""},
+  allianceActivity:{date:"",missions:0,patients:0,prisoners:0,seen:[]},
+  allianceActivityLive:{},
   update:{previousVersion:"",justUpdated:false,availableVersion:"",checking:false,lastCheck:0,error:""},
   settings:{
     notifications:true,
@@ -1788,6 +1823,7 @@ const S = {
     panelCollapsed:false,
     panelTheme:"summer",
     navButtonStyle:"standard",
+    playerForecastPlacement:"profile",
     language:"de",
     weatherLocation:"",
     weatherCountry:"DE",
@@ -1817,6 +1853,7 @@ function save(){
   GM_setValue("v7_pd",  JSON.stringify(S.playtimeDaily));
   GM_setValue("v7_player_daily",JSON.stringify(S.playerDaily));
   GM_setValue("v7_player_rank",JSON.stringify(S.playerRanking));
+  GM_setValue("v7_alliance_activity",JSON.stringify(S.allianceActivity));
   GM_setValue("v7_set", JSON.stringify(S.settings));
 }
 function saveWmTips(){ GM_setValue("v7_wm_tips", JSON.stringify(S.wmTips||{})); }
@@ -1857,6 +1894,13 @@ function load(){
   try{S.playtimeDaily=JSON.parse(GM_getValue("v7_pd","[]"))||[];}catch{S.playtimeDaily=[];}
   try{S.playerDaily=JSON.parse(GM_getValue("v7_player_daily","[]"))||[];}catch{S.playerDaily=[];}
   try{Object.assign(S.playerRanking,JSON.parse(GM_getValue("v7_player_rank","{}"))||{});}catch{}
+  try{Object.assign(S.allianceActivity,JSON.parse(GM_getValue("v7_alliance_activity","{}"))||{});}catch{}
+  S.allianceActivity.date=String(S.allianceActivity.date||today);
+  S.allianceActivity.missions=Math.max(0,Number(S.allianceActivity.missions)||0);
+  S.allianceActivity.patients=Math.max(0,Number(S.allianceActivity.patients)||0);
+  S.allianceActivity.prisoners=Math.max(0,Number(S.allianceActivity.prisoners)||0);
+  S.allianceActivity.seen=Array.isArray(S.allianceActivity.seen)?S.allianceActivity.seen.map(String).slice(-500):[];
+  if(S.allianceActivity.date!==today)S.allianceActivity={date:today,missions:0,patients:0,prisoners:0,seen:[]};
   S.playerRanking.loading=false;
   if(newDay && saved && storedPlaytime>0)recordPlaytimeDay(saved,storedPlaytime);
   try{S.wmTips=JSON.parse(GM_getValue("v7_wm_tips","{}"))||{};}catch{S.wmTips={};}
@@ -1873,6 +1917,7 @@ function load(){
   delete S.settings.panelSize;
   const validNavStyles=["logo","standard","standard-no-event","name"];
   if(!validNavStyles.includes(S.settings.navButtonStyle))S.settings.navButtonStyle="standard";
+  if(!["profile","both"].includes(S.settings.playerForecastPlacement))S.settings.playerForecastPlacement="profile";
   const validThemes=["dark","light","summer","summer-dark"];
   if(!validThemes.includes(S.settings.panelTheme)) S.settings.panelTheme="summer";
   const validLanguages=["de","en","fr"];
@@ -1966,6 +2011,11 @@ function fmtClock(){
     weekday:"short",day:"2-digit",month:"2-digit",year:"numeric",
     hour:"2-digit",minute:"2-digit",second:"2-digit"
   }).replace(",","");
+}
+function renderClock(){
+  const now=new Date();
+  $("#lss7-clock .qs-clock-time").text(now.toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
+  $("#lss7-clock .qs-clock-date").text(now.toLocaleDateString(uiLocale(),{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"}));
 }
 function fmtWmCountdown(){
   const now=Date.now();
@@ -2890,6 +2940,91 @@ function updatePlaytimeUi(){
   $("#lss7-playtime").text(fmtHHMM(S.playtime));
   renderPlaytimeStats();
 }
+function updateCoinsUi(){
+  const on=S.settings.coins!==false;
+  $("#lss7-qs").toggleClass("no-coins",!on);
+  $("#qs-coins-cell").toggle(on);
+  $("#qs-coins-div").toggle(on);
+  if(on)setV("#qs-coins",fmt(S.userCoins));
+}
+function ensureAllianceActivityDay(){
+  const today=localDateKey();
+  if(S.allianceActivity?.date===today)return false;
+  S.allianceActivity={date:today,missions:0,patients:0,prisoners:0,seen:[]};
+  S.allianceActivityLive={};
+  renderAllianceActivity();
+  return true;
+}
+function renderAllianceActivity(){
+  if(!S.allianceActivity)return;
+  setV("#sv-activity-missions",fmt(S.allianceActivity.missions||0));
+  setV("#sv-activity-patients",fmt(S.allianceActivity.patients||0));
+  setV("#sv-activity-prisoners",fmt(S.allianceActivity.prisoners||0));
+}
+function rememberAllianceMission(data={}){
+  const id=String(data.id||data.mission_id||"");
+  const allianceId=Number(data.allianceId??data.alliance_id);
+  if(!id||!Number.isFinite(allianceId)||allianceId<=0)return;
+  const old=S.allianceActivityLive[id]||{patients:0,prisoners:0,patientIds:{},prisonerIds:{}};
+  old.patients=Math.max(old.patients||0,Number(data.patients??data.patients_count)||0);
+  old.prisoners=Math.max(old.prisoners||0,Number(data.prisoners??data.prisoners_count)||0);
+  S.allianceActivityLive[id]=old;
+}
+function updateAllianceMissionPerson(type,data={}){
+  const id=String(data.missionId||data.mission_id||"");
+  const row=S.allianceActivityLive[id];
+  if(!row)return;
+  const count=Math.max(0,Number(data.count)||0);
+  const personId=String(data.id||"");
+  if(type==="patient"){
+    if(personId)row.patientIds[personId]=1;
+    row.patients=Math.max(row.patients||0,count,Object.keys(row.patientIds).length);
+  }else{
+    if(personId)row.prisonerIds[personId]=1;
+    row.prisoners=Math.max(row.prisoners||0,count,Object.keys(row.prisonerIds).length);
+  }
+}
+function finishAllianceMission(id){
+  ensureAllianceActivityDay();
+  const key=String(id||"");
+  const row=S.allianceActivityLive[key];
+  if(!key||!row)return;
+  if(!S.allianceActivity.seen.includes(key)){
+    S.allianceActivity.missions++;
+    S.allianceActivity.patients+=Math.max(0,Number(row.patients)||0);
+    S.allianceActivity.prisoners+=Math.max(0,Number(row.prisoners)||0);
+    S.allianceActivity.seen.push(key);
+    S.allianceActivity.seen=S.allianceActivity.seen.slice(-500);
+  }
+  delete S.allianceActivityLive[key];
+  renderAllianceActivity();
+  save();
+}
+function installAllianceActivityHooks(){
+  const parseDetail=event=>{try{return JSON.parse(String(event.detail||"{}"));}catch{return {};}};
+  window.addEventListener("lss7-mission-add",event=>rememberAllianceMission(parseDetail(event)));
+  window.addEventListener("lss7-patient-add",event=>updateAllianceMissionPerson("patient",parseDetail(event)));
+  window.addEventListener("lss7-prisoner-add",event=>updateAllianceMissionPerson("prisoner",parseDetail(event)));
+  window.addEventListener("lss7-mission-delete",event=>finishAllianceMission(parseDetail(event).id));
+  const script=document.createElement("script");
+  script.textContent=`(()=>{if(window.__lss7AllianceActivityHooks)return;window.__lss7AllianceActivityHooks=true;
+    const send=(name,data)=>window.dispatchEvent(new CustomEvent(name,{detail:JSON.stringify(data||{})}));
+    const wrapped=new Set();
+    const hook=(name,before)=>{const fn=window[name];if(typeof fn!=="function"||fn.__lss7ActivityWrapped)return false;
+      const next=function(...args){try{before(...args)}catch(e){}return fn.apply(this,args)};
+      Object.defineProperty(next,"__lss7ActivityWrapped",{value:true});window[name]=next;wrapped.add(name);return true};
+    const bind=()=>{
+      hook("missionMarkerAdd",m=>send("lss7-mission-add",{id:m?.id,allianceId:m?.alliance_id,patients:m?.patients_count,prisoners:m?.prisoners_count}));
+      hook("patientMarkerAdd",p=>send("lss7-patient-add",{id:p?.id,missionId:p?.mission_id,count:1}));
+      hook("patientMarkerAddCombined",p=>send("lss7-patient-add",{missionId:p?.mission_id,count:p?.count}));
+      hook("prisonerMarkerAdd",p=>send("lss7-prisoner-add",{id:p?.id,missionId:p?.mission_id,count:1}));
+      hook("missionDelete",id=>send("lss7-mission-delete",{id}));
+      return wrapped.has("missionMarkerAdd")&&wrapped.has("missionDelete")};
+    if(!bind()){let tries=0;const timer=setInterval(()=>{tries++;if(bind()||tries>120)clearInterval(timer)},500)}
+  })();`;
+  (document.head||document.documentElement).appendChild(script);
+  script.remove();
+}
 function rollPlaytimeDay(now=Date.now()){
   const today=localDateKey(new Date(now));
   if(today===S.lastDate)return false;
@@ -2899,6 +3034,7 @@ function rollPlaytimeDay(now=Date.now()){
   S.lastDate=today;
   S.lastTs=now;
   setPlaytimeDay(today,0);
+  ensureAllianceActivityDay();
   return true;
 }
 function tickTimer(){
@@ -2919,7 +3055,7 @@ function tickTimer(){
   }
   updatePlaytimeUi();save();
 }
-function tickClock(){$("#lss7-clock").text(fmtClock());}
+function tickClock(){renderClock();}
 function tickEventCountdown(){
   $("#wm-countdown").text(fmtWmCountdown());
   renderGameEvents();
@@ -3434,15 +3570,15 @@ function playerDailyBoardHtml(){
 }
 
 function renderPlayerForecast(){
-  const root=$("#player-forecast-view");
+  const roots=$("#player-forecast-view,#player-profile-forecast-view");
   const model=playerForecastModel();
   const rank=S.playerRanking?.rank;
-  $("#prof-placement").text(rank?`Spielerplatz ${fmt(rank)}`:"Platzierung wird ermittelt");
-  if(!root.length)return;
+  $("#prof-placement").html(`<span class="prof-placement-kicker">Spielerplatzierung</span><strong>${rank?`#${fmt(rank)}`:"Wird ermittelt"}</strong><small>Topliste</small>`);
+  if(!roots.length)return;
   const eta=model.eta?model.eta.toLocaleDateString(uiLocale(),{day:"2-digit",month:"2-digit",year:"numeric"}):"Noch keine Daten";
   const rows=(S.playerRanking?.rows||[]).map(row=>`<div class="player-rank-row${row.me?" me":""}"><span>#${fmt(row.rank)}</span><b>${escHtml(row.name)}</b><span>${fmtMoney(row.credits)}</span></div>`).join("");
-  root.html(`<div class="player-forecast">
-    <div class="player-forecast-head"><div><div class="player-forecast-title">Spielerprognose</div><div class="player-forecast-sub">Prognose bis zur nächsten Beförderung auf Basis deiner lokal erfassten Tagesverdienste. Ab 3 bis 7 vollständigen Tagen wird die Schätzung belastbarer.</div></div><span class="beta-strong">BETA</span></div>
+  const html=`<div class="player-forecast">
+    <div class="player-forecast-head"><div><div class="player-forecast-title">Spielerprognose</div><div class="player-forecast-sub">Prognose bis zur nächsten Beförderung auf Basis deiner lokal erfassten Tagesverdienste. Ab 3 bis 7 vollständigen Tagen wird die Schätzung belastbarer.</div></div></div>
     <div class="player-forecast-grid">
       <div class="player-forecast-kpi"><span>Aktueller Dienstgrad</span><b>${escHtml(model.level.rank)}</b></div>
       <div class="player-forecast-kpi"><span>Nächste Beförderung</span><b>${escHtml(model.next?.rank||"Höchster Rang")}</b></div>
@@ -3457,8 +3593,9 @@ function renderPlayerForecast(){
     ${playerDailyBoardHtml()}
     <div class="set-note"><b>Beta-Hinweis:</b> Offline-Zeiten, Events und schwankende Tagesverdienste können zu Abweichungen führen. Die Werte werden nur in diesem Browser gespeichert.</div>
     <div class="player-rank-context">${rows||`<div class="lss7-empty">${escHtml(S.playerRanking?.status||"Spielerplatzierung wird geladen...")}</div>`}</div>
-  </div>`);
-  applyTranslations(root.get(0));
+  </div>`;
+  roots.html(html);
+  roots.each((_,node)=>applyTranslations(node));
 }
 
 function parseToplistHtml(html,page){
@@ -3550,7 +3687,7 @@ function fetchUserinfo(){
     S.userCredits=(domCredits!==null?domCredits:(d.credits||0));
     S.userCoins=(domCoins!==null?domCoins:(d.coins||0));
     setV("#qs-credits",fmtMoney(S.userCredits));
-    setV("#sv-mycoins",fmt(S.userCoins));
+    setV("#qs-coins",fmt(S.userCoins));
   });
 }
 
@@ -3562,7 +3699,7 @@ function renderProfileQuick(){
     `<span class="prof-role" style="--role-color:${escHtml(role.color||"#2563eb")};--role-text:${escHtml(role.text||"#ffffff")}">${escHtml(role.label||"Mitglied")}</span>`
   ).join("")).toggle(roles.length>0);
   if(S.profile.reward){
-    $("#prof-reward").text(`Level-Up: ${S.profile.reward}`).show();
+    $("#prof-reward").text(`Beförderungs-Belohnung: ${S.profile.reward}`).show();
   }else{
     $("#prof-reward").hide().text("");
   }
@@ -4219,6 +4356,60 @@ function renderHistTab(){
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  RENDER â€” TEAM TAB                                           â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function teamActionFromLink(link,prefix=""){
+  const href=String(link?.getAttribute("href")||"").trim();
+  if(!href)return null;
+  const allowed=/^\/(?:verband\/(?:kick|admin|coadmin|sprechwunsch_admin|aufsichtsrat|finance|schooling|staff|event_manager)\/\d+(?:\/[01])?|profile\/\d+\/chatban\/\d+|allianceIgnore\/\d+\/(?:add|remove)|messages\/new\?)/i;
+  if(!allowed.test(href))return null;
+  const raw=String(link.textContent||"").replace(/\s+/g," ").trim();
+  const label=`${prefix}${raw}`.trim();
+  const danger=link.classList.contains("btn-danger")||/kick|chatban|allianceIgnore|rauswerfen|entfernen|bannen|verbieten/i.test(`${href} ${label}`);
+  return {href,label,method:String(link.dataset.method||"get").toLowerCase(),danger};
+}
+function parseTeamRightsPage(html){
+  const doc=new DOMParser().parseFromString(html||"","text/html"),rights={};
+  doc.querySelectorAll('[id^="rights_"]').forEach(box=>{
+    const id=String(box.id||"").match(/rights_(\d+)/)?.[1];
+    if(!id)return;
+    rights[id]=Array.from(box.querySelectorAll("a[href]"),a=>teamActionFromLink(a)).filter(Boolean);
+  });
+  return rights;
+}
+function canLoadTeamModeration(){
+  const ids=(Array.isArray(S.profile.roles)?S.profile.roles:[]).map(role=>String(role.id||""));
+  return ids.some(id=>["owner","admin","coadmin","radio","personnel"].includes(id));
+}
+function fetchTeamAdminRights(users,force=false){
+  const admin=S.teamAdmin;
+  if(admin.loading)return;
+  if(!force&&admin.lastTs&&Date.now()-admin.lastTs<300000)return;
+  admin.loading=true;admin.error="";
+  pageGet(`${BASE}/verband/mitglieder`,html=>{
+    admin.loading=false;admin.lastTs=Date.now();admin.rights=parseTeamRightsPage(html);
+    renderTeam(users||[]);
+  },()=>{admin.loading=false;admin.error="Berechtigungen konnten nicht geladen werden.";});
+}
+function fetchTeamProfileActions(id,done){
+  const key=String(id||"");if(!key)return done([]);
+  const cached=S.teamAdmin.profiles[key];
+  if(cached&&Date.now()-cached.ts<300000)return done(cached.actions||[]);
+  pageGet(`${BASE}/profile/${encodeURIComponent(key)}`,html=>{
+    const doc=new DOMParser().parseFromString(html||"","text/html"),actions=[];
+    doc.querySelectorAll("#userinfo > a[href]").forEach(a=>{const item=teamActionFromLink(a);if(item)actions.push(item);});
+    doc.querySelectorAll("#userinfo .btn-group .dropdown-menu a[href*='/chatban/']").forEach(a=>{const item=teamActionFromLink(a,"Chat-Bann: ");if(item)actions.push(item);});
+    S.teamAdmin.profiles[key]={ts:Date.now(),actions};done(actions);
+  },()=>done([]));
+}
+function teamAdminActionsHtml(id,profileActions=[]){
+  const rights=S.teamAdmin.rights[String(id)]||[];
+  const all=[...rights,...profileActions].filter((item,index,list)=>list.findIndex(x=>x.href===item.href)===index);
+  if(!all.length)return `<div class="team-admin-empty">Für diesen Spieler zeigt Leitstellenspiel keine Verwaltungsaktion an.</div>`;
+  return `<div class="team-admin-groups">${all.map(action=>{
+    const contact=/^\/messages\/new/i.test(action.href);
+    return `<button class="team-admin-action ${action.danger?"danger":contact?"contact":"role"}" type="button" data-href="${escHtml(action.href)}" data-method="${escHtml(action.method)}" data-label="${escHtml(action.label)}" data-danger="${action.danger?"1":"0"}">${escHtml(action.label)}</button>`;
+  }).join("")}</div><div class="team-admin-note">Es werden ausschließlich Aktionen angezeigt, die Leitstellenspiel für deinen Account freigibt.</div>`;
+}
+
 function renderTeam(users){
   const cont=$("#lss7-team").empty();
   if(!users.length){cont.html(`<div class="lss7-empty">Keine Mitgliederdaten.</div>`);return;}
@@ -4255,16 +4446,20 @@ function renderTeam(users){
       const initials=name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase().slice(0,2)||"?";
       const roleIds=(info.all.length?info.all:[info.primary]).map(role=>role.id);
       const badges=(info.all.length?info.all:[info.primary]).map(role=>`<span class="team-role team-role-${role.id}" style="--role-color:${role.color}">${escHtml(role.label)}</span>`).join("");
+      const hasRights=(S.teamAdmin.rights[String(u.id)]||[]).length>0;
+      const canManage=hasRights||canLoadTeamModeration();
       grid.append(`<article class="team-card" data-name="${escHtml(name.toLowerCase())}" data-roles="${escHtml(roleIds.join(","))}">
         <div class="team-avatar">${escHtml(initials)}</div>
         <div class="team-main"><span class="team-name" title="${escHtml(name)}">${escHtml(name)}</span><div class="team-badges">${badges}</div></div>
-        <a class="team-open" href="${BASE}/profile/${encodeURIComponent(u.id)}" target="_blank" rel="noopener" title="${tr("Profil öffnen")}">↗</a>
+        <div class="team-card-tools"><a class="team-open" href="${BASE}/profile/${encodeURIComponent(u.id)}" target="_blank" rel="noopener" title="${tr("Profil öffnen")}">↗</a>${canManage?`<button class="team-manage" type="button" data-user-id="${escHtml(u.id)}" data-user-name="${escHtml(name)}" title="Mitglied verwalten">⚙</button>`:""}</div>
+        ${canManage?`<div class="team-admin-drawer" data-admin-user="${escHtml(u.id)}"><div class="team-admin-loading">Verwaltungsrechte werden beim Öffnen geprüft.</div></div>`:""}
       </article>`);
     });
     cont.append(section);
   });
   cont.append(`<div class="lss7-empty team-empty-filter">Keine passenden Mitglieder gefunden.</div>`);
   applyTranslations(cont.get(0));
+  fetchTeamAdminRights(users);
 }
 
 function filterTeamRows(){
@@ -4486,7 +4681,7 @@ function buildUI(){
           <button id="lss7-x" title="Schliessen">×</button>
         </div>
       </div>
-      <div id="lss7-update-note" class="lss7-update-note"><span id="lss7-update-note-text"></span><button id="lss7-update-patches" type="button">Patch-Notes ansehen</button></div>
+      <div id="lss7-update-note" class="lss7-update-note"><span id="lss7-update-note-text"></span><a id="lss7-update-install" class="lss7-update-install" href="${UPDATE_URL}" target="_blank" rel="noopener" style="display:none">Jetzt installieren</a><button id="lss7-update-patches" type="button">Patch-Notes ansehen</button></div>
     </div>`);
 
   panel.append(`
@@ -4496,9 +4691,8 @@ function buildUI(){
         <div class="prof-meta">
           <div class="prof-top">
             <span id="prof-name" class="prof-name">${S.profile.name}</span>
-            <span id="prof-rank" class="prof-rank">${S.profile.rank}</span>
           </div>
-          <div id="prof-roles" class="prof-roles"></div>
+          <div class="prof-badges"><span id="prof-rank" class="prof-rank">${S.profile.rank}</span><div id="prof-roles" class="prof-roles"></div></div>
           <div class="prof-progress-row">
             <span id="prof-progress" class="prof-sub">${S.profile.progressText}</span>
             <span id="prof-next" class="prof-next"></span>
@@ -4506,7 +4700,10 @@ function buildUI(){
           <div class="prof-bar"><div id="prof-fill" class="prof-fill" style="width:${S.profile.progress}%"></div></div>
           <span id="prof-reward" class="prof-reward"></span>
         </div>
+        <button id="prof-placement" class="prof-placement" type="button" title="Spielerprognose und Platzierungsumfeld öffnen"><span class="prof-placement-kicker">Spielerplatzierung</span><strong>Wird ermittelt</strong><small>Topliste</small></button>
       </div>
+      <div class="prof-subnav"><button class="prof-view-btn active" data-prof-view="summary" type="button">Profil</button><button class="prof-view-btn" data-prof-view="forecast" type="button">Spielerprognose</button></div>
+      <div id="prof-forecast-panel" class="prof-forecast-panel"><div id="player-profile-forecast-view" class="player-forecast-view"></div></div>
     </div>`);
 
   // â”€â”€ Quick-Stats Strip (4 Zellen) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -4523,6 +4720,11 @@ function buildUI(){
         <span id="qs-credits" class="qs-val" style="color:var(--green)"><span class="lspin"></span></span>
       </div>
       <div class="qs-div"></div>
+      <div class="qs-cell" id="qs-coins-cell" style="display:${S.settings.coins!==false?"flex":"none"}">
+        <span class="qs-lbl">Coins</span>
+        <span id="qs-coins" class="qs-val" style="color:var(--purpleh)"><span class="lspin"></span></span>
+      </div>
+      <div class="qs-div" id="qs-coins-div" style="display:${S.settings.coins!==false?"block":"none"}"></div>
       <div class="qs-cell">
         <span class="qs-lbl">Tagesverd.</span>
         <span id="qs-daily" class="qs-val" style="color:var(--green)">${fmtMoney(S.dailyEarn)}</span>
@@ -4530,19 +4732,19 @@ function buildUI(){
       <div class="qs-div"></div>
       <div class="qs-cell">
         <span class="qs-lbl">Uhrzeit</span>
-        <span id="lss7-clock" class="qs-val sm">${fmtClock()}</span>
+        <span id="lss7-clock" class="qs-val sm qs-clock"><span class="qs-clock-time"></span><span class="qs-clock-date"></span></span>
       </div>
     </div>`);
 
   // â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const TABS=[
-    {id:"tp-overview",  icon:"", label:"Uebersicht"},
+    {id:"tp-overview",  icon:"", label:"Übersicht"},
     {id:"tp-forecast",  icon:"", label:"Verbands Prognose [BETA]"},
     {id:"tp-vehicles",  icon:"", label:"Fuhrpark & Standorte"},
     {id:"tp-schoolings",icon:"", label:"Lehrgänge"},
     {id:"tp-aao",       icon:"", label:"AAO"},
     {id:"tp-history",   icon:"", label:"Verlauf"},
-    {id:"tp-team",      icon:"", label:"Team"},
+    {id:"tp-team",      icon:"", label:"Mitglieder & Verwaltung"},
     {id:"tp-event",     icon:"", label:"Event"},
     {id:"tp-settings",  icon:"", label:"Einstellungen"},
   ];
@@ -4582,13 +4784,18 @@ function buildUI(){
         <span class="sv" id="sv-members">-</span>
         <div class="prg"><div class="prg-fill" id="sv-members-bar" style="width:0%;background:var(--blue)"></div></div>
       </div>
-      <div class="sc">
-        <span class="sl">Coins</span>
-        <span class="sv c-pu" id="sv-mycoins"><span class="lspin"></span></span>
-      </div>
-      <div class="sc">
-        <span class="sl">Verbandsverdienst heute</span>
-        <span class="sv c-gr" id="sv-alliance-daily">${fmtMoney(allianceEarnToday())}</span>
+      <div class="sc w2 alliance-day-card" id="alliance-activity-card" title="Lokaler Live-Zähler: Erfasst gemeinsam freigegebene Verbandseinsätze, solange das Spiel geöffnet ist.">
+        <div class="alliance-day-head">
+          <span class="sl">Tageslage Verband</span>
+          <span class="alliance-activity-note"><i></i> Live-Erfassung aktiv</span>
+        </div>
+        <div class="alliance-day-grid">
+          <span class="alliance-day-metric earnings"><small>Verbandsverdienst heute</small><b id="sv-alliance-daily">${fmtMoney(allianceEarnToday())}</b></span>
+          <span class="alliance-day-metric"><small>Einsätze abgeschlossen</small><b id="sv-activity-missions">${fmt(S.allianceActivity.missions||0)}</b></span>
+          <span class="alliance-day-metric"><small>Patienten transportiert</small><b id="sv-activity-patients">${fmt(S.allianceActivity.patients||0)}</b></span>
+          <span class="alliance-day-metric"><small>Gefangene transportiert</small><b id="sv-activity-prisoners">${fmt(S.allianceActivity.prisoners||0)}</b></span>
+        </div>
+        <span class="alliance-day-foot">Einsätze, Patienten und Gefangene werden lokal gezählt, solange das Spiel geöffnet ist.</span>
       </div>
       <div class="sc w2" id="alliance-earn-board">
         <div class="rank-mini-head">
@@ -4701,7 +4908,7 @@ function buildUI(){
   body.append(tHist);
 
   // TAB: Team â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const tTeam=$(`<div id="tp-team" class="lpanel"><div id="lss7-team"><div class="lss7-empty"><span class="lspin"></span> Lade Team...</div></div></div>`);
+  const tTeam=$(`<div id="tp-team" class="lpanel"><div id="lss7-team"><div class="lss7-empty"><span class="lspin"></span> Lade Mitglieder...</div></div></div>`);
   body.append(tTeam);
   const tEvt=$(`<div id="tp-event" class="lpanel"></div>`);
   tEvt.append(`<div class="game-events-card" id="lss-game-events-card" style="display:none">
@@ -4745,18 +4952,35 @@ function buildUI(){
   const setWrap=$(`<div class="set-wrap"></div>`);
   setWrap.append(`<div class="settings-intro"><b>Einstellungen</b><span>Anzeige, Prognose, Wetter und Events sind thematisch getrennt. Änderungen werden automatisch lokal in diesem Browser gespeichert.</span></div>`);
 
-  const grpAct=$(`<div class="set-group set-wide set-actions"><div class="set-head">Schnellaktionen</div></div>`);
+  const grpNav=$(`<div class="set-group set-wide nav-style-setting" id="lss7-nav-style-setting">
+    <div class="set-head">Kopfzeilen-Button</div>
+    <div class="nav-style-showcase">
+      <div class="nav-style-preview-shell"><div id="lss7-nav-style-preview" class="nav-style-preview">${brandMarkHtml()}<span class="nav-style-preview-copy"><b>Dein Verband</b><span>WM-2026 LIVE</span></span></div></div>
+      <div><label class="tog-row"><span class="tog-lbl">Darstellung</span>
+        <select id="sb-nav-style" class="lss7-select">
+          <option value="logo"${S.settings.navButtonStyle==="logo"?" selected":""}>Nur Logo</option>
+          <option value="standard"${S.settings.navButtonStyle==="standard"?" selected":""}>Standard</option>
+          <option value="standard-no-event"${S.settings.navButtonStyle==="standard-no-event"?" selected":""}>Standard ohne Events</option>
+          <option value="name"${S.settings.navButtonStyle==="name"?" selected":""}>Nur Dein Verband</option>
+        </select>
+      </label><div class="set-note">Die Vorschau zeigt direkt, wie dein Dashboard-Button im Spiel-Header wirkt. Laufende Events bleiben im Dashboard-Header sichtbar.</div></div>
+    </div>
+    <label class="tog-row player-forecast-setting"><span class="tog-lbl">Spielerprognose anzeigen</span><select id="sb-player-forecast-place" class="lss7-select"><option value="profile"${S.settings.playerForecastPlacement!=="both"?" selected":""}>Nur im Spielerprofil</option><option value="both"${S.settings.playerForecastPlacement==="both"?" selected":""}>Spielerprofil und Menü</option></select></label>
+  </div>`);
+  setWrap.append(grpNav);
+
+  const grpAct=$(`<div class="set-group set-wide set-actions settings-actions"><div class="set-head">Schnellaktionen</div></div>`);
   grpAct.append(mkBtn("Akt.","Alle Daten jetzt aktualisieren","id='sb-refresh' class='lbtn prime'"));
   grpAct.append(mkBtn("00:00","Heutige Spielzeit zurücksetzen","id='sb-playtime-reset' class='lbtn'"));
   grpAct.append(mkBtn("7T","7-Tage-Verbandsverdienst zurücksetzen","id='sb-alliance-daily-reset' class='lbtn danger'"));
   setWrap.append(grpAct);
 
-  const grpUpdate=$(`<div class="set-group set-wide"><div class="set-head">Updates</div></div>`);
+  const grpUpdate=$(`<div class="set-group set-wide settings-updates"><div class="set-head">Updates</div></div>`);
   grpUpdate.append(`<div class="update-status" id="sb-update-status"><strong>Automatische Updates</strong><span>Tampermonkey übernimmt Updates über die hinterlegte Update-URL. Beim Start wird zusätzlich geprüft, ob die installierte Version aktuell ist.</span></div>`);
   grpUpdate.append(`<div class="update-actions"><button class="lbtn prime" id="sb-update-check" type="button">Userscripte auf Updates prüfen</button><a class="lbtn" id="sb-update-install" href="${UPDATE_URL}" target="_blank" rel="noopener" style="display:none">Update manuell installieren</a></div>`);
   setWrap.append(grpUpdate);
 
-  const grpOpt=$(`<div class="set-group set-wide"><div class="set-head">Darstellung & Bedienung</div></div>`);
+  const grpOpt=$(`<div class="set-group set-wide settings-appearance"><div class="set-head">Darstellung & Bedienung</div></div>`);
   grpOpt.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Sprache</span>
     <select id="sb-language" class="lss7-select">
@@ -4786,16 +5010,15 @@ function buildUI(){
   </label>`);
   setWrap.append(grpOpt);
 
-  const grpForecast=$(`<div class="set-group set-wide"><div class="set-head">Verbandsprognose [BETA]</div></div>`);
+  const grpForecast=$(`<div class="set-group settings-forecast"><div class="set-head">Verbandsprognose [BETA]</div></div>`);
   grpForecast.append(mkToggle("tog-forecast","Prognose in Übersicht anzeigen","forecastEnabled"));
   grpForecast.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Meilenstein in Credits</span>
     <input id="sb-forecast-target" class="lss7-select" type="number" min="1" step="1000000" style="max-width:190px" value="${Math.round(Number(S.settings.forecastTarget)||30000000000)}">
   </label>`);
   grpForecast.append(`<div class="set-note"><b>BETA-TEST:</b> Nach Eingabe des Meilensteins werden Resttage und voraussichtliches Erreichungsdatum automatisch berechnet. Ab 3 bis 7 vollständigen Tagen wird die Prognose deutlich sicherer. Leichte Abweichungen durch Events, Offline-Zeiten und wechselnde Aktivität bleiben dennoch möglich.</div>`);
-  setWrap.append(grpForecast);
 
-  const grpWx=$(`<div class="set-group set-wide"><div class="set-head">Wetter & Warnungen</div></div>`);
+  const grpWx=$(`<div class="set-group settings-weather"><div class="set-head">Wetter & Warnungen</div></div>`);
   grpWx.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Land</span>
     <select id="sb-weather-country" class="lss7-select">
@@ -4831,9 +5054,8 @@ function buildUI(){
   </label>`);
   grpWx.append(`<div class="set-note">Wetter und Vorhersage werden für Deutschland, Österreich, Schweiz, Frankreich und Niederlande unterstützt. Amtliche DWD-Warnungen sind technisch nur für Orte in Deutschland verfügbar.</div>`);
   grpWx.append(`<div class="set-note"><div class="weather-mini" id="wx-settings-view"><span class="w-l">Keine Wetterdaten</span><span class="w-r">-</span></div></div>`);
-  setWrap.append(grpWx);
 
-  const grpEvent=$(`<div class="set-group set-wide"><div class="set-head">Events / WM</div></div>`);
+  const grpEvent=$(`<div class="set-group settings-events"><div class="set-head">Events / WM</div></div>`);
   grpEvent.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Anzeige</span>
     <select id="sb-event-mode" class="lss7-select">
@@ -4842,30 +5064,45 @@ function buildUI(){
     </select>
   </label>`);
   grpEvent.append(`<button class="lbtn prime" id="sb-event-refresh" type="button">WM-Spielplan aktualisieren</button>`);
-  setWrap.append(grpEvent);
+  const settingsFeatures=$(`<div class="settings-feature-grid set-wide"></div>`);
+  settingsFeatures.append($(`<div class="settings-feature-column"></div>`).append(grpForecast,grpEvent));
+  settingsFeatures.append($(`<div class="settings-feature-column"></div>`).append(grpWx));
+  setWrap.append(settingsFeatures);
 
-  const grpInfo=$(`<div class="set-group"><div class="set-head">Informationen</div></div>`);
-  grpInfo.append(`<div class="set-note">${infoHTML()}</div>`);
-  setWrap.append(grpInfo);
+  const grpInfo=$(`<div class="set-group set-wide settings-info author-message"><div class="set-head">Informationen & ein paar Worte von mir</div></div>`);
+  grpInfo.append(`<div class="settings-info-grid"><div class="set-note">${infoHTML()}</div><div class="author-message-content">
+    <div class="author-message-lead">Vielen Dank für die Nutzung meines Skripts</div>
+    <p><b>Liebe Nutzerinnen und Nutzer,</b></p>
+    <p>vielen Dank, dass ihr mein Skript nutzt. In den vergangenen Wochen und Monaten habe ich viel Zeit, Arbeit und Leidenschaft in die Entwicklung dieses Projekts investiert. Es freut mich sehr, dass ihr mein Skript verwendet, und ich hoffe, dass es euch den Verbandsalltag erleichtert und einen echten Mehrwert bietet.</p>
+    <p>Euer Feedback ist mir besonders wichtig. Solltet ihr Anregungen, Verbesserungsvorschläge, Fehlerberichte oder sonstige Hinweise haben, könnt ihr jederzeit über den Kontakt-Button mit mir in Verbindung treten. Jede Rückmeldung hilft dabei, das Skript weiterzuentwickeln und noch besser zu machen.</p>
+    <h4>Kostenlose Nutzung</h4>
+    <p>Mir ist wichtig zu betonen, dass dieses Skript auch in Zukunft kostenlos bleiben wird. Es handelt sich um mein erstes großes Programmierprojekt, das ich nutze, um meine Fähigkeiten weiterzuentwickeln, neue Ideen umzusetzen und praktische Erfahrungen zu sammeln.</p>
+    <p>Gleichzeitig möchte ich damit der Community ein hilfreiches Werkzeug zur Verfügung stellen, das dabei unterstützt, den Überblick über den eigenen Verband zu behalten und wichtige Informationen übersichtlich darzustellen.</p>
+    <h4>Wie könnt ihr mich unterstützen?</h4>
+    <p>Die beste Unterstützung ist euer Feedback. Verbesserungsvorschläge, Ideen für neue Funktionen oder Hinweise auf Fehler helfen mir dabei, das Skript kontinuierlich weiterzuentwickeln.</p>
+    <p>Auf Spenden oder Trinkgelder möchte ich bewusst verzichten. Dieses Projekt ist ein echtes Herzensprojekt und wird aus Freude am Programmieren entwickelt. Die Entwicklung solcher Lösungen ist nicht nur mein Hobby, sondern auch meine Leidenschaft und mein Beruf.</p>
+    <p class="author-message-thanks">Vielen Dank für euer Vertrauen und eure Unterstützung!</p>
+  </div></div>`);
 
-  const grpContact=$(`<div class="set-group"><div class="set-head">Kontakt</div></div>`);
+  const grpContact=$(`<div class="set-group set-wide settings-contact"><div class="set-head">Kontakt</div></div>`);
   grpContact.append(`<div class="set-note">
     Bug gefunden, Feedback oder Verbesserungsvorschlag? Dann melde dich gern direkt im Spiel.
     <div style="margin-top:8px">
       <a class="lbtn prime" href="${BASE}/profile/687089" target="_blank" rel="noopener">Kontakt aufnehmen</a>
     </div>
   </div>`);
-  setWrap.append(grpContact);
 
-  const grpPn=$(`<div class="set-group set-wide"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v9.1.0</b><br>Verbandsoffene Lehrgänge, korrigierte Teamrollen, Spielerplatzierung und Spielerprognose, überarbeiteter Fuhrpark, anpassbarer Header-Button sowie zusätzliche Schutzmaßnahmen gegen Eingriffe in fremde Spielinhalte.</div>`);
+  const grpPn=$(`<div class="set-group set-wide settings-patch-notes"><div class="set-head">Patch-Notes</div></div>`);
+  grpPn.append(`<div class="set-note"><b>v9.1.1</b><br>Professioneller Mitgliederbereich mit Verwaltung, überarbeitetes Spielerprofil, neue Tageslage, verbesserte Navigation und Logos, aufgeräumte Einstellungen sowie zahlreiche Darstellungs- und Stabilitätskorrekturen.</div>`);
   setWrap.append(grpPn);
+  setWrap.append(grpContact);
+  setWrap.append(grpInfo);
 
   tSet.append(setWrap);
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v9.1.0",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v9.1.1",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -4932,16 +5169,40 @@ function buildUI(){
     renderPlaytimeStats();
     $("#playtime-pop").toggleClass("open");
   });
+  panel.on("click",".prof-view-btn",e=>{
+    e.stopPropagation();e.preventDefault();
+    const view=String($(e.currentTarget).data("prof-view")||"summary");
+    panel.find(".prof-view-btn").removeClass("active");
+    $(e.currentTarget).addClass("active");
+    $("#prof-forecast-panel").toggleClass("open",view==="forecast");
+    if(view==="forecast"){renderPlayerForecast();fetchPlayerRanking();}
+  });
+  panel.on("click","#prof-placement",e=>{
+    e.stopPropagation();e.preventDefault();
+    panel.find('.prof-view-btn[data-prof-view="forecast"]').trigger("click");
+  });
   panel.on("click",e=>{
     if(!$(e.target).closest("#qs-playtime-cell").length) $("#playtime-pop").removeClass("open");
   });
   panel.on("change","#sb-panel-mode",e=>{
+    e.stopPropagation();
     S.settings.panelMode=String($(e.currentTarget).val()||"floating");
     save();applyPanelMode();
   });
   panel.on("change","#sb-theme",e=>{
+    e.stopPropagation();
     S.settings.panelTheme=String($(e.currentTarget).val()||"dark");
     save();applyPanelMode();
+  });
+  panel.on("change","#sb-nav-style",e=>{
+    e.stopPropagation();
+    S.settings.navButtonStyle=String($(e.currentTarget).val()||"standard");
+    save();applyNavButtonStyle();renderNavStylePreview();
+  });
+  panel.on("change","#sb-player-forecast-place",e=>{
+    e.stopPropagation();
+    S.settings.playerForecastPlacement=String($(e.currentTarget).val()||"profile");
+    save();applyPlayerForecastPlacement();
   });
   panel.on("change","#sb-language",e=>{
     S.settings.language=String($(e.currentTarget).val()||"de");
@@ -5042,6 +5303,38 @@ function buildUI(){
   });
   panel.on("input","#team-search",filterTeamRows);
   panel.on("change","#team-filter",filterTeamRows);
+  panel.on("click",".team-manage",function(e){
+    e.stopPropagation();e.preventDefault();
+    const btn=$(this),id=String(btn.data("user-id")||""),drawer=btn.closest(".team-card").find(".team-admin-drawer");
+    const open=!drawer.hasClass("open");
+    $("#lss7-team .team-admin-drawer").not(drawer).removeClass("open");
+    $("#lss7-team .team-manage").not(btn).removeClass("open");
+    drawer.toggleClass("open",open);btn.toggleClass("open",open);
+    if(!open)return;
+    drawer.html(`<div class="team-admin-loading"><span class="lspin"></span> Berechtigungen werden direkt beim Leitstellenspiel geprüft...</div>`);
+    fetchTeamProfileActions(id,actions=>drawer.html(teamAdminActionsHtml(id,actions)));
+  });
+  panel.on("click",".team-admin-action",async function(e){
+    e.stopPropagation();e.preventDefault();
+    const btn=$(this),href=String(btn.data("href")||""),method=String(btn.data("method")||"get").toUpperCase(),label=String(btn.data("label")||"Aktion");
+    if(!href)return;
+    if(/^\/messages\/new/i.test(href)){location.href=`${BASE}${href}`;return;}
+    const warning=String(btn.data("danger"))==="1"?`Achtung: ${label} wirklich ausführen?`:`${label} wirklich ausführen?`;
+    if(!window.confirm(warning))return;
+    btn.prop("disabled",true).text("Wird ausgeführt...");
+    try{
+      const headers={"X-Requested-With":"XMLHttpRequest","Accept":"text/html,application/xhtml+xml"};
+      const csrf=document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+      if(csrf)headers["X-CSRF-Token"]=csrf;
+      const response=await fetch(`${BASE}${href}`,{method:method==="POST"?"POST":"GET",credentials:"include",headers,redirect:"follow"});
+      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      btn.text("Ausgeführt");
+      S.teamAdmin.lastTs=0;delete S.teamAdmin.profiles[String(btn.closest(".team-admin-drawer").data("admin-user")||"")];
+      setTimeout(()=>fetchAlliance(),700);
+    }catch{
+      btn.prop("disabled",false).text("Fehlgeschlagen - erneut versuchen");
+    }
+  });
   panel.on("input","#schooling-search",filterSchoolingRows);
   panel.on("change","#schooling-filter",filterSchoolingRows);
   panel.on("click","#schooling-refresh",e=>{
@@ -5062,6 +5355,7 @@ function buildUI(){
     S.settings[key]=!S.settings[key];save();
     $(this).find(".tog-track").toggleClass("on",S.settings[key]);
     if(key==="playtimeEnabled")updatePlaytimeUi();
+    if(key==="coins")updateCoinsUi();
     if(key==="forecastEnabled")renderForecast();
   });
 
@@ -5317,6 +5611,44 @@ function mkAccordion(icon,title,body){
 function patchHTML(){
   const groups=[
     {
+      title:"v9.1.1 — Spielerprofil, Navigation & Updates",
+      items:[
+        "Das Spielerprofil wurde größer, übersichtlicher und professioneller aufgebaut; Dienstgrad und Verbandsrolle stehen jetzt gemeinsam in einer klaren Badge-Zeile.",
+        "Die Spielerplatzierung wird als hervorgehobene Toplisten-Karte dargestellt und öffnet direkt die persönliche Spielerprognose.",
+        "Spielerprognose und 7-Tage-Statistik sind als kleines Untermenü direkt in das Spielerprofil integriert.",
+        "In den Einstellungen kann gewählt werden, ob die Spielerprognose nur im Profil oder zusätzlich als eigener Menüpunkt erscheint.",
+        "Verband, Spieler und Werkzeuge stehen jetzt in einer gemeinsamen, aufgeräumten Navigationszeile; die Menüschrift wurde heller und besser lesbar gestaltet.",
+        "Übersicht wird wieder korrekt mit Ü geschrieben.",
+        "Dashboard- und Spiel-Header verwenden ein neu proportioniertes VS-Funksignal-Logo ohne Verzerrung.",
+        "Level-Up wurde durch die eindeutigere Bezeichnung Beförderungs-Belohnung ersetzt.",
+        "Update-Hinweise zeigen bei einer verfügbaren Version jetzt direkt den Button Jetzt installieren mit dem RAW-Installationslink.",
+        "Die 7-Tage-Spielzeit liegt nun auf einer höheren Darstellungsebene und wird nicht mehr hinter Menübereichen verdeckt.",
+        "Das kompakte VS-Funksignal-Logo im Spiel-Header wurde gegen alte Logo-Regeln abgesichert und wird nicht mehr abgeschnitten.",
+        "Coins stehen jetzt direkt neben den eigenen Credits in der oberen Schnellanzeige und wurden aus der Verbandsübersicht entfernt.",
+        "Der Event-Menüpunkt ist in allen Themes kontrastreicher, trägt einen LIVE-Hinweis und wird mit einer dezenten Animation hervorgehoben.",
+        "Spielerplatzierung und Topliste wurden in der Profilkarte wie gewünscht getauscht.",
+        "Datum und Uhrzeit werden jetzt getrennt, größer und besser lesbar dargestellt.",
+        "Der Schließen-Button der Update-Benachrichtigung steht nun zuverlässig ganz rechts.",
+        "Der bisherige Menüpunkt Team heißt jetzt Mitglieder & Verwaltung und beschreibt die Mitgliederübersicht sowie die rollenabhängigen Verwaltungsfunktionen eindeutiger.",
+        "Der Mitgliederbereich besitzt jetzt eine rollenabhängige Verwaltung. Angezeigt werden ausschließlich Aktionen, die Leitstellenspiel auf der Mitglieder- oder Profilseite wirklich freigibt.",
+        "Unterstützt werden je nach Berechtigung Rauswerfen, Rollen setzen oder entfernen, Verbandschat-Banns, Bewerbungsverbot und direkte Nachrichten.",
+        "Kritische Teamaktionen verlangen eine zusätzliche Bestätigung und verwenden bei POST-Aktionen den CSRF-Schutz des Spiels.",
+        "Der Dashboard-Button im Spiel-Header übernimmt jetzt exakt die Höhe der originalen Navigationsleiste; das VS-Funksignal wurde neu zentriert und kompakter proportioniert.",
+        "Die Übersicht zeigt neben dem heutigen Verbandsverdienst eine neue Live-Statistik für beobachtete abgeschlossene Verbandseinsätze sowie deren Patienten und Gefangene.",
+        "Die Verbandsaktivität wird lokal gespeichert, täglich zurückgesetzt und zählt transparent nur Vorgänge, die bei geöffneter Spielseite live empfangen wurden.",
+        "Verbandsverdienst und Live-Aktivität wurden zu einer gemeinsamen, gleichmäßig aufgebauten Tageslage mit vier klaren Kennzahlen zusammengeführt.",
+        "Unterhalb der Kontaktbox befindet sich jetzt eine persönliche Nachricht des Entwicklers zur kostenlosen Nutzung, zum Projekt und zu Feedbackmöglichkeiten.",
+        "Die Einstellungen wurden in eine professionelle Themenreihenfolge mit klaren Spalten für Darstellung, Funktionen, Updates, Informationen und Kontakt gebracht.",
+        "Die Auswahl für den Kopfzeilen-Button und die allgemeinen Darstellungsoptionen reagieren wieder zuverlässig und speichern Änderungen sofort.",
+        "Der Kopfzeilen-Button befindet sich ausschließlich in den Einstellungen und wird nicht mehr versehentlich im Verlauf eingeblendet.",
+        "Updates stehen jetzt direkt unter dem Kopfzeilen-Button; Event und WM wurden unter der Verbandsprognose einsortiert.",
+        "Kontakt und Informationen bilden den Abschluss der Einstellungen. Die persönlichen Worte des Entwicklers sind nun in die vollbreite Infobox integriert.",
+        "Der BETA-Hinweis wurde bei der Spielerprognose entfernt; die Verbandsprognose bleibt weiterhin als BETA gekennzeichnet.",
+        "Dashboard- und Spiel-Header verwenden ein vollständig neu gestaltetes, längliches VS-PRO-Emblem mit animiertem Funksignal.",
+        "Version und Patch-Notes wurden auf v9.1.1 aktualisiert."
+      ]
+    },
+    {
       title:"v9.1.0 — Stabilität, Spielerprognose & Fuhrpark",
       items:[
         "Lehrgänge werden jetzt ohne feste Verbands-ID aus der alliance_schoolings-API des jeweils angemeldeten Verbandes geladen; die API-Antwort wird korrekt aus result gelesen.",
@@ -5326,7 +5658,7 @@ function patchHTML(){
         "Die doppelte Live-Event-Anzeige unter dem Spielerprofil wurde entfernt. Laufende Events bleiben kompakt im Dashboard- und Spiel-Header sichtbar.",
         "Fuhrpark & Standorte wurde neu strukturiert: Kennzahlen, klare Statusreihenfolge, funktionsfähige Balken sowie übersichtlichere Standort- und Ausbauinformationen.",
         "Neue Einstellung für den Spiel-Header: nur Logo, Standard, Standard ohne Events oder nur Dein Verband.",
-        "Neue Spielerprognose [BETA] mit persönlichem Tagesdurchschnitt, Restcredits, geschätzter Dauer bis zur nächsten Beförderung und lokal gespeicherter Datengrundlage.",
+        "Neue Spielerprognose mit persönlichem Tagesdurchschnitt, Restcredits, geschätzter Dauer bis zur nächsten Beförderung und lokal gespeicherter Datengrundlage.",
         "Die persönliche Platzierung wird über die Spieler-Topliste gesucht und direkt im Profilbereich angezeigt.",
         "Schutz vor unerwünschten Änderungen verstärkt: Das Skript läuft nicht mehr in eingebetteten Lightbox-Frames und schreibt sichtbare Werte nur noch innerhalb des eigenen Dashboards.",
         "Das Floating-Menü nutzt die verfügbare Bildschirmhöhe, ist horizontal anpassbar und die veraltete Panel-Größen-Auswahl wurde entfernt.",
@@ -5547,32 +5879,76 @@ function infoHTML(){
 // â•‘  NAV TRIGGER                                                 â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 GM_addStyle(`
-/* v9.1.0 UI refinement */
-#lss7-tabs{display:block;overflow:visible;padding:7px 9px;background:var(--bg1);}
-.lss7-nav-primary,.lss7-nav-secondary{display:flex;gap:6px;min-width:0;}
-.lss7-nav-secondary{display:grid;grid-template-columns:minmax(180px,.72fr) minmax(0,1.28fr);margin-top:5px;}
+/* v9.1.1 UI refinement */
+#lss7-tabs{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(160px,.62fr) minmax(0,1fr);gap:6px;overflow:visible;padding:7px 9px;background:var(--bg1);}
+#lss7-tabs.player-menu-hidden{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);}
 .lss7-nav-group{display:flex;align-items:stretch;min-width:0;overflow-x:auto;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);scrollbar-width:thin;}
 .lss7-nav-group-label{display:flex;align-items:center;padding:0 9px;border-right:1px solid var(--b1);color:var(--t4);font-size:7.5px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;}
 .lss7-nav-group-tabs{display:flex;align-items:stretch;min-width:max-content;}
-.lss7-nav-group .ltab{min-height:34px;padding:8px 10px;font-size:9.5px;display:flex;align-items:center;}
+.lss7-nav-group .ltab{min-height:34px;padding:8px 10px;font-size:9.5px;display:flex;align-items:center;color:var(--t2);font-weight:800;}
+.lss7-nav-group .ltab:hover{color:var(--t1)}.lss7-nav-group .ltab.active{color:#fff!important;text-shadow:0 1px 5px rgba(0,0,0,.28)}
 .lss7-nav-alliance{border-color:rgba(59,130,246,.28);background:linear-gradient(90deg,rgba(59,130,246,.07),transparent 38%);}
 .lss7-nav-alliance .lss7-nav-group-label{color:var(--blueh);background:rgba(59,130,246,.08);}
 .lss7-nav-player .lss7-nav-group-label{color:var(--purpleh);background:rgba(168,85,247,.08);}
 .lss7-nav-tools .lss7-nav-group-label{color:var(--t3);background:rgba(148,163,184,.06);}
-.lss7-nav-secondary .ltab{min-height:29px;padding:6px 9px;font-size:8.5px;}
+#lss7-btn .lss7-nav-lbl{color:#f8fafc!important;font-weight:900!important;text-shadow:0 1px 4px rgba(0,0,0,.45)}
+#lss7-btn .lss7-nav-events,#lss7-btn .lss7-nav-event{color:#dfffea!important;font-weight:850!important;opacity:1!important}
+#lss7-btn{height:50px!important;min-height:50px!important;padding:8px 10px!important;margin:0!important;border-radius:0!important;overflow:visible!important;line-height:normal!important;box-sizing:border-box!important;}
+#lss7-btn .lss7-nav-mark.brand-emblem{width:52px!important;height:30px!important;min-width:52px!important;padding:0 6px!important;overflow:hidden!important;border-radius:7px!important;align-items:center!important;justify-content:space-between!important;}
+#lss7-btn .lss7-nav-mark.brand-emblem::before{display:none!important;content:none!important;}
+#lss7-btn .lss7-nav-mark .brand-letter{font-size:12px!important;}
+#lss7-btn .lss7-nav-mark .brand-pro{font-size:4.5px!important;}
+#lss7-btn .lss7-nav-mark .brand-signal{width:17px!important;height:15px!important;}
+#lss7-btn.nav-logo-only{padding:8px 10px!important;}
+#lss7-btn.nav-name-only{padding:0 14px!important;}
+#lss7-btn .lss7-nav-copy{justify-content:center!important;}
+.lss7-navbar-item{height:50px!important;display:flex!important;align-items:stretch!important;}
+.alliance-day-card{position:relative;overflow:hidden;padding:11px 12px!important;background:linear-gradient(135deg,rgba(14,165,233,.055),rgba(34,197,94,.045))!important;}
+.alliance-day-card::after{content:'';position:absolute;inset:auto -34px -64px auto;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(34,197,94,.11),transparent 68%);pointer-events:none;}
+.alliance-day-head{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.alliance-day-head .sl{margin:0;}
+.alliance-day-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(210px,1.35fr) repeat(3,minmax(120px,1fr));gap:7px;}
+.alliance-day-metric{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0;min-height:54px;padding:9px 10px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);}
+.alliance-day-metric.earnings{border-color:rgba(34,197,94,.22);background:linear-gradient(125deg,rgba(34,197,94,.10),rgba(14,165,233,.035));}
+.alliance-day-metric small{color:var(--t3);font-size:7.5px;font-weight:850;text-transform:uppercase;letter-spacing:.35px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.alliance-day-metric b{color:var(--greenh);font:900 15px/1.1 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.alliance-day-metric.earnings b{font-size:17px;}
+.alliance-day-foot{position:relative;z-index:1;display:block;margin-top:6px;color:var(--t4);font-size:7.5px;line-height:1.35;}
+.alliance-activity-note{display:flex;align-items:center;gap:5px;color:var(--greenh);font-size:7.5px;font-weight:800;line-height:1.25;white-space:nowrap;}
+.alliance-activity-note i{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green);animation:lpulse 2.4s ease-in-out infinite;}
+#lss7.theme-light .alliance-day-metric,#lss7.theme-summer .alliance-day-metric{background:rgba(255,255,255,.66);}
+.author-message{position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(59,130,246,.06),rgba(34,197,94,.025));}
+.author-message::after{content:'VS';position:absolute;right:18px;bottom:-18px;color:var(--t1);font:950 76px/1 var(--head);opacity:.025;pointer-events:none;}
+.author-message-content{position:relative;z-index:1;max-width:980px;padding:3px 2px;color:var(--t2);font-size:9.5px;line-height:1.65;}
+.author-message-lead{margin-bottom:12px;color:var(--t1);font:850 17px/1.25 var(--head);}
+.author-message-content p{margin:0 0 10px;}
+.author-message-content h4{margin:16px 0 7px;padding-top:11px;border-top:1px solid var(--b1);color:var(--blueh);font:850 11px/1.2 var(--head);}
+.author-message-thanks{margin-top:14px!important;color:var(--greenh);font-weight:850;}
+@media(max-width:760px){.alliance-day-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.alliance-day-metric.earnings{grid-column:1/-1}.alliance-day-head{align-items:flex-start;flex-direction:column}.author-message-content{font-size:9px}}
+@media(max-width:460px){.alliance-day-grid{grid-template-columns:1fr}.alliance-day-metric.earnings{grid-column:auto}}
+.ltab[data-tab="tp-event"]{position:relative;isolation:isolate;color:#ffe8a3!important;border-color:rgba(245,158,11,.36)!important;background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(239,68,68,.08))!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),0 0 0 rgba(245,158,11,0);animation:lss7-event-tab 2.6s ease-in-out infinite;}
+.ltab[data-tab="tp-event"]::after{content:'LIVE';margin-left:6px;padding:2px 4px;border-radius:4px;background:#e11d48;color:#fff;font:900 6px/1 var(--mono);letter-spacing:.5px;box-shadow:0 0 8px rgba(225,29,72,.45);}
+.ltab[data-tab="tp-event"]:hover,.ltab[data-tab="tp-event"].active{color:#fff7d6!important;border-color:rgba(245,158,11,.68)!important;background:linear-gradient(135deg,rgba(245,158,11,.30),rgba(225,29,72,.16))!important;}
+#lss7.theme-light .ltab[data-tab="tp-event"],#lss7.theme-summer .ltab[data-tab="tp-event"]{color:#744500!important;background:linear-gradient(135deg,#fff0b8,#ffe1d6)!important;border-color:#d79220!important;}
+#lss7.theme-light .ltab[data-tab="tp-event"].active,#lss7.theme-summer .ltab[data-tab="tp-event"].active{color:#fff!important;background:linear-gradient(135deg,#bd6811,#bd2847)!important;}
+@keyframes lss7-event-tab{0%,100%{box-shadow:0 0 0 rgba(245,158,11,0)}50%{box-shadow:0 0 14px rgba(245,158,11,.24)}}
+@media(prefers-reduced-motion:reduce){.ltab[data-tab="tp-event"]{animation:none!important}}
 #lss7.theme-summer .hd-event-badge.event-wm{color:#fff!important;background:#147a45!important;border-color:#0d5d34!important;box-shadow:0 4px 13px rgba(20,122,69,.26)!important;text-shadow:0 1px 1px rgba(0,0,0,.18);}
-.brand-emblem{position:relative;display:inline-flex;align-items:flex-end;justify-content:center;gap:2px;overflow:hidden;border:1px solid rgba(96,165,250,.38);border-radius:8px;background:linear-gradient(145deg,#0c1c36,#173d67 62%,#0e7490);box-shadow:0 6px 18px rgba(2,12,27,.28),inset 0 1px rgba(255,255,255,.18);}
-.brand-emblem::before{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent 18%,rgba(255,255,255,.14) 46%,transparent 70%);transform:translateX(-110%);animation:lss7-brand-sheen 5.4s ease-in-out infinite;}
-.brand-letter{position:relative;z-index:1;color:#fff;font-family:var(--head);font-weight:950;line-height:1;letter-spacing:0;}
-.brand-bars{position:relative;z-index:1;display:flex;align-items:flex-end;gap:1.5px;}
-.brand-bars b{display:block;width:2.5px;border-radius:2px 2px 0 0;background:#5eead4;box-shadow:0 0 5px rgba(94,234,212,.45);}
-.brand-bars b:nth-child(1){height:6px}.brand-bars b:nth-child(2){height:10px}.brand-bars b:nth-child(3){height:14px;background:#60a5fa}
-.hd-mark.brand-emblem{width:39px;height:39px;transform:none;padding:0 7px 8px;flex-shrink:0;}
-.hd-mark.brand-emblem .brand-letter{font-size:21px;}
-.lss7-nav-mark.brand-emblem{width:31px;height:31px;padding:0 5px 6px;transform:none;flex-shrink:0;}
-.lss7-nav-mark.brand-emblem .brand-letter{font-size:16px;}
-.lss7-nav-mark.brand-emblem .brand-bars b{width:2px}.lss7-nav-mark.brand-emblem .brand-bars b:nth-child(1){height:4px}.lss7-nav-mark.brand-emblem .brand-bars b:nth-child(2){height:7px}.lss7-nav-mark.brand-emblem .brand-bars b:nth-child(3){height:10px}
+.brand-emblem{position:relative;display:inline-flex;align-items:center;justify-content:space-between;gap:6px;overflow:hidden;box-sizing:border-box;border:1px solid rgba(96,165,250,.42);border-radius:9px;background:linear-gradient(120deg,#071426 0%,#12385b 48%,#075e70 100%);box-shadow:0 6px 18px rgba(2,12,27,.30),inset 0 1px rgba(255,255,255,.17),inset 0 -1px rgba(2,12,27,.32);}
+.brand-emblem::before{content:'';position:absolute;inset:0;background:linear-gradient(110deg,transparent 18%,rgba(255,255,255,.16) 46%,transparent 72%);transform:translateX(-120%);animation:lss7-brand-sheen 5.4s ease-in-out infinite;}
+.brand-emblem::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,#38bdf8,#2dd4bf,#4ade80);box-shadow:0 0 8px rgba(45,212,191,.5);}
+.brand-core{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;line-height:1;}
+.brand-letter{display:block;color:#fff;font-family:var(--head);font-weight:950;line-height:.92;letter-spacing:0;white-space:nowrap;transform:none!important;text-shadow:0 1px 4px rgba(0,0,0,.45);}
+.brand-pro{display:block;margin-top:2px;color:#8ee8dd;font:900 5px/1 var(--mono);letter-spacing:1.1px;}
+.brand-signal{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:flex-end;gap:2px;width:25px;height:22px;padding-left:6px;border-left:1px solid rgba(255,255,255,.17);}
+.brand-signal i{display:block;width:3px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#a7f3d0,#22d3ee);box-shadow:0 0 5px rgba(45,212,191,.5);animation:lss7-brand-bars 2.8s ease-in-out infinite;}
+.brand-signal i:nth-child(1){height:5px;animation-delay:-.6s}.brand-signal i:nth-child(2){height:9px;animation-delay:-.3s}.brand-signal i:nth-child(3){height:14px}.brand-signal i:nth-child(4){height:19px;animation-delay:.25s;background:linear-gradient(180deg,#bfdbfe,#60a5fa)}
+.hd-mark.brand-emblem{width:82px;height:40px;transform:none;padding:0 9px;flex-shrink:0;}
+.hd-mark.brand-emblem .brand-letter{font-size:17px;}.hd-mark.brand-emblem .brand-pro{font-size:5px}.hd-mark.brand-emblem .brand-signal{width:28px;height:23px;}
+.lss7-nav-mark.brand-emblem{width:52px;height:30px;padding:0 6px;transform:none;flex-shrink:0;}
+.lss7-nav-mark.brand-emblem .brand-letter{font-size:12px;}
 @keyframes lss7-brand-sheen{0%,64%{transform:translateX(-110%)}82%,100%{transform:translateX(125%)}}
+@keyframes lss7-brand-bars{0%,100%{opacity:.72;transform:scaleY(.88)}50%{opacity:1;transform:scaleY(1.08)}}
 .fleet-command{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:14px 15px;margin-bottom:8px;border:1px solid var(--b1);border-radius:8px;background:linear-gradient(125deg,rgba(59,130,246,.11),rgba(14,165,233,.035) 58%,transparent);}
 .fleet-command-copy{min-width:0}.fleet-command-eyebrow{display:block;color:var(--blueh);font-size:8px;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.fleet-command-title{display:block;margin-top:3px;color:var(--t1);font:850 17px/1.2 var(--head)}.fleet-command-sub{display:block;margin-top:4px;color:var(--t3);font-size:9.5px;line-height:1.45;max-width:700px}.fleet-command-badge{flex-shrink:0;padding:5px 8px;border:1px solid rgba(34,197,94,.28);border-radius:6px;color:var(--greenh);background:rgba(34,197,94,.08);font:850 9px/1 var(--mono)}
 .fleet-status-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:9px 0;}
@@ -5599,21 +5975,38 @@ GM_addStyle(`
 .player-daily-row{display:grid;grid-template-columns:68px minmax(60px,1fr) 104px;align-items:center;gap:8px;min-height:25px;border-top:1px solid var(--b0);font-size:8.5px}.player-daily-row:first-child{border-top:0}.player-daily-day{color:var(--t3)}.player-daily-bar{height:5px;border-radius:5px;background:rgba(148,163,184,.10);overflow:hidden}.player-daily-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#2563eb,#22c55e)}.player-daily-val{text-align:right;color:var(--greenh);font:800 8.5px/1 var(--mono)}
 .nav-style-setting{position:relative;overflow:hidden;border-color:rgba(59,130,246,.32)!important;background:linear-gradient(135deg,rgba(59,130,246,.10),rgba(14,165,233,.035))!important;box-shadow:0 8px 24px rgba(2,12,27,.10);}
 .nav-style-setting::before{content:'HEADER';position:absolute;right:10px;top:8px;color:rgba(96,165,250,.38);font:900 8px/1 var(--mono);letter-spacing:1px;}
+.player-forecast-setting{margin:0 12px 11px;padding-top:10px;border-top:1px solid var(--b1);}
+.lss7-update-install{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:5px 9px;border:1px solid rgba(34,197,94,.38);border-radius:6px;background:rgba(34,197,94,.13);color:var(--greenh)!important;font-size:8.5px;font-weight:900;text-decoration:none!important;white-space:nowrap;}
+.lss7-update-install:hover{background:rgba(34,197,94,.23);border-color:rgba(34,197,94,.62);}
+.lss7-update-close{order:99!important;margin-left:4px!important;flex:0 0 22px!important;}
+.team-card-tools{display:flex;align-items:center;gap:5px;justify-self:end;}
+.team-manage{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(59,130,246,.30);border-radius:6px;background:var(--blue3);color:var(--blueh);font-size:12px;cursor:pointer;}
+.team-manage:hover,.team-manage.open{border-color:rgba(59,130,246,.58);background:rgba(59,130,246,.19);color:#fff;}
+.team-admin-drawer{display:none;grid-column:1/-1;margin-top:4px;padding:10px;border:1px solid var(--b1);border-radius:7px;background:rgba(3,9,18,.22);}
+.team-admin-drawer.open{display:block;}
+.team-admin-loading,.team-admin-empty,.team-admin-note{color:var(--t4);font-size:8.5px;line-height:1.4;}
+.team-admin-groups{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px;}
+.team-admin-action{min-height:27px;padding:5px 8px;border:1px solid rgba(59,130,246,.28);border-radius:6px;background:var(--blue3);color:var(--blueh);font-size:8px;font-weight:850;cursor:pointer;}
+.team-admin-action.role{border-color:rgba(34,197,94,.28);background:rgba(34,197,94,.08);color:var(--greenh);}
+.team-admin-action.contact{border-color:rgba(34,211,238,.28);background:rgba(34,211,238,.08);color:var(--cyanh);}
+.team-admin-action.danger{border-color:rgba(239,68,68,.34);background:rgba(239,68,68,.09);color:#fca5a5;}
+.team-admin-action:hover{filter:brightness(1.16);transform:translateY(-1px);}
+.team-admin-action:disabled{opacity:.55;cursor:wait;transform:none;}
+#lss7.theme-light .team-admin-drawer,#lss7.theme-summer .team-admin-drawer{background:rgba(255,255,255,.62);}
 .nav-style-showcase{display:grid;grid-template-columns:minmax(210px,.72fr) minmax(0,1.28fr);gap:12px;align-items:center;margin:9px 0 10px;}
 .nav-style-preview-shell{padding:11px;border:1px solid var(--b1);border-radius:8px;background:#121923;}
 .nav-style-preview{min-height:42px;display:flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid rgba(148,163,184,.18);border-radius:7px;background:linear-gradient(180deg,#202a38,#141c27);color:#f8fafc;}
-.nav-style-preview .brand-emblem{width:29px;height:29px;padding:0 5px 6px}.nav-style-preview .brand-letter{font-size:15px}.nav-style-preview-copy{min-width:0;display:flex;flex-direction:column;gap:2px}.nav-style-preview-copy b{font-size:10px}.nav-style-preview-copy span{color:#86efac;font-size:7.5px}.nav-style-preview.preview-logo .nav-style-preview-copy,.nav-style-preview.preview-name .nav-style-preview-copy span,.nav-style-preview.preview-no-event .nav-style-preview-copy span{display:none}.nav-style-preview.preview-name .brand-emblem{display:none}
-.lss7-nav-mark.brand-emblem>span,.hd-mark.brand-emblem>span{transform:none!important;filter:none!important;}
-.lss7-nav-mark.brand-emblem .brand-letter,.hd-mark.brand-emblem .brand-letter{display:block!important;}
-.lss7-nav-mark.brand-emblem .brand-bars,.hd-mark.brand-emblem .brand-bars{display:flex!important;}
+.nav-style-preview .brand-emblem{width:52px;height:29px;padding:0 6px}.nav-style-preview .brand-letter{font-size:12px}.nav-style-preview .brand-signal{width:17px;height:15px}.nav-style-preview-copy{min-width:0;display:flex;flex-direction:column;gap:2px}.nav-style-preview-copy b{font-size:10px}.nav-style-preview-copy span{color:#86efac;font-size:7.5px}.nav-style-preview.preview-logo .nav-style-preview-copy,.nav-style-preview.preview-name .nav-style-preview-copy span,.nav-style-preview.preview-no-event .nav-style-preview-copy span{display:none}.nav-style-preview.preview-name .brand-emblem{display:none}
+.prof-placement{display:flex!important;max-width:none!important;padding:9px 12px 9px 48px!important;border-radius:8px!important;font-size:inherit!important;white-space:normal!important;overflow:visible!important;}
 .wm-row.finished .wm-status,.wm-mini-row.finished .wm-mini-s{color:#4ade80!important}.wm-row.planned .wm-status,.wm-mini-row.planned .wm-mini-s{color:#fbbf24!important}.wm-status{font-weight:900}.wm-row.finished{border-left:3px solid rgba(34,197,94,.62)}.wm-row.planned{border-left:3px solid rgba(245,158,11,.62)}
 #lss7.theme-summer .wm-row.finished .wm-status{color:#146b3b!important;background:#e1f6e9;border-color:#58a978}#lss7.theme-summer .wm-row.planned .wm-status{color:#754600!important;background:#fff1bd;border-color:#c58a19}
 @media(max-width:900px){.fleet-status-layout{grid-template-columns:1fr}}
-@media(max-width:760px){.lss7-nav-secondary{grid-template-columns:1fr}.asset-kpis.asset-kpis-pro{grid-template-columns:repeat(2,minmax(0,1fr))}.building-detail-row{grid-template-columns:minmax(140px,1fr) repeat(3,60px)}.building-detail-row .building-detail-stat:nth-last-child(-n+2){display:none}.nav-style-showcase{grid-template-columns:1fr}.fleet-command{align-items:stretch;flex-direction:column}.fleet-command-badge{align-self:flex-start}.fleet-panel{padding:9px}}
+@media(max-width:920px){#lss7-tabs,#lss7-tabs.player-menu-hidden{display:flex;overflow-x:auto}.lss7-nav-group{flex:0 0 auto;max-width:78vw}}
+@media(max-width:760px){.asset-kpis.asset-kpis-pro{grid-template-columns:repeat(2,minmax(0,1fr))}.building-detail-row{grid-template-columns:minmax(140px,1fr) repeat(3,60px)}.building-detail-row .building-detail-stat:nth-last-child(-n+2){display:none}.nav-style-showcase{grid-template-columns:1fr}.fleet-command{align-items:stretch;flex-direction:column}.fleet-command-badge{align-self:flex-start}.fleet-panel{padding:9px}}
 `);
 
 function brandMarkHtml(extraClass=""){
-  return `<span class="brand-emblem ${extraClass}" aria-hidden="true"><span class="brand-letter">V</span><span class="brand-bars"><b></b><b></b><b></b></span></span>`;
+  return `<span class="brand-emblem ${extraClass}" aria-hidden="true"><span class="brand-core"><span class="brand-letter">VS</span><span class="brand-pro">PRO</span></span><span class="brand-signal"><i></i><i></i><i></i><i></i></span></span>`;
 }
 function applyNavButtonStyle(){
   const button=$("#lss7-btn");
@@ -5627,7 +6020,7 @@ function applyNavButtonStyle(){
 
 function organizeDashboardTabs(){
   const tabs=$("#lss7-tabs");
-  if(!tabs.length||tabs.children(".lss7-nav-primary").length)return;
+  if(!tabs.length||tabs.children(".lss7-nav-group").length)return;
   const take=ids=>ids.map(id=>tabs.find(`.ltab[data-tab="${id}"]`).first()).filter(tab=>tab.length);
   const makeGroup=(cls,label,items)=>{
     const group=$(`<div class="lss7-nav-group ${cls}"><span class="lss7-nav-group-label">${label}</span><div class="lss7-nav-group-tabs"></div></div>`);
@@ -5637,8 +6030,16 @@ function organizeDashboardTabs(){
   const alliance=makeGroup("lss7-nav-alliance","Verband",take(["tp-overview","tp-forecast","tp-vehicles","tp-schoolings","tp-team"]));
   const player=makeGroup("lss7-nav-player","Spieler",take(["tp-player-forecast"]));
   const tools=makeGroup("lss7-nav-tools","Werkzeuge",take(["tp-aao","tp-history","tp-event","tp-settings"]));
-  tabs.empty().append($("<div class=\"lss7-nav-primary\"></div>").append(alliance));
-  tabs.append($("<div class=\"lss7-nav-secondary\"></div>").append(player,tools));
+  tabs.empty().append(alliance,player,tools);
+}
+
+function applyPlayerForecastPlacement(){
+  const showMenu=(S.settings.playerForecastPlacement||"profile")==="both";
+  const tab=$("#lss7-tabs .ltab[data-tab='tp-player-forecast']");
+  tab.toggle(showMenu);
+  tab.closest(".lss7-nav-player").toggle(showMenu);
+  $("#lss7-tabs").toggleClass("player-menu-hidden",!showMenu);
+  $("#sb-player-forecast-place").val(showMenu?"both":"profile");
 }
 
 function renderNavStylePreview(){
@@ -5661,16 +6062,17 @@ function upgradeUi910(){
 
   const tabs=$("#lss7-tabs");
   if(tabs.length&&!tabs.find(`[data-tab="tp-player-forecast"]`).length){
-    const tab=$(`<div class="ltab" data-tab="tp-player-forecast">Spielerprognose [BETA]</div>`);
+    const tab=$(`<div class="ltab" data-tab="tp-player-forecast">Spielerprognose</div>`);
     const eventTab=tabs.find(`[data-tab="tp-event"]`).first();
     eventTab.length?tab.insertBefore(eventTab):tabs.append(tab);
     $("#lss7-body").append(`<div class="lpanel" id="tp-player-forecast"><div id="player-forecast-view"></div></div>`);
   }
   organizeDashboardTabs();
+  applyPlayerForecastPlacement();
 
   $("#sb-size").closest("label,.tog-row").remove();
   if(!$("#sb-nav-style").length){
-    $(".set-wrap").prepend(`<div class="set-group set-wide nav-style-setting" id="lss7-nav-style-setting">
+    $("#tp-settings .settings-intro").first().after(`<div class="set-group set-wide nav-style-setting" id="lss7-nav-style-setting">
       <div class="set-head">Kopfzeilen-Button</div>
       <div class="nav-style-showcase">
         <div class="nav-style-preview-shell"><div id="lss7-nav-style-preview" class="nav-style-preview">${brandMarkHtml()}<span class="nav-style-preview-copy"><b>Dein Verband</b><span>WM-2026 LIVE</span></span></div></div>
@@ -5682,11 +6084,14 @@ function upgradeUi910(){
         </label><div class="set-note">Die Vorschau zeigt direkt, wie dein Dashboard-Button im Spiel-Header wirkt. Laufende Events bleiben im Dashboard-Header sichtbar.</div></div>
       </div>
     </div>`);
-    $("#sb-nav-style").val(S.settings.navButtonStyle||"standard").on("change",function(){
-      S.settings.navButtonStyle=String(this.value||"standard");save();applyNavButtonStyle();renderNavStylePreview();
-    });
+    $("#sb-nav-style").val(S.settings.navButtonStyle||"standard");
+  }
+  if(!$("#sb-player-forecast-place").length){
+    $("#lss7-nav-style-setting").append(`<label class="tog-row player-forecast-setting"><span class="tog-lbl">Spielerprognose anzeigen</span><select id="sb-player-forecast-place" class="lss7-select"><option value="profile">Nur im Spielerprofil</option><option value="both">Spielerprofil und Menü</option></select></label>`);
+    $("#sb-player-forecast-place").val(S.settings.playerForecastPlacement||"profile");
   }
   renderNavStylePreview();
+  applyPlayerForecastPlacement();
 
   const updateNote=$("#lss7-update-note");
   $("#lss7-update-patches").addClass("update-patches");
@@ -5702,7 +6107,7 @@ function upgradeUi910(){
 }
 
 function buildTrigger(){
-  const li=$(`<li></li>`);
+  const li=$(`<li class="lss7-navbar-item"></li>`);
   const a=$(`
     <a href="#" id="lss7-btn">
       ${brandMarkHtml("lss7-nav-mark")}
@@ -5768,6 +6173,7 @@ function setUpdateHeader(text,type="updated"){
   if(!text)return;
   if(type!=="available"&&String(GM_getValue("v7_update_note_dismissed","")||"")===V)return;
   $("#lss7-update-note-text").text(text);
+  $("#lss7-update-install").toggle(type==="available").attr("href",UPDATE_URL);
   note.toggleClass("available",type==="available").addClass("show");
 }
 function setUpdateSettings(text,type="",showInstall=false){
@@ -5807,7 +6213,7 @@ function checkUpdate({manual=false}={}){
       const remote=m[1];S.update.availableVersion=remote;
       if(compareVersions(remote,V)>0){
         const manager=updateManagerInfo();
-        setUpdateHeader(`Update v${remote} ist verfügbar. ${manager.handler} übernimmt die Aktualisierung automatisch.`,"available");
+        setUpdateHeader(`Update v${remote} ist verfügbar. Falls ${manager.handler} nicht automatisch aktualisiert, kannst du es direkt installieren.`,"available");
         setUpdateSettings(`<strong>Update v${escHtml(remote)} verfügbar</strong><span>Installiert ist v${escHtml(V)}. Der Userscript-Manager sollte automatisch aktualisieren; die manuelle Installation bleibt als Fallback verfügbar.</span>`,"warn",true);
       }else if(manual){
         setUpdateSettings(`<strong>Alles aktuell</strong><span>Installiert ist v${escHtml(V)}. Es ist kein neueres Update verfügbar.</span>`,"good",false);
@@ -5832,8 +6238,12 @@ $(document).ready(()=>{
   upgradeUi910();
   initSummerScene();
   buildTrigger();
+  installAllianceActivityHooks();
   applyPanelMode();
   updatePlaytimeUi();
+  updateCoinsUi();
+  renderAllianceActivity();
+  renderClock();
   announceInstalledUpdate();
 
   // Initialer Fetch
