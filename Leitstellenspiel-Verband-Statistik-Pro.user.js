@@ -1,8 +1,8 @@
-﻿// ==UserScript==
+// ==UserScript==
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.1.1
+// @version      9.2.3
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/*
@@ -34,11 +34,15 @@
 // Das Dashboard gehoert nur in das Hauptfenster. Spiel-Lightboxen und
 // eingebettete Formulare bleiben dadurch vollstaendig unangetastet.
 if(window.top!==window.self)return;
+// Verbandsseiten enthalten editierbare Vorstellungstexte und Regeln. Dort
+// darf das Dashboard niemals DOM-Inhalte einbetten oder versehentlich in
+// Formular-/Beschreibungstexte geraten.
+if(/^\/(?:alliances\/\d+|verband(?:\/|$))/i.test(location.pathname))return;
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "9.1.1";
+const V   = "9.2.3";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
@@ -47,12 +51,18 @@ const API = {
   alliance:    `${BASE}/api/allianceinfo`,
   userinfo:    `${BASE}/api/userinfo`,
   vStates:     `${BASE}/api/vehicle_states`,
-  buildings:   `${BASE}/api/buildings`,
+  buildings:   `${BASE}/api/v2/buildings`,
+  allianceBuildings: `${BASE}/api/v2/alliance_buildings`,
   schoolings:  `${BASE}/api/alliance_schoolings`,
   schoolingsPage: `${BASE}/schoolings`,
   vehicles:    `${BASE}/api/v2/vehicles`,
   vDistances:  `${BASE}/api/v1/vehicle_distances.json`,
+  pois:        `${BASE}/api/v2/pois`,
   aaos:        `${BASE}/api/v1/aaos`,
+  aaoCategories:`${BASE}/api/v1/aao_categories`,
+  missionTypes:`${BASE}/api/mission_type_data`,
+  missionsJson:`${BASE}/einsaetze.json`,
+  allianceEventTypes:`${BASE}/alliance_event_types.json`,
   creditsOverview: `${BASE}/credits/overview`,
   alliancesPage: `${BASE}/alliances`,
   toplist: `${BASE}/toplist`,
@@ -189,12 +199,33 @@ const ALLIANCE_ROLE_DEFS = [
   {id:"owner",label:"Verbands-Eigentümer",color:"#d8a91f",text:"#211800",aliases:["owner","eigentumer","eigentuemer","verbandseigentumer","verbandseigentuemer","verbands_eigentumer","verbands_eigentuemer","alliance_owner"]},
   {id:"admin",label:"Administrator",color:"#8f1d2c",text:"#ffffff",aliases:["admin","administrator","verbands_admin","alliance_admin"]},
   {id:"coadmin",label:"Co. Administrator",color:"#e44752",text:"#ffffff",aliases:["coadmin","co_admin","coadministrator","verbands_co_admin","alliance_coadmin"]},
+  {id:"schooling",label:"Lehrgangsmeister",color:"#438bf2",text:"#ffffff",aliases:["schooling","schooling_admin","schooling_master","education","educator","lehrgangsmeister"]},
   {id:"radio",label:"Sprechwunsch Admin",color:"#72c8f2",text:"#082536",aliases:["speaker","radio","radio_admin","sprech_request","speak_request","mission"]},
   {id:"board",label:"Aufsichtsrat",color:"#ed8a2f",text:"#2d1500",aliases:["board","supervisor","oversight","aufsichtsrat"]},
   {id:"finance",label:"Finanzminister",color:"#8b5bd0",text:"#ffffff",aliases:["finance","treasurer","financial","finanzminister"]},
-  {id:"schooling",label:"Lehrgangsmeister",color:"#438bf2",text:"#ffffff",aliases:["schooling","schooling_admin","schooling_master","education","educator","lehrgangsmeister"]},
   {id:"personnel",label:"Personal",color:"#aeb8c6",text:"#17202b",aliases:["staff","personnel","personal","member_admin"]},
   {id:"event",label:"Eventmanager",color:"#a96835",text:"#ffffff",aliases:["event_manager","eventmanager","event"]},
+];
+const TEAM_ROLE_ACTIONS = [
+  {id:"admin",path:"admin",label:"Admin"},
+  {id:"coadmin",path:"coadmin",label:"Co-Admin"},
+  {id:"schooling",path:"schooling",label:"Lehrgangsmeister"},
+  {id:"radio",path:"sprechwunsch_admin",label:"Sprechwunsch-Admin"},
+  {id:"board",path:"aufsichtsrat",label:"Aufsichtsrat"},
+  {id:"finance",path:"finance",label:"Finanzminister"},
+  {id:"personnel",path:"staff",label:"Personal"},
+  {id:"event",path:"event_manager",label:"Eventmanager"},
+];
+const CHATBAN_OPTIONS = [
+  {sec:300,label:"5 Minuten"},
+  {sec:900,label:"15 Minuten"},
+  {sec:1800,label:"30 Minuten"},
+  {sec:3600,label:"1 Stunde"},
+  {sec:21600,label:"6 Stunden"},
+  {sec:43200,label:"12 Stunden"},
+  {sec:86400,label:"1 Tag"},
+  {sec:604800,label:"7 Tage"},
+  {sec:1209600,label:"14 Tage"},
 ];
 
 const ITV = {
@@ -788,8 +819,14 @@ GM_addStyle(`
 .extension-name{min-width:0;color:var(--t2);font-size:9px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .extension-count{color:var(--t1);font-family:var(--mono);font-size:9px;font-weight:900;white-space:nowrap;}
 .extension-count em{color:var(--greenh);font-style:normal;}
+.asset-action-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}.lbtn.compact{width:auto;min-height:27px;padding:5px 8px;font-size:8px;text-align:center;justify-content:center}
+.quality-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px 12px}.quality-grid.compact-grid{padding-top:0}
+.quality-card{min-width:0;padding:10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.02)}.quality-card.good{border-color:rgba(34,197,94,.28);background:rgba(34,197,94,.07)}.quality-card.warn{border-color:rgba(245,158,11,.34);background:rgba(245,158,11,.10)}.quality-card.info{border-color:rgba(59,130,246,.28);background:rgba(59,130,246,.08)}
+.quality-label{display:block;color:var(--t3);font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.6px}.quality-card b{display:block;margin-top:4px;color:var(--t1);font:950 15px/1.1 var(--mono)}.quality-note{display:block;margin-top:4px;color:var(--t4);font-size:8px;line-height:1.35}
+.fleet-type-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:0 12px 12px}.fleet-type-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1.2fr) 44px;gap:8px;align-items:center;padding:7px 8px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.018)}.fleet-type-row span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t2);font-size:9px;font-weight:850}.fleet-type-row i{height:6px;border-radius:999px;background:rgba(255,255,255,.065);overflow:hidden}.fleet-type-row em{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--blue),var(--cyan));}.fleet-type-row b{text-align:right;color:var(--greenh);font-family:var(--mono);font-size:9px}
 @media(max-width:680px){
-  .asset-kpis,.building-category-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .asset-kpis,.building-category-grid,.quality-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .fleet-type-board{grid-template-columns:1fr}.asset-action-row{justify-content:flex-start}
   .building-detail-row{grid-template-columns:minmax(120px,1.4fr) repeat(2,minmax(50px,.6fr));}
   .building-detail-row .building-detail-stat:nth-child(4),.building-detail-row .building-detail-stat:nth-child(5){display:none;}
   .extension-list{grid-template-columns:1fr;}
@@ -939,6 +976,7 @@ GM_addStyle(`
 .arr-row:hover{background:var(--bgh);}
 .arr-color{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,.1);}
 .arr-name{flex:1;color:var(--t2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.arr-name small{display:block;margin-top:2px;color:var(--t4);font-size:8px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .arr-hk{font-family:var(--mono);font-size:10px;color:var(--t4);background:var(--b1);
   border-radius:3px;padding:1px 5px;flex-shrink:0;}
 
@@ -960,10 +998,11 @@ GM_addStyle(`
   font-size:9px;font-weight:700;padding:1px 6px;
   border-radius:4px;letter-spacing:.4px;flex-shrink:0;
 }
-.team-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px;}
+.team-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:12px;}
 .team-summary-card{padding:10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.022);}
 .team-summary-card span{display:block;color:var(--t4);font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.55px;}
 .team-summary-card b{display:block;margin-top:4px;color:var(--t1);font:900 18px/1 var(--mono);}
+.team-summary-card.online b{color:var(--greenh);}
 .team-category{margin:0 12px 10px;border:1px solid var(--b1);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.012);}
 .team-category-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--b1);background:rgba(255,255,255,.025);}
 .team-category-title{display:flex;align-items:center;gap:7px;color:var(--t1);font-size:10px;font-weight:900;}
@@ -986,7 +1025,7 @@ GM_addStyle(`
 .set-wrap{padding:14px;display:grid;grid-template-columns:1fr;gap:10px;align-items:start;}
 #lss7.layout .set-wrap{grid-template-columns:repeat(12,minmax(0,1fr));}
 .settings-intro,.set-wide{grid-column:1/-1;}
-.settings-intro{order:0}.nav-style-setting{order:1}.settings-updates{order:2}.settings-appearance{order:3}.settings-actions{order:4}.settings-feature-grid{order:5}.settings-patch-notes{order:6}.settings-contact{order:7}.settings-info{order:8}
+.settings-intro{order:0}.nav-style-setting{order:1}.settings-actions{order:2}.settings-export{order:3}.settings-updates{order:4}.settings-appearance{order:5}.settings-feature-grid{order:6}.settings-patch-notes{order:7}.settings-contact{order:8}.settings-info{order:9}
 .settings-intro{padding:12px 13px;border:1px solid rgba(59,130,246,.24);border-radius:8px;background:linear-gradient(135deg,rgba(59,130,246,.10),rgba(34,197,94,.035));}
 .settings-intro b{display:block;color:var(--t1);font-size:13px;margin-bottom:3px;}
 .settings-intro span{font-size:10px;color:var(--t3);line-height:1.45;}
@@ -1607,6 +1646,88 @@ GM_addStyle(`
 #lss7.theme-summer-dark .bd-summer{color:#f5ecff;background:linear-gradient(135deg,rgba(107,85,190,.82),rgba(35,89,149,.76));border-color:rgba(169,196,255,.38);box-shadow:0 0 18px rgba(117,151,255,.18);}
 #lss7.theme-summer-dark.layout #lss7-summer-scene{opacity:1;filter:saturate(1.08);}
 #lss7.theme-summer-dark.layout .hd-mark,#lss7.theme-summer-dark.layout .wx-icon{animation:summer-float 3.6s ease-in-out infinite;}
+
+/* LCARS 2364 */
+#lss7.theme-lcars{
+  --bg0:#030303;--bg1:#070707;--bg2:#0d0b0b;--bg3:#15100d;--bg4:#21170f;--bgh:#17110d;--bgc:#0b0908;
+  --b0:rgba(255,180,92,.08);--b1:rgba(255,180,92,.16);--b2:rgba(255,180,92,.26);--b3:rgba(255,180,92,.42);
+  --blue:#78d7ff;--blueh:#b4ecff;--blue3:rgba(120,215,255,.12);
+  --green:#80ffd0;--greenh:#bcffe7;--green3:rgba(128,255,208,.10);
+  --amber:#ffba5c;--amberh:#ffd58f;--amber3:rgba(255,186,92,.14);
+  --red:#ff7b73;--redh:#ffaaa5;--red3:rgba(255,123,115,.12);
+  --purple:#b89aff;--purpleh:#d6c8ff;--purple3:rgba(184,154,255,.14);
+  --cyan:#73f2ff;--cyanh:#b9fbff;--cyan3:rgba(115,242,255,.10);
+  --pink:#ff9ccc;--pinkh:#ffc6e2;--pink3:rgba(255,156,204,.12);
+  --t1:#fff3d0;--t2:#f4d59f;--t3:#c9a36b;--t4:#8b704a;
+  color-scheme:dark;background:#030303;border-color:#302011;border-radius:18px;
+  box-shadow:0 0 0 1px rgba(255,186,92,.22) inset,0 20px 72px rgba(0,0,0,.80),0 0 34px rgba(255,122,52,.10);
+}
+#lss7.theme-lcars::before{content:"";position:absolute;left:0;top:0;bottom:0;width:10px;background:linear-gradient(180deg,#ff9d45 0 22%,#b89aff 22% 45%,#ffcf71 45% 68%,#78d7ff 68% 86%,#ff7b73 86% 100%);z-index:3;pointer-events:none;}
+#lss7.theme-lcars #lss7-summer-scene{display:none!important;}
+#lss7.theme-lcars #lss7-hd{min-height:96px;background:#030303;border-bottom:1px solid #2a1c0e;padding:14px 18px 13px 28px;overflow:hidden;}
+#lss7.theme-lcars #lss7-hd::before{content:"";position:absolute;left:18px;top:11px;right:132px;height:18px;border-radius:18px 0 0 18px;background:linear-gradient(90deg,#ff9d45 0 16%,#ffba5c 16% 38%,#b89aff 38% 54%,#78d7ff 54% 70%,#ff7b73 70% 82%,transparent 82%);box-shadow:0 22px 0 rgba(255,157,69,.42);}
+#lss7.theme-lcars #lss7-hd::after{content:"LCARS 2364";position:absolute;right:16px;top:10px;min-width:96px;text-align:center;color:#030303;background:#ffba5c;border-radius:999px;padding:4px 13px;font:950 9px/1 var(--mono);letter-spacing:1.4px;}
+#lss7.theme-lcars #lss7-hd .hd-row{position:relative;z-index:2;margin-top:31px;padding-left:0;}
+#lss7.theme-lcars .hd-mark{width:54px;height:32px;border-radius:18px 6px 6px 18px;background:#ff9d45;color:#030303;border:0;box-shadow:none;font-size:11px;}
+#lss7.theme-lcars .hd-mark::before{display:none}#lss7.theme-lcars .hd-mark::after{right:5px;bottom:5px;background:#030303;box-shadow:none;}
+#lss7.theme-lcars .hd-title{color:#fff3d0;text-transform:uppercase;letter-spacing:.65px}.theme-lcars .hd-sub{color:#c9a36b;}
+#lss7.theme-lcars .bd-summer{color:#030303;background:#ffba5c;border:0;border-radius:999px;box-shadow:none;font-weight:950;}
+#lss7.theme-lcars #lss7-qs,#lss7.theme-lcars #lss7-tabs{background:#030303;border-color:#21170f;}
+#lss7.theme-lcars #lss7-tabs{padding:9px 10px;}
+#lss7.theme-lcars .qs-cell{background:#070707;border-right-color:#21170f;box-shadow:inset 4px 0 #b89aff;}
+#lss7.theme-lcars .qs-cell:nth-child(3n){box-shadow:inset 4px 0 #ffba5c}#lss7.theme-lcars .qs-cell:nth-child(4n){box-shadow:inset 4px 0 #78d7ff;}
+#lss7.theme-lcars .qs-label,#lss7.theme-lcars .sl,#lss7.theme-lcars .asset-section-sub,#lss7.theme-lcars .quality-label{color:#c9a36b;}
+#lss7.theme-lcars .qs-val,#lss7.theme-lcars .sv,#lss7.theme-lcars .asset-section-title{color:#fff3d0;}
+#lss7.theme-lcars #lss7-body{background:linear-gradient(90deg,rgba(255,186,92,.045) 0 1px,transparent 1px),linear-gradient(180deg,#030303,#070504);background-size:44px 100%,auto;}
+#lss7.theme-lcars .lss7-nav-group{border-color:#2a1c0e;background:#070707;border-radius:16px;overflow:hidden;}
+#lss7.theme-lcars .lss7-nav-group-label{min-width:78px;background:#ff9d45;color:#030303;border-radius:0 999px 999px 0;margin:-1px 0 -1px -1px;padding-left:13px;}
+#lss7.theme-lcars .ltab{border:1px solid rgba(3,3,3,.35);border-radius:999px;background:#b89aff;color:#030303!important;text-transform:uppercase;font-weight:950;letter-spacing:.25px;box-shadow:inset 0 -8px rgba(0,0,0,.08);}
+#lss7.theme-lcars .ltab:nth-child(2n){background:#ffba5c}#lss7.theme-lcars .ltab:nth-child(3n){background:#78d7ff}#lss7.theme-lcars .ltab:nth-child(4n){background:#ff9d45;}
+#lss7.theme-lcars .ltab.active{background:#fff3d0!important;color:#030303!important;box-shadow:0 0 0 3px #030303 inset,0 0 0 1px rgba(255,186,92,.8);}
+#lss7.theme-lcars .ltab.active::after{display:none;}
+#lss7.theme-lcars .sc,#lss7.theme-lcars .set-group,#lss7.theme-lcars .asset-section,#lss7.theme-lcars .fleet-panel,#lss7.theme-lcars .event-card,#lss7.theme-lcars .prof-strip,#lss7.theme-lcars .vehicle-summary-card,#lss7.theme-lcars .forecast-controls,#lss7.theme-lcars .forecast-chart-box,#lss7.theme-lcars .quality-card{
+  background:#080707;border-color:#2a1c0e;border-radius:18px 8px 8px 18px;box-shadow:inset 7px 0 #ff9d45;
+}
+#lss7.theme-lcars .sc:nth-child(2n),#lss7.theme-lcars .vehicle-summary-card:nth-child(2n),#lss7.theme-lcars .quality-card:nth-child(2n){box-shadow:inset 7px 0 #b89aff;}
+#lss7.theme-lcars .sc:nth-child(3n),#lss7.theme-lcars .vehicle-summary-card:nth-child(3n),#lss7.theme-lcars .quality-card:nth-child(3n){box-shadow:inset 7px 0 #78d7ff;}
+#lss7.theme-lcars .lbtn,#lss7.theme-lcars .team-admin-action,#lss7.theme-lcars .team-bulk-btn{background:#ff9d45;color:#030303;border:0;border-radius:999px;font-weight:950;text-align:center;justify-content:center;}
+#lss7.theme-lcars .lbtn.prime{background:#b89aff;color:#030303}#lss7.theme-lcars .lbtn.danger,#lss7.theme-lcars .team-admin-action.danger{background:#ff7b73;color:#030303;}
+#lss7.theme-lcars .lss7-select{background:#0b0b0b!important;color:#fff3d0!important;border-color:#5a3a1a!important;border-radius:999px;}
+#lss7.theme-lcars .vb-fill,#lss7.theme-lcars .pt-fill,#lss7.theme-lcars .prof-fill,#lss7.theme-lcars .forecast-progress-fill{background:linear-gradient(90deg,#ff9d45,#ffba5c,#b89aff)!important;}
+#lss7.theme-lcars .wm-row,#lss7.theme-lcars .game-event-row,#lss7.theme-lcars .sch-row,#lss7.theme-lcars .arr-row,#lss7.theme-lcars .hist-row,#lss7.theme-lcars .rank-mini-row,#lss7.theme-lcars .team-card{background:#070707;border-color:#21170f;border-radius:16px 7px 7px 16px;}
+#lss7.theme-lcars .sch-row:hover,#lss7.theme-lcars .arr-row:hover,#lss7.theme-lcars .team-card:hover{background:#120d09;}
+#lss7.theme-lcars #lss7-ft{background:#030303;border-top:7px solid #b89aff;color:#c9a36b;}
+#lss7.theme-lcars .ft-version{background:#ffba5c;color:#030303;border:0;border-radius:999px;font-weight:950;}
+body.lss7-lcars-global{background:#030303!important;color:#fff3d0!important;}
+body.lss7-lcars-global::before{content:"";position:fixed;left:0;top:0;bottom:0;width:10px;z-index:9998;pointer-events:none;background:linear-gradient(180deg,#ff9d45 0 22%,#b89aff 22% 45%,#ffba5c 45% 67%,#78d7ff 67% 84%,#ff7b73 84% 100%);}
+body.lss7-lcars-global .navbar,body.lss7-lcars-global .navbar-default,body.lss7-lcars-global #navbar-main-collapse{background:#030303!important;border-color:#2a1c0e!important;box-shadow:inset 0 -7px #ff9d45!important;}
+body.lss7-lcars-global .navbar a,body.lss7-lcars-global .navbar .navbar-text{color:#fff3d0!important;text-shadow:none!important;}
+body.lss7-lcars-global .navbar .dropdown-menu{background:#070707!important;border:1px solid #5a3a1a!important;border-radius:16px 6px 6px 16px!important;box-shadow:inset 6px 0 #b89aff,0 14px 34px rgba(0,0,0,.45)!important;}
+body.lss7-lcars-global .navbar .dropdown-menu>li>a:hover{background:#ff9d45!important;color:#030303!important;}
+body.lss7-lcars-global .btn:not(#lss7-btn):not(.lbtn),body.lss7-lcars-global .btn-default,body.lss7-lcars-global .btn-success,body.lss7-lcars-global .btn-primary{background:#ff9d45!important;border:0!important;color:#030303!important;border-radius:999px!important;font-weight:850!important;box-shadow:none!important;}
+body.lss7-lcars-global .btn-danger{background:#ff7b73!important;color:#030303!important;}
+body.lss7-lcars-global input:not([type="checkbox"]):not([type="radio"]),body.lss7-lcars-global select,body.lss7-lcars-global textarea{background:#080707!important;color:#fff3d0!important;border:1px solid #5a3a1a!important;border-radius:999px!important;box-shadow:none!important;}
+body.lss7-lcars-global textarea{border-radius:16px!important;}
+body.lss7-lcars-global .panel,body.lss7-lcars-global .well,body.lss7-lcars-global .modal-content,body.lss7-lcars-global .missionSideBarEntry,body.lss7-lcars-global #mission_list .missionSideBarEntry,body.lss7-lcars-global #chat_panel,body.lss7-lcars-global #radio_messages,body.lss7-lcars-global .container-fluid>.row>div>[class*="panel"]{background:#070707!important;color:#fff3d0!important;border:1px solid #2a1c0e!important;border-radius:18px 8px 8px 18px!important;box-shadow:inset 7px 0 #ff9d45!important;}
+body.lss7-lcars-global .panel-heading,body.lss7-lcars-global .modal-header,body.lss7-lcars-global .missionSideBarEntry .panel-heading{background:#0d0906!important;color:#ffba5c!important;border-color:#2a1c0e!important;border-radius:16px 7px 0 0!important;text-transform:uppercase;letter-spacing:.4px;}
+body.lss7-lcars-global .table,body.lss7-lcars-global table{background:#070707!important;color:#fff3d0!important;}
+body.lss7-lcars-global .table>tbody>tr>td,body.lss7-lcars-global .table>thead>tr>th{border-color:#2a1c0e!important;color:#fff3d0!important;}
+body.lss7-lcars-global .table-striped>tbody>tr:nth-of-type(odd){background:#0d0a08!important;}
+body.lss7-lcars-global .label,body.lss7-lcars-global .badge{border-radius:999px!important;background:#b89aff!important;color:#030303!important;}
+body.lss7-lcars-global #map_outer,body.lss7-lcars-global #map,body.lss7-lcars-global .leaflet-container{background:#030303!important;border-color:#2a1c0e!important;}
+body.lss7-lcars-global a{color:#78d7ff;}body.lss7-lcars-global a:hover{color:#ffba5c;}
+body.lss7-lcars-global #mission_list::-webkit-scrollbar,body.lss7-lcars-global ::-webkit-scrollbar{width:8px;height:8px}body.lss7-lcars-global #mission_list::-webkit-scrollbar-thumb,body.lss7-lcars-global ::-webkit-scrollbar-thumb{background:#ff9d45;border-radius:999px}
+body.lss7-lcars-global .container,body.lss7-lcars-global .container-fluid,body.lss7-lcars-global #content,body.lss7-lcars-global .tab-content{background:transparent!important;color:#fff3d0!important;}
+body.lss7-lcars-global .nav-tabs{border-bottom:7px solid #b89aff!important;background:#030303!important;}
+body.lss7-lcars-global .nav-tabs>li>a{background:#ffba5c!important;color:#030303!important;border:0!important;border-radius:999px 999px 0 0!important;font-weight:900!important;text-transform:uppercase;}
+body.lss7-lcars-global .nav-tabs>li.active>a,body.lss7-lcars-global .nav-tabs>li.active>a:hover{background:#fff3d0!important;color:#030303!important;box-shadow:inset 0 -4px #030303!important;}
+body.lss7-lcars-global .list-group-item,body.lss7-lcars-global .dropdown-menu>li>a{background:#070707!important;color:#fff3d0!important;border-color:#2a1c0e!important;}
+body.lss7-lcars-global .alert{background:#130d07!important;border:1px solid #ffba5c!important;color:#fff3d0!important;border-radius:18px 8px 8px 18px!important;box-shadow:inset 7px 0 #ffba5c!important;}
+body.lss7-lcars-global .alert-success{border-color:#80ffd0!important;box-shadow:inset 7px 0 #80ffd0!important;}body.lss7-lcars-global .alert-danger{border-color:#ff7b73!important;box-shadow:inset 7px 0 #ff7b73!important;}
+body.lss7-lcars-global .progress{background:#17110d!important;border-radius:999px!important;box-shadow:inset 0 0 0 1px #2a1c0e!important;}
+body.lss7-lcars-global .progress-bar{background:linear-gradient(90deg,#ff9d45,#ffba5c,#b89aff)!important;color:#030303!important;font-weight:900!important;}
+body.lss7-lcars-global .popover,body.lss7-lcars-global .tooltip-inner,body.lss7-lcars-global .leaflet-popup-content-wrapper{background:#070707!important;color:#fff3d0!important;border:1px solid #5a3a1a!important;border-radius:16px!important;box-shadow:0 18px 42px rgba(0,0,0,.55),inset 6px 0 #78d7ff!important;}
+body.lss7-lcars-global .leaflet-popup-tip{background:#070707!important;}
 @keyframes summer-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 @keyframes summer-glow{0%,100%{box-shadow:0 3px 10px rgba(230,163,0,.12)}50%{box-shadow:0 4px 18px rgba(230,163,0,.34)}}
 @keyframes summer-card-in{from{opacity:.25;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
@@ -1705,6 +1826,7 @@ GM_addStyle(`
 .lss7-update-note .update-patches{text-decoration:underline;}
 .lss7-update-close{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px!important;border:1px solid currentColor!important;text-decoration:none!important;font-size:15px!important;line-height:1!important;opacity:.78;}
 .lss7-update-close:hover{opacity:1;background:rgba(255,255,255,.10)!important;}
+.lss7-toast{position:absolute;right:14px;bottom:38px;z-index:50;max-width:min(360px,calc(100% - 28px));padding:9px 12px;border:1px solid rgba(34,197,94,.34);border-radius:8px;background:rgba(6,78,59,.92);color:#dcfce7;font-size:10px;font-weight:850;box-shadow:0 16px 42px rgba(0,0,0,.32);opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}.lss7-toast.show{opacity:1;transform:translateY(0)}.lss7-toast.bad{border-color:rgba(239,68,68,.40);background:rgba(127,29,29,.94);color:#fee2e2}
 .update-status{display:flex;flex-direction:column;gap:7px;padding:9px 10px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.02);font-size:10px;color:var(--t3);line-height:1.4;}
 .update-status strong{color:var(--t1);}
 .update-status.good{border-color:rgba(34,197,94,.28);background:rgba(34,197,94,.07);}
@@ -1810,9 +1932,10 @@ const S = {
   profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:"",roles:[],totalCredits:0},
   weatherAlertKey:"",
   lastApiTs:null,
-  teamAdmin:{rights:{},profiles:{},loading:false,lastTs:0,error:""},
+  teamAdmin:{rights:{},profiles:{},details:{},selected:{},loading:false,lastTs:0,error:""},
   allianceActivity:{date:"",missions:0,patients:0,prisoners:0,seen:[]},
   allianceActivityLive:{},
+  dataCache:{vehicles:{},buildings:[],schoolings:[],aaos:[],aaoCategories:[],pois:[],missionTypes:null,missions:[],allianceEventTypes:[],lastMetaTs:0},
   update:{previousVersion:"",justUpdated:false,availableVersion:"",checking:false,lastCheck:0,error:""},
   settings:{
     notifications:true,
@@ -1918,7 +2041,7 @@ function load(){
   const validNavStyles=["logo","standard","standard-no-event","name"];
   if(!validNavStyles.includes(S.settings.navButtonStyle))S.settings.navButtonStyle="standard";
   if(!["profile","both"].includes(S.settings.playerForecastPlacement))S.settings.playerForecastPlacement="profile";
-  const validThemes=["dark","light","summer","summer-dark"];
+  const validThemes=["dark","light","summer","summer-dark","lcars"];
   if(!validThemes.includes(S.settings.panelTheme)) S.settings.panelTheme="summer";
   const validLanguages=["de","en","fr"];
   if(!validLanguages.includes(S.settings.language)) S.settings.language="de";
@@ -2346,6 +2469,103 @@ function jsonGet(url,cb,onErr){
       ontimeout(){fallback();}
     });
   }catch{fallback();}
+}
+function apiArray(data,...keys){
+  if(Array.isArray(data))return data;
+  for(const key of keys){
+    if(Array.isArray(data?.[key]))return data[key];
+  }
+  if(Array.isArray(data?.result))return data.result;
+  if(data&&typeof data==="object"){
+    const vals=Object.values(data);
+    if(vals.length&&vals.every(v=>v&&typeof v==="object"&&!Array.isArray(v)))return vals;
+  }
+  return [];
+}
+function apiGetPaged(url,cb,onErr,{limit=500,maxPages=30,keys=[]}={}){
+  const all=[];
+  let after="",page=0;
+  const sep=url.includes("?")?"&":"?";
+  const next=()=>{
+    page++;
+    const pageUrl=`${url}${sep}limit=${limit}${after?`&after=${encodeURIComponent(after)}`:""}`;
+    apiGet(pageUrl,data=>{
+      const arr=apiArray(data,...keys);
+      all.push(...arr);
+      const last=arr[arr.length-1];
+      const nextAfter=last?.id??last?.building_id??last?.vehicle_id??"";
+      if(arr.length>=limit && nextAfter && page<maxPages){
+        after=String(nextAfter);
+        next();
+      }else cb(all);
+    },err=>{
+      if(all.length)cb(all);
+      else onErr&&onErr(err);
+    });
+  };
+  next();
+}
+function csvEscape(value){
+  const s=String(value??"");
+  return /[;"\n\r]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;
+}
+function toCsv(rows,headers){
+  const cols=headers||Object.keys(rows[0]||{});
+  return [cols.join(";"),...rows.map(row=>cols.map(col=>csvEscape(row[col])).join(";"))].join("\n");
+}
+function downloadTextFile(filename,text,type="text/csv;charset=utf-8"){
+  const blob=new Blob(["\uFEFF",text],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1200);
+}
+function notify(msg,bad=false){
+  const panel=$("#lss7");
+  if(!panel.length){console[bad?"warn":"log"]("[LSS7]",msg);return;}
+  let toast=panel.find(".lss7-toast");
+  if(!toast.length)toast=$(`<div class="lss7-toast"></div>`).appendTo(panel);
+  toast.toggleClass("bad",!!bad).text(String(msg||"")).addClass("show");
+  clearTimeout(notify._t);
+  notify._t=setTimeout(()=>toast.removeClass("show"),2600);
+}
+function exportDashboardData(kind){
+  const stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+  let rows=[],headers=[],name=`lss-verband-${kind}-${stamp}.csv`;
+  if(kind==="fleet"){
+    const list=Array.isArray(S.dataCache.vehicleList)?S.dataCache.vehicleList:[];
+    rows=list.length?list.map(v=>({
+      id:v.id??"",name:v.caption||v.name||"",typ:v.vehicle_type_caption||v.vehicle_type||v.vehicle_type_id||"",
+      building_id:v.building_id??"",fms:v.fms_real??v.fms??v.state??"",updated:v.updated_iso||""
+    })):Object.entries(S.dataCache.vehicles||{}).map(([status,count])=>({status,label:VSTATUS[status]?.l||status,count}));
+    headers=rows.length?Object.keys(rows[0]):["info"];
+  }else if(kind==="buildings"){
+    rows=(S.dataCache.buildings||[]).map(b=>({
+      id:b.id??"",name:b.caption||b.name||"",typ:BUILDING_TYPES[Number(b.building_type)||0]||b.building_type,
+      personal:b.personal_count??"",personal_soll:b.personal_count_target??"",level:b.level??"",
+      aktiv:b.enabled!==false?"ja":"nein",eigene_einsaetze:b.generate_own_missions===true?"ja":"nein",
+      leitstelle:b.leitstelle_building_id??"",updated:b.updated_iso||""
+    }));
+    headers=["id","name","typ","personal","personal_soll","level","aktiv","eigene_einsaetze","leitstelle","updated"];
+  }else if(kind==="schoolings"){
+    rows=(S.dataCache.schoolings||[]).map(s=>({lehrgang:s.caption||s.name||"",plaetze:s.freeSeats||"",kosten:s.cost||"",fertig:s.finish||"",anbieter:s.owner||"",url:s.url||""}));
+    headers=["lehrgang","plaetze","kosten","fertig","anbieter","url"];
+  }else if(kind==="aaos"){
+    rows=(S.dataCache.aaos||[]).map(a=>({id:a.id??"",name:a.caption||a.name||"",kategorie:a.aao_category_id||a.category_id||"",hotkey:a.hotkey||"",farbe:a.color||""}));
+    headers=["id","name","kategorie","hotkey","farbe"];
+  }else if(kind==="team"){
+    rows=Object.values(S.teamAdmin.users||{}).map(entry=>{
+      const u=entry.user||{},details=S.teamAdmin.details[String(u.id)]||{},info=entry.info||allianceRoleInfo(u);
+      return {id:u.id||"",name:u.name||"",rolle:(info.all||[info.primary]).map(r=>r.label).join(", "),dienstgrad:details.rank||"",spielerrang:details.toplistRank||"",credits:details.credits||"",online:teamActivityInfo(u,details).hint};
+    });
+    headers=["id","name","rolle","dienstgrad","spielerrang","credits","online"];
+  }else if(kind==="history"){
+    rows=(S.creditHist||[]).map(p=>({zeit:new Date(p.ts).toLocaleString("de-DE"),timestamp:p.ts,credits:p.v}));
+    headers=["zeit","timestamp","credits"];
+  }
+  if(!rows.length){notify("Keine Exportdaten vorhanden.",true);return;}
+  downloadTextFile(name,toCsv(rows,headers));
+  notify(`Export erstellt: ${name}`);
 }
 function parseDeNum(str){
   if(!str) return null;
@@ -3853,14 +4073,19 @@ function fetchProfileCard(){
 }
 
 function fetchVehicleStates(){
-  apiGet(API.vStates,d=>{ renderVehicles(d); });
+  apiGet(API.vStates,d=>{ S.dataCache.vehicles=d||{}; renderVehicles(d||{}); });
+}
+
+function fetchFleetVehicles(){
+  apiGetPaged(API.vehicles,list=>{
+    S.dataCache.vehicleList=list;
+    renderFleetInsights();
+  },()=>renderFleetInsights());
 }
 
 function fetchBuildings(){
-  apiGet(API.buildings,data=>{
-    const list=Array.isArray(data)?data:
-      Array.isArray(data?.result)?data.result:
-      Array.isArray(data?.buildings)?data.buildings:[];
+  apiGetPaged(API.buildings,list=>{
+    S.dataCache.buildings=list;
     renderBuildings(list);
   });
 }
@@ -3869,7 +4094,9 @@ function fetchSchoolings(){
   apiGet(API.schoolings,data=>{
     const raw=Array.isArray(data)?data:Array.isArray(data?.result)?data.result:null;
     if(raw===null){fetchSchoolingsFromPage();return;}
-    renderSchoolings(raw.map(normalizeApiSchooling).filter(Boolean));
+    const list=raw.map(normalizeApiSchooling).filter(Boolean);
+    S.dataCache.schoolings=list;
+    renderSchoolings(list);
   },fetchSchoolingsFromPage);
 }
 
@@ -3877,11 +4104,8 @@ function normalizeApiSchooling(item){
   if(!item||typeof item!=="object")return null;
   const id=Number(item.id)||0;
   const finishRaw=item.finish_time??item.end_time??item.finish??0;
-  const finishNumber=Number(finishRaw);
-  const finishTs=Number.isFinite(finishNumber)&&finishNumber>0
-    ?finishNumber
-    :(typeof finishRaw==="string"?Date.parse(finishRaw)||0:0);
-  return {
+  const finishTs=normalizeSchoolingTs(finishRaw);
+  const schooling={
     id,
     caption:String(item.education_title||item.caption||item.name||"Lehrgang").trim(),
     freeSeats:String(item.open_spaces??item.free_spaces??item.available_spaces??"-"),
@@ -3889,9 +4113,31 @@ function normalizeApiSchooling(item){
     finish:finishTs?formatSchoolingRemaining(finishTs):"-",
     owner:String(item.owner_name||item.user_name||item.owner||"Verband").trim(),
     url:id?`${BASE}/schoolings/${id}`:"",
+    finishTs,
+    dismissed:item.dismissed===true||item.finished===true||item.completed===true||item.closed===true,
     fromHtml:true,
     fromApi:true
   };
+  return isActiveSchooling(schooling)?schooling:null;
+}
+
+function normalizeSchoolingTs(value){
+  if(value===null||value===undefined||value==="")return 0;
+  const n=Number(value);
+  if(Number.isFinite(n)&&n>0)return n<1000000000000?n*1000:n;
+  const parsed=Date.parse(String(value));
+  return Number.isFinite(parsed)?parsed:0;
+}
+
+function isActiveSchooling(s){
+  if(!s)return false;
+  if(s.dismissed||s.finished||s.completed||s.closed)return false;
+  const finish=String(s.finish||"").trim();
+  if(/^(fertig|beendet|abgeschlossen|abgelaufen)$/i.test(finish))return false;
+  if(/fertig|beendet|abgeschlossen|abgelaufen/i.test(finish)&&!/\d/.test(finish))return false;
+  const finishTs=Number(s.finishTs)||0;
+  if(finishTs&&finishTs<=Date.now())return false;
+  return true;
 }
 
 function cleanSchoolingCellText(cell){
@@ -3917,11 +4163,17 @@ function formatSchoolingRemaining(ts){
 }
 
 function readSchoolingFinish(cell,rowHtml){
+  return readSchoolingFinishInfo(cell,rowHtml).finish;
+}
+
+function readSchoolingFinishInfo(cell,rowHtml){
   const visible=cleanSchoolingCellText(cell);
-  if(visible && !/registerEducationTimer/i.test(visible))return visible;
   const html=`${cell?.innerHTML||""} ${rowHtml||""}`;
   const m=html.match(/registerEducationTimer\(\s*["'][^"']+["']\s*,\s*["'][^"']+["']\s*,\s*(\d{10,})\s*\)/i);
-  return m?formatSchoolingRemaining(m[1]):"-";
+  const finishTs=m?normalizeSchoolingTs(m[1]):0;
+  if(finishTs)return {finish:formatSchoolingRemaining(finishTs),finishTs};
+  if(visible && !/registerEducationTimer/i.test(visible))return {finish:visible,finishTs:0};
+  return {finish:"-",finishTs:0};
 }
 
 function parseSchoolingsHtml(html){
@@ -3934,23 +4186,26 @@ function parseSchoolingsHtml(html){
     const caption=(cleanSchoolingCellText(link)||cleanSchoolingCellText(tds[0]));
     const href=link?.getAttribute("href")||"";
     const owner=cleanSchoolingCellText(tds[4]);
-    const finish=readSchoolingFinish(tds[3],tr.innerHTML);
+    const finishInfo=readSchoolingFinishInfo(tds[3],tr.innerHTML);
     return {
       caption,
       freeSeats:cleanSchoolingCellText(tds[1]),
       cost:cleanSchoolingCellText(tds[2]),
-      finish,
+      finish:finishInfo.finish,
+      finishTs:finishInfo.finishTs,
       owner,
       url:href?`${BASE}${href}`:"",
       fromHtml:true
     };
-  }).filter(s=>s&&s.caption);
+  }).filter(s=>s&&s.caption&&isActiveSchooling(s));
 }
 
 function fetchSchoolingsFromPage(){
   pageGet(API.schoolingsPage,html=>{
-    renderSchoolings(parseSchoolingsHtml(html));
-  },()=>renderSchoolings([]));
+    const list=parseSchoolingsHtml(html);
+    S.dataCache.schoolings=list;
+    renderSchoolings(list);
+  },()=>{S.dataCache.schoolings=[];renderSchoolings([]);});
 }
 
 function fetchVehicleDistances(){
@@ -3961,12 +4216,21 @@ function fetchVehicleDistances(){
 }
 
 function fetchAAOs(){
-  apiGet(API.aaos,list=>{ renderAAOs(Array.isArray(list)?list:[]); });
+  apiGet(API.aaos,list=>{ S.dataCache.aaos=Array.isArray(list)?list:apiArray(list,"aaos"); renderAAOs(S.dataCache.aaos); });
+}
+
+function fetchAnalysisMeta(){
+  apiGet(API.aaoCategories,data=>{S.dataCache.aaoCategories=apiArray(data,"aao_categories","categories");renderAAOs(S.dataCache.aaos||[]);},()=>{});
+  apiGetPaged(API.pois,list=>{S.dataCache.pois=list;renderFleetInsights();},()=>renderFleetInsights(),{keys:["pois"]});
+  apiGet(API.missionTypes,data=>{S.dataCache.missionTypes=data||null;renderFleetInsights();},()=>renderFleetInsights());
+  jsonGet(API.missionsJson,data=>{S.dataCache.missions=apiArray(data,"missions","result");renderFleetInsights();},()=>renderFleetInsights());
+  jsonGet(API.allianceEventTypes,data=>{S.dataCache.allianceEventTypes=apiArray(data,"alliance_event_types","events","result");renderFleetInsights();},()=>renderFleetInsights());
+  S.dataCache.lastMetaTs=Date.now();
 }
 
 function fetchAllData(){
-  fetchAlliance(); fetchUserinfo(); fetchVehicleStates(); fetchBuildings();
-  fetchSchoolings(); fetchAAOs();
+  fetchAlliance(); fetchUserinfo(); fetchVehicleStates(); fetchBuildings(); fetchFleetVehicles();
+  fetchSchoolings(); fetchAAOs(); fetchAnalysisMeta();
   fetchDailyEarnFromOverview();
   fetchWeather();
   fetchWmEvent();
@@ -4055,6 +4319,7 @@ function renderVehicles(data){
   bars.append(`<div class="vb-total">
     <span>Fahrzeuge gesamt</span>
     <span class="vb-tv">${total}</span></div>`);
+  renderFleetInsights();
 }
 
 function renderVehicleAssetSummary(){
@@ -4063,6 +4328,59 @@ function renderVehicleAssetSummary(){
   setV("#veh-building-types",fmt(S.buildingTypes||0));
   const ratio=S.buildingTotal>0?(S.vehicleTotal/S.buildingTotal).toFixed(1).replace(".",","):"-";
   setV("#veh-per-building",ratio);
+}
+
+function renderFleetInsights(){
+  const board=$("#fleet-quality-board");
+  if(!board.length)return;
+  const buildings=Array.isArray(S.dataCache.buildings)?S.dataCache.buildings:[];
+  const vehicles=Array.isArray(S.dataCache.vehicleList)?S.dataCache.vehicleList:[];
+  const vehicleByBuilding={};
+  vehicles.forEach(v=>{
+    const bid=String(v?.building_id??v?.buildingId??"");
+    if(bid)vehicleByBuilding[bid]=(vehicleByBuilding[bid]||0)+1;
+  });
+  const operationalBuildings=buildings.filter(b=>b?.enabled!==false);
+  const ignoredEmptyTypes=new Set([1,3,4,7,8,10]);
+  const noVehicles=vehicles.length?operationalBuildings.filter(b=>!ignoredEmptyTypes.has(Number(b?.building_type)||0)&&!(vehicleByBuilding[String(b?.id)]||0)).length:null;
+  const noPersonnel=buildings.filter(b=>Number(b?.personal_count||0)<=0&&!ignoredEmptyTypes.has(Number(b?.building_type)||0)).length;
+  const understaffed=buildings.filter(b=>Number(b?.personal_count_target||0)>0&&Number(b?.personal_count||0)<Number(b?.personal_count_target||0)).length;
+  const disabled=buildings.filter(b=>b?.enabled===false).length;
+  const pendingExt=buildings.reduce((sum,b)=>sum+(Array.isArray(b?.extensions)?b.extensions.filter(e=>e?.available===false).length:0),0);
+  const disabledExt=buildings.reduce((sum,b)=>sum+(Array.isArray(b?.extensions)?b.extensions.filter(e=>e?.available===true&&e?.enabled===false).length:0),0);
+  const checks=[
+    {label:"Standorte ohne Fahrzeug",value:noVehicles===null?"lade...":fmt(noVehicles),level:noVehicles>0?"warn":"good",note:"ohne Schulen, Krankenhaeuser und Leitstellen"},
+    {label:"Standorte ohne Personal",value:fmt(noPersonnel),level:noPersonnel>0?"warn":"good",note:"operativer Personalcheck"},
+    {label:"Unter Personal-Soll",value:fmt(understaffed),level:understaffed>0?"warn":"good",note:"personal_count < personal_count_target"},
+    {label:"Deaktivierte Standorte",value:fmt(disabled),level:disabled>0?"warn":"good",note:"enabled=false"},
+    {label:"Ausbauten im Bau",value:fmt(pendingExt),level:pendingExt>0?"info":"good",note:"noch nicht verfuegbar"},
+    {label:"Ausbauten deaktiviert",value:fmt(disabledExt),level:disabledExt>0?"warn":"good",note:"gebaut, aber nicht aktiv"}
+  ];
+  board.html(checks.map(c=>`<div class="quality-card ${c.level}"><span class="quality-label">${escHtml(c.label)}</span><b>${escHtml(c.value)}</b><span class="quality-note">${escHtml(c.note)}</span></div>`).join(""));
+
+  const typeBoard=$("#fleet-type-board").empty();
+  if(vehicles.length){
+    const types={};
+    vehicles.forEach(v=>{
+      const type=String(v?.vehicle_type_caption||v?.caption||v?.vehicle_type||v?.vehicle_type_id||"Unbekannt");
+      types[type]=(types[type]||0)+1;
+    });
+    const top=Object.entries(types).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"de")).slice(0,12);
+    const max=Math.max(...top.map(x=>x[1]),1);
+    typeBoard.html(top.map(([name,count])=>`<div class="fleet-type-row"><span>${escHtml(name)}</span><i><em style="width:${Math.max(5,Math.round(count/max*100))}%"></em></i><b>${fmt(count)}</b></div>`).join(""));
+  }else{
+    typeBoard.html(`<div class="lss7-empty">Fahrzeugtypen werden geladen...</div>`);
+  }
+
+  const missionCount=Array.isArray(S.dataCache.missions)?S.dataCache.missions.length:0;
+  const missionTypeCount=S.dataCache.missionTypes&&typeof S.dataCache.missionTypes==="object"?Object.keys(S.dataCache.missionTypes).length:0;
+  const apiCards=[
+    ["POIs",Array.isArray(S.dataCache.pois)?S.dataCache.pois.length:0,"/api/v2/pois"],
+    ["Einsatzdaten",missionTypeCount||missionCount,"mission_type_data / einsaetze.json"],
+    ["Verbandsevents",Array.isArray(S.dataCache.allianceEventTypes)?S.dataCache.allianceEventTypes.length:0,"alliance_event_types.json"],
+    ["AAO-Kategorien",Array.isArray(S.dataCache.aaoCategories)?S.dataCache.aaoCategories.length:0,"/api/v1/aao_categories"]
+  ];
+  $("#fleet-api-board").html(apiCards.map(([label,value,note])=>`<div class="quality-card info"><span class="quality-label">${escHtml(label)}</span><b>${fmt(value)}</b><span class="quality-note">${escHtml(note)}</span></div>`).join(""));
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -4199,6 +4517,7 @@ function renderBuildings(list){
     </div>`).join("");
   cont.append(`<div class="asset-subhead"><span>Ausbauten im Detail</span><span>${Object.keys(extensions).length} Arten</span></div>`);
   cont.append(extensionRows?`<div class="extension-list">${extensionRows}</div>`:`<div class="lss7-empty">Keine Ausbauten vorhanden.</div>`);
+  renderFleetInsights();
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -4206,7 +4525,7 @@ function renderBuildings(list){
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function renderSchoolings(list){
   const cont=$("#lss7-sch").empty();
-  const running=list.filter(s=>!s.dismissed);
+  const running=list.filter(isActiveSchooling);
   if(!running.length){cont.html(`<div class="lss7-empty">Keine laufenden Lehrgänge.</div>`);return;}
 
   const grp={};
@@ -4306,19 +4625,34 @@ function renderAAOs(list){
   const cont=$("#lss7-aao").empty();
   if(!list.length){cont.html(`<div class="lss7-empty">Keine AAOs gefunden.</div>`);return;}
 
+  S.dataCache.aaos=list;
+  const categories=Array.isArray(S.dataCache.aaoCategories)?S.dataCache.aaoCategories:[];
+  const catMap=Object.fromEntries(categories.map(c=>[String(c.id??c.aao_category_id??""),String(c.caption||c.name||`Kategorie ${c.id}`)]));
   const sg=$(`<div class="sg sg2" style="margin-bottom:1px"></div>`);
   sg.append(`<div class="sc"><span class="sl">AAOs gesamt</span><span class="sv c-pu">${list.length}</span></div>`);
   const withHk=list.filter(a=>a.hotkey).length;
   sg.append(`<div class="sc"><span class="sl">Mit Hotkey</span><span class="sv">${withHk}</span></div>`);
+  sg.append(`<div class="sc"><span class="sl">Ohne Hotkey</span><span class="sv c-am">${list.length-withHk}</span></div>`);
+  sg.append(`<div class="sc"><span class="sl">Kategorien</span><span class="sv c-bl">${categories.length||new Set(list.map(a=>a.aao_category_id||a.category_id||"")).size}</span></div>`);
   cont.append(sg);
 
+  const byCat={};
+  list.forEach(a=>{
+    const cid=String(a.aao_category_id||a.category_id||"");
+    const label=catMap[cid]||cid||"Ohne Kategorie";
+    byCat[label]=(byCat[label]||0)+1;
+  });
+  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"de"));
+  cont.append(`<div class="asset-subhead"><span>AAO-Kategorien</span><span>${catRows.length} Gruppen</span></div>`);
+  cont.append(`<div class="fleet-type-board aao-category-board">${catRows.slice(0,12).map(([name,count])=>`<div class="fleet-type-row"><span>${escHtml(name)}</span><i><em style="width:${Math.max(5,Math.round(count/list.length*100))}%"></em></i><b>${fmt(count)}</b></div>`).join("")}</div>`);
+  cont.append(`<div class="asset-subhead"><span>AAO-Liste</span><span>sortiert nach Kategorie und Name</span></div>`);
   const sorted=[...list].sort((a,b)=>(a.column||0)-(b.column||0)||(a.caption||"").localeCompare(b.caption||""));
   sorted.forEach(a=>{
     const col=a.color||"#6b7280";
     const hk=a.hotkey?`<span class="arr-hk">${a.hotkey}</span>`:"";
     cont.append(`<div class="arr-row">
       <div class="arr-color" style="background:${col}"></div>
-      <span class="arr-name">${a.caption||"-"}</span>
+      <span class="arr-name">${a.caption||"-"}<small>${escHtml(catMap[String(a.aao_category_id||a.category_id||"")]||"")}</small></span>
       ${hk}
     </div>`);
   });
@@ -4359,12 +4693,13 @@ function renderHistTab(){
 function teamActionFromLink(link,prefix=""){
   const href=String(link?.getAttribute("href")||"").trim();
   if(!href)return null;
-  const allowed=/^\/(?:verband\/(?:kick|admin|coadmin|sprechwunsch_admin|aufsichtsrat|finance|schooling|staff|event_manager)\/\d+(?:\/[01])?|profile\/\d+\/chatban\/\d+|allianceIgnore\/\d+\/(?:add|remove)|messages\/new\?)/i;
+  const allowed=/^\/(?:verband\/(?:kick|admin|coadmin|sprechwunsch_admin|aufsichtsrat|finance|schooling|staff|event_manager)\/\d+(?:\/[01])?|profile\/\d+\/chatban\/\d+|allianceIgnore\/\d+\/(?:add|remove)|ignoriert\/hinzufuegen\/\d+\?|freunde\/hinzufuegen\/\d+\?|coins\?gift_for_user=|messages\/new\?)/i;
   if(!allowed.test(href))return null;
   const raw=String(link.textContent||"").replace(/\s+/g," ").trim();
   const label=`${prefix}${raw}`.trim();
-  const danger=link.classList.contains("btn-danger")||/kick|chatban|allianceIgnore|rauswerfen|entfernen|bannen|verbieten/i.test(`${href} ${label}`);
-  return {href,label,method:String(link.dataset.method||"get").toLowerCase(),danger};
+  const danger=link.classList.contains("btn-danger")||/kick|chatban|allianceIgnore|ignoriert|rauswerfen|entfernen|bannen|verbieten/i.test(`${href} ${label}`);
+  const chatban=href.includes("/chatban/");
+  return {href,label,method:String(link.dataset.method||"get").toLowerCase(),danger,chatban};
 }
 function parseTeamRightsPage(html){
   const doc=new DOMParser().parseFromString(html||"","text/html"),rights={};
@@ -4373,11 +4708,155 @@ function parseTeamRightsPage(html){
     if(!id)return;
     rights[id]=Array.from(box.querySelectorAll("a[href]"),a=>teamActionFromLink(a)).filter(Boolean);
   });
+  const details={};
+  const detailsByName={};
+  doc.querySelectorAll("img.online_icon,.online_icon").forEach(icon=>{
+    const activity=parseTeamOnlineIcon(icon);
+    const rawName=(icon.getAttribute("title")||icon.getAttribute("alt")||"").match(/^(.+?)\s+ist\s+/i)?.[1]||"";
+    const key=normalizeTxt(rawName);
+    if(key&&activity)detailsByName[key]={name:rawName,activity,lastOnlineRaw:activity.hint||"",online:activity.cls==="online",ts:Date.now()};
+  });
+  doc.querySelectorAll("tr").forEach(row=>{
+    const link=row.querySelector("a[href*='/profile/']");
+    const href=link?.getAttribute("href")||"";
+    const rightsBox=row.querySelector('[id^="rights_"]');
+    const id=String(
+      href.match(/\/profile\/(\d+)/)?.[1] ||
+      row.querySelector("[user_id]")?.getAttribute("user_id") ||
+      rightsBox?.id?.match(/rights_(\d+)/)?.[1] ||
+      ""
+    );
+    if(!id)return;
+    const onlineIcon=row.querySelector("img.online_icon,.online_icon");
+    const activity=parseTeamOnlineIcon(onlineIcon);
+    const cells=Array.from(row.querySelectorAll("td")).map(td=>(td.textContent||"").replace(/\s+/g," ").trim()).filter(Boolean);
+    const iconName=(onlineIcon?.getAttribute("title")||onlineIcon?.getAttribute("alt")||"").match(/^(.+?)\s+ist\s+/i)?.[1]||"";
+    const name=(link?.textContent||iconName||cells[0]||"").replace(/\s+/g," ").trim();
+    const creditsCell=cells.find(txt=>/verdiente Credits|Credits/i.test(txt)&&/[\d.]/.test(txt));
+    const credits=parseCreditsValue(creditsCell);
+    const gradeCell=cells.find(txt=>LEVELS.some(lv=>txt.includes(lv.rank)))||"";
+    const toplistCell=cells.find(txt=>/^#?\d+$/.test(txt));
+    details[id]={name};
+    if(activity){
+      details[id].activity=activity;
+      details[id].lastOnlineRaw=activity.hint||"";
+      details[id].online=activity.cls==="online";
+    }
+    if(credits!==null)details[id].credits=credits;
+    if(gradeCell)details[id].rank=gradeCell.replace(/\s+/g," ").trim();
+    if(toplistCell)details[id].toplistRank=parseInt(toplistCell.replace(/[^\d]/g,""),10)||null;
+  });
+  Object.entries(details).forEach(([id,detail])=>{
+    S.teamAdmin.details[id]={...(S.teamAdmin.details[id]||{}),...detail,ts:Date.now()};
+  });
+  S.teamAdmin.detailsByName={...(S.teamAdmin.detailsByName||{}),...detailsByName};
   return rights;
 }
-function canLoadTeamModeration(){
+function currentUserRoleIds(){
   const ids=(Array.isArray(S.profile.roles)?S.profile.roles:[]).map(role=>String(role.id||""));
-  return ids.some(id=>["owner","admin","coadmin","radio","personnel"].includes(id));
+  return new Set(ids);
+}
+function canLoadTeamModeration(){
+  const ids=currentUserRoleIds();
+  return ["owner","admin","coadmin","radio","personnel"].some(id=>ids.has(id));
+}
+function canManageMemberRoles(){
+  const ids=currentUserRoleIds();
+  return ["owner","admin","coadmin"].some(id=>ids.has(id));
+}
+function canKickMembers(){
+  const ids=currentUserRoleIds();
+  return ["owner","admin","coadmin","personnel"].some(id=>ids.has(id));
+}
+function canChatbanMembers(){
+  const ids=currentUserRoleIds();
+  return ["owner","admin","coadmin","radio"].some(id=>ids.has(id));
+}
+function teamCreditsFromUser(user){
+  const keys=["credits_earned","credits","earned_credits","creditsTotal","credits_total"];
+  for(const key of keys){
+    const n=parseCreditsValue(user?.[key]);
+    if(n!==null)return n;
+  }
+  return null;
+}
+function parseTeamDate(raw){
+  if(!raw)return null;
+  if(typeof raw==="number"&&raw>0)return raw<1000000000000?raw*1000:raw;
+  const text=String(raw).trim();
+  if(!text)return null;
+  const iso=Date.parse(text);
+  if(Number.isFinite(iso))return iso;
+  const rel=text.match(/(\d+)\s*(Minute|Minuten|Stunde|Stunden|Tag|Tage|Woche|Wochen|Monat|Monate)/i);
+  if(rel){
+    const n=Number(rel[1])||0;
+    const unit=rel[2].toLowerCase();
+    const mult=unit.startsWith("minute")?60000:unit.startsWith("stunde")?3600000:unit.startsWith("tag")?86400000:unit.startsWith("woche")?604800000:2592000000;
+    return Date.now()-n*mult;
+  }
+  return null;
+}
+function parseTeamOnlineIcon(icon){
+  if(!icon)return null;
+  const src=String(icon.getAttribute("src")||"").toLowerCase();
+  const title=String(icon.getAttribute("title")||icon.getAttribute("alt")||"").replace(/\s+/g," ").trim();
+  const online=/ist online|online/i.test(title)&&!/offline/i.test(title);
+  if(online||src.includes("user_green"))return {cls:"online",dot:"",label:title||"Online",hint:"Online",days:0};
+  const lt=title.match(/offline\s*:\s*(?:<|&lt;)\s*(\d+)\s*Tage/i);
+  const days=lt?Number(lt[1]):null;
+  let cls="unknown",dot="",label=title||"Zuletzt online unbekannt";
+  if(src.includes("user_blue"))cls="week";
+  else if(src.includes("user_yellow"))cls="two-weeks";
+  else if(src.includes("user_red"))cls="month";
+  else if(src.includes("user_gray")||src.includes("user_grey"))cls="recent";
+  if(days!==null){
+    label=`${title||`Offline: < ${days} Tage`}`;
+    return {cls,dot,label,hint:`Offline: < ${days} Tage`,days};
+  }
+  const short=title.replace(/^.*offline\s*:\s*/i,"").trim();
+  return {cls,dot,label,hint:short?`Offline: ${short}`:"nicht verfügbar",days:null};
+}
+function teamActivityInfo(user,details){
+  if(details?.activity)return details.activity;
+  const online=user?.online===true||user?.online==="true"||user?.online_status==="online"||details?.online===true;
+  const raw=details?.lastOnlineRaw||user?.last_online_at||user?.last_online||user?.last_seen_at||user?.last_seen||user?.online_at||"";
+  if(online)return {cls:"online",dot:"",label:"Online",hint:"Online",days:0};
+  const ts=parseTeamDate(raw);
+  if(!ts)return {cls:"unknown",dot:"",label:"Zuletzt online unbekannt",hint:"nicht verfügbar",days:null};
+  const days=Math.max(0,Math.floor((Date.now()-ts)/86400000));
+  if(days<7)return {cls:"recent",dot:"",label:"Weniger als 7 Tage offline",hint:days===0?"heute":`Offline: ${days} Tage`,days};
+  if(days<14)return {cls:"week",dot:"",label:"Mehr als 7 Tage offline",hint:`Offline: ${days} Tage`,days};
+  if(days<30)return {cls:"two-weeks",dot:"",label:"Mehr als 14 Tage offline",hint:`Offline: ${days} Tage`,days};
+  return {cls:"month",dot:"",label:"Mehr als 30 Tage offline",hint:`Offline: ${days} Tage`,days};
+}
+function generatedTeamActions(id,info,name){
+  const actions=[];
+  const roleIds=new Set((info?.all?.length?info.all:[info?.primary]).filter(Boolean).map(role=>role.id));
+  if(canKickMembers())actions.push({href:`/verband/kick/${id}`,label:"Rauswerfen",method:"get",danger:true,kind:"kick"});
+  if(canManageMemberRoles()){
+    TEAM_ROLE_ACTIONS.forEach(role=>{
+      const active=roleIds.has(role.id);
+      actions.push({
+        href:`/verband/${role.path}/${id}/${active?0:1}`,
+        label:`Als ${role.label} ${active?"entfernen":"hinzufügen"}`,
+        method:"get",
+        danger:active,
+        kind:"role"
+      });
+    });
+  }
+  if(canChatbanMembers()){
+    CHATBAN_OPTIONS.forEach(opt=>actions.push({
+      href:`/profile/${id}/chatban/${opt.sec}`,
+      label:`Chat-Bann: ${opt.label}`,
+      method:"get",
+      danger:true,
+      chatban:true,
+      kind:"chatban"
+    }));
+  }
+  if(name)actions.push({href:`/messages/new?target=${encodeURIComponent(name)}`,label:"Nachricht senden",method:"get",danger:false,kind:"message"});
+  return actions;
 }
 function fetchTeamAdminRights(users,force=false){
   const admin=S.teamAdmin;
@@ -4397,14 +4876,88 @@ function fetchTeamProfileActions(id,done){
     const doc=new DOMParser().parseFromString(html||"","text/html"),actions=[];
     doc.querySelectorAll("#userinfo > a[href]").forEach(a=>{const item=teamActionFromLink(a);if(item)actions.push(item);});
     doc.querySelectorAll("#userinfo .btn-group .dropdown-menu a[href*='/chatban/']").forEach(a=>{const item=teamActionFromLink(a,"Chat-Bann: ");if(item)actions.push(item);});
+    const details=parseTeamProfileDetails(doc,html);
+    S.teamAdmin.details[key]={...(S.teamAdmin.details[key]||{}),...details,ts:Date.now()};
+    updateTeamCardDetails(key);
     S.teamAdmin.profiles[key]={ts:Date.now(),actions};done(actions);
   },()=>done([]));
 }
-function teamAdminActionsHtml(id,profileActions=[]){
+function fetchTeamProfileDetails(id,force=false){
+  const key=String(id||"");if(!key)return;
+  const current=S.teamAdmin.details[key];
+  if(!force&&current?.ts&&Date.now()-current.ts<43200000&&(current.rank||current.credits!==undefined))return;
+  if(S.teamAdmin.detailLoading?.[key])return;
+  S.teamAdmin.detailLoading={...(S.teamAdmin.detailLoading||{}),[key]:true};
+  return new Promise(resolve=>pageGet(`${BASE}/profile/${encodeURIComponent(key)}`,html=>{
+    delete S.teamAdmin.detailLoading[key];
+    const doc=new DOMParser().parseFromString(html||"","text/html");
+    const details=parseTeamProfileDetails(doc,html);
+    S.teamAdmin.details[key]={...(S.teamAdmin.details[key]||{}),...details,ts:Date.now()};
+    updateTeamCardDetails(key);
+    resolve();
+  },()=>{delete S.teamAdmin.detailLoading[key];resolve();}));
+}
+function hydrateTeamProfileDetails(users){
+  const queue=(Array.isArray(users)?users:[])
+    .map(user=>String(user.id||""))
+    .filter(id=>{
+      const d=S.teamAdmin.details[id];
+      return id && (!d?.ts || Date.now()-d.ts>43200000 || (!d.rank&&d.credits===undefined));
+    })
+    .slice(0,160);
+  if(!queue.length)return;
+  let i=0,active=0;
+  const next=()=>{
+    while(active<2&&i<queue.length){
+      const id=queue[i++];active++;
+      Promise.resolve(fetchTeamProfileDetails(id)).finally(()=>setTimeout(()=>{active--;next();},180));
+    }
+  };
+  setTimeout(next,800);
+}
+function parseTeamProfileDetails(doc,html){
+  const text=(doc.body?.innerText||doc.body?.textContent||"").replace(/\s+/g," ").trim();
+  const userInfo=doc.querySelector("#userinfo");
+  const name=(userInfo?.querySelector("h1")?.textContent||"").replace(/\s+/g," ").replace(/^\s*[^\wÄÖÜäöüß]+/,"").trim();
+  const rank=(text.match(/Dienstgrad:\s*(.+?)(?=\s+[\d.]+(?:,\d+)?\s+verdiente Credits|\s+Verband:|$)/i)?.[1]||"").trim();
+  const credits=parseCreditsValue(userInfo?.getAttribute("data-credits-earned")) ?? parseCreditsValue(text.match(/([\d.]+)\s+verdiente Credits/i)?.[1]);
+  const toplistRank=parseInt((text.match(/(?:Spielerplatzierung|Topliste|Platzierung)\s*:?\s*#?\s*([\d.]+)/i)?.[1]||"").replace(/\./g,""),10)||null;
+  const onlineIcon=userInfo?.querySelector(".online_icon");
+  const onlineTitle=onlineIcon?.getAttribute("title")||onlineIcon?.getAttribute("alt")||"";
+  const online=/ist online|online/i.test(onlineTitle)&&!/offline/i.test(onlineTitle);
+  const lastOnlineRaw=(text.match(/Zuletzt online:\s*(.+?)(?=\s+Dienstgrad:|\s+Verband:|$)/i)?.[1]||"").trim();
+  return {name,rank,credits,toplistRank,online,lastOnlineRaw};
+}
+function updateTeamCardDetails(id){
+  const card=$("#lss7-team .team-card").filter((_,el)=>String(el.getAttribute("data-user-id")||"")===String(id));
+  if(!card.length)return;
+  const stored=S.teamAdmin.users?.[String(id)]?.user||{};
+  const byName=S.teamAdmin.detailsByName?.[normalizeTxt(stored.name||"")]||{};
+  const details={...byName,...(S.teamAdmin.details[String(id)]||{})};
+  if(details.rank)card.find(".team-grade").text(details.rank);
+  if(details.credits!==null&&details.credits!==undefined){
+    const lv=pickLevelByCredits(Number(details.credits)||0);
+    if(!details.rank)card.find(".team-grade").text(lv.rank||"-");
+    card.find(".team-credits").text(fmtMoney(details.credits));
+  }
+  if(details.toplistRank)card.find(".team-rank").text(`#${fmt(details.toplistRank)}`);
+  const activity=teamActivityInfo(stored,details);
+  card.find(".team-activity-dot").attr("class",`team-activity-dot ${activity.cls}`).text(activity.dot).attr("title",activity.label);
+  card.find(".team-last-online").attr("class",`team-last-online ${activity.cls}`).text(activity.hint).attr("title",activity.label);
+  if(activity.days!==null&&activity.days!==undefined)card.attr("data-offline-days",activity.days);
+}
+function teamAdminActionsHtml(id,profileActions=[],user=null,info=null){
   const rights=S.teamAdmin.rights[String(id)]||[];
-  const all=[...rights,...profileActions].filter((item,index,list)=>list.findIndex(x=>x.href===item.href)===index);
+  const generated=generatedTeamActions(id,info,String(user?.name||""));
+  const all=[...rights,...profileActions,...generated].filter((item,index,list)=>list.findIndex(x=>x.href===item.href)===index);
   if(!all.length)return `<div class="team-admin-empty">Für diesen Spieler zeigt Leitstellenspiel keine Verwaltungsaktion an.</div>`;
-  return `<div class="team-admin-groups">${all.map(action=>{
+  const chatbans=all.filter(action=>action.chatban);
+  const others=all.filter(action=>!action.chatban);
+  const chatbanHtml=chatbans.length?`<div class="team-admin-chatban">
+    <label><span>Chat-Bann</span><select class="team-chatban-select">${chatbans.map(action=>`<option value="${escHtml(action.href)}" data-label="${escHtml(action.label)}" data-method="${escHtml(action.method)}" data-danger="${action.danger?"1":"0"}">${escHtml(action.label.replace(/^Chat-Bann:\s*/,""))}</option>`).join("")}</select></label>
+    <button class="team-admin-action danger team-chatban-run" type="button">Chat-Bann ausführen</button>
+  </div>`:"";
+  return `${chatbanHtml}<div class="team-admin-groups">${others.map(action=>{
     const contact=/^\/messages\/new/i.test(action.href);
     return `<button class="team-admin-action ${action.danger?"danger":contact?"contact":"role"}" type="button" data-href="${escHtml(action.href)}" data-method="${escHtml(action.method)}" data-label="${escHtml(action.label)}" data-danger="${action.danger?"1":"0"}">${escHtml(action.label)}</button>`;
   }).join("")}</div><div class="team-admin-note">Es werden ausschließlich Aktionen angezeigt, die Leitstellenspiel für deinen Account freigibt.</div>`;
@@ -4417,15 +4970,36 @@ function renderTeam(users){
   const rolePriority=Object.fromEntries(roles.map((role,index)=>[role.id,index]));
   rolePriority.other=roles.length;rolePriority.member=roles.length+1;
   const enriched=users.map(u=>({u,info:allianceRoleInfo(u)})).sort((a,b)=>(rolePriority[a.info.primary.id]??99)-(rolePriority[b.info.primary.id]??99)||String(a.u.name||"").localeCompare(String(b.u.name||""),uiLocale()));
+  S.teamAdmin.users=Object.fromEntries(enriched.map(({u,info})=>[String(u.id),{user:u,info}]));
   const leadership=enriched.filter(x=>x.info.lead).length;
   const special=enriched.filter(x=>x.info.special).length;
   const regular=enriched.length-leadership-special;
+  const onlineCount=enriched.filter(({u})=>{
+    const details={...(S.teamAdmin.detailsByName?.[normalizeTxt(u.name||"")]||{}),...(S.teamAdmin.details[String(u.id)]||{})};
+    return teamActivityInfo(u,details).cls==="online";
+  }).length;
+  const canBulk=canLoadTeamModeration();
   cont.append(`<div class="team-summary">
     <div class="team-summary-card"><span>${tr("Mitglieder gesamt")}</span><b>${fmt(users.length)}</b></div>
+    <div class="team-summary-card online"><span>Aktuell online</span><b>${fmt(onlineCount)}</b></div>
     <div class="team-summary-card"><span>${tr("Leitungsteam")}</span><b>${fmt(leadership)}</b></div>
     <div class="team-summary-card"><span>${tr("Sonderrollen")}</span><b>${fmt(special)}</b></div>
     <div class="team-summary-card"><span>${tr("Mitglieder ohne Leitungsrolle")}</span><b>${fmt(regular)}</b></div>
   </div>`);
+  if(canBulk){
+    const bulkOptions=[
+      ...(canKickMembers()?[`<option value="kick">Ausgewählte Mitglieder rauswerfen</option>`]:[]),
+      ...(canManageMemberRoles()?TEAM_ROLE_ACTIONS.map(role=>`<option value="role:${role.path}:0">Recht entfernen: ${escHtml(role.label)}</option>`):[])
+    ].join("");
+    cont.append(`<div class="team-bulkbar">
+      <label class="team-select-all"><input type="checkbox" id="team-select-all"> Alle sichtbaren auswählen</label>
+      <button class="team-bulk-btn" id="team-select-inactive" type="button">90+ Tage inaktive markieren</button>
+      <button class="team-bulk-btn" id="team-select-clear" type="button">Auswahl leeren</button>
+      <span class="team-bulk-count"><b id="team-selected-count">0</b> ausgewählt</span>
+      <select id="team-bulk-action" class="lss7-select">${bulkOptions}</select>
+      <button class="team-bulk-btn danger" id="team-bulk-run" type="button">Aktion ausführen</button>
+    </div>`);
+  }
   cont.append(`<div class="team-toolbar">
     <input id="team-search" class="lss7-select" type="search" placeholder="${tr("Mitglied suchen...")}">
     <select id="team-filter" class="lss7-select">
@@ -4446,12 +5020,24 @@ function renderTeam(users){
       const initials=name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase().slice(0,2)||"?";
       const roleIds=(info.all.length?info.all:[info.primary]).map(role=>role.id);
       const badges=(info.all.length?info.all:[info.primary]).map(role=>`<span class="team-role team-role-${role.id}" style="--role-color:${role.color}">${escHtml(role.label)}</span>`).join("");
+      const details={...(S.teamAdmin.detailsByName?.[normalizeTxt(name)]||{}),...(S.teamAdmin.details[String(u.id)]||{})};
+      const credits=details.credits??teamCreditsFromUser(u);
+      const level=details.rank || String(u.rank_name||u.rank_title||u.level_name||"") || (credits!==null?pickLevelByCredits(Number(credits)||0).rank:"Dienstgrad unbekannt");
+      const toplist=String(details.toplistRank||u.rank||u.position||u.toplist_rank||u.place||"").replace(/[^\d]/g,"");
+      const activity=teamActivityInfo(u,details);
       const hasRights=(S.teamAdmin.rights[String(u.id)]||[]).length>0;
       const canManage=hasRights||canLoadTeamModeration();
-      grid.append(`<article class="team-card" data-name="${escHtml(name.toLowerCase())}" data-roles="${escHtml(roleIds.join(","))}">
+      const inactiveDays=activity.days!==null&&activity.days!==undefined?activity.days:(activity.hint.match(/(\d+)\s*Tage/)?.[1]||"");
+      grid.append(`<article class="team-card" data-user-id="${escHtml(u.id)}" data-name="${escHtml(name.toLowerCase())}" data-roles="${escHtml(roleIds.join(","))}" data-offline-days="${escHtml(inactiveDays)}">
+        ${canBulk?`<label class="team-select-wrap"><input class="team-select" type="checkbox" data-user-id="${escHtml(u.id)}" data-user-name="${escHtml(name)}"></label>`:""}
         <div class="team-avatar">${escHtml(initials)}</div>
-        <div class="team-main"><span class="team-name" title="${escHtml(name)}">${escHtml(name)}</span><div class="team-badges">${badges}</div></div>
-        <div class="team-card-tools"><a class="team-open" href="${BASE}/profile/${encodeURIComponent(u.id)}" target="_blank" rel="noopener" title="${tr("Profil öffnen")}">↗</a>${canManage?`<button class="team-manage" type="button" data-user-id="${escHtml(u.id)}" data-user-name="${escHtml(name)}" title="Mitglied verwalten">⚙</button>`:""}</div>
+        <div class="team-main">
+          <div class="team-name-row"><span class="team-activity-dot ${activity.cls}" title="${escHtml(activity.label)}">${activity.dot}</span><span class="team-name" title="${escHtml(name)}">${escHtml(name)}</span></div>
+          <div class="team-badges">${badges}</div>
+          <div class="team-meta-line"><span>Dienstgrad: <b class="team-grade">${escHtml(level||"-")}</b></span><span>Spielerrang: <b class="team-rank">${toplist?`#${fmt(toplist)}`:"-"}</b></span></div>
+          <div class="team-meta-line"><span>Credits: <b class="team-credits">${credits!==null?fmtMoney(credits):"-"}</b></span><span>Zuletzt online: <b class="team-last-online ${activity.cls}" title="${escHtml(activity.label)}">${escHtml(activity.hint)}</b></span></div>
+        </div>
+        <div class="team-card-tools"><a class="team-open team-mail" href="${BASE}/messages/new?target=${encodeURIComponent(name)}" title="Nachricht senden">✉</a><a class="team-open" href="${BASE}/profile/${encodeURIComponent(u.id)}" target="_blank" rel="noopener" title="${tr("Profil öffnen")}">↗</a>${canManage?`<button class="team-manage" type="button" data-user-id="${escHtml(u.id)}" data-user-name="${escHtml(name)}" title="Mitglied verwalten">⚙</button>`:""}</div>
         ${canManage?`<div class="team-admin-drawer" data-admin-user="${escHtml(u.id)}"><div class="team-admin-loading">Verwaltungsrechte werden beim Öffnen geprüft.</div></div>`:""}
       </article>`);
     });
@@ -4460,6 +5046,8 @@ function renderTeam(users){
   cont.append(`<div class="lss7-empty team-empty-filter">Keine passenden Mitglieder gefunden.</div>`);
   applyTranslations(cont.get(0));
   fetchTeamAdminRights(users);
+  hydrateTeamProfileDetails(users);
+  updateTeamSelectionUi();
 }
 
 function filterTeamRows(){
@@ -4476,6 +5064,80 @@ function filterTeamRows(){
     $(this).toggleClass("is-hidden",$(this).find(".team-card:not(.is-hidden)").length===0);
   });
   $("#lss7-team .team-empty-filter").toggle(visible===0);
+  updateTeamSelectionUi();
+}
+function updateTeamSelectionUi(){
+  const selected=$("#lss7-team .team-select:checked").length;
+  $("#team-selected-count").text(fmt(selected));
+  const visible=$("#lss7-team .team-card:not(.is-hidden) .team-select");
+  const checked=visible.filter(":checked");
+  $("#team-select-all").prop("checked",visible.length>0&&visible.length===checked.length).prop("indeterminate",checked.length>0&&checked.length<visible.length);
+}
+async function runTeamAction(href,method="get"){
+  const headers={"X-Requested-With":"XMLHttpRequest","Accept":"text/html,application/xhtml+xml"};
+  const csrf=document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+  if(csrf)headers["X-CSRF-Token"]=csrf;
+  const response=await fetch(`${BASE}${href}`,{method:String(method).toUpperCase()==="POST"?"POST":"GET",credentials:"include",headers,redirect:"follow"});
+  if(!response.ok)throw new Error(`HTTP ${response.status}`);
+  return response;
+}
+function findTeamUserByName(query){
+  const q=normalizeTxt(query);
+  if(!q)return null;
+  const users=Object.values(S.teamAdmin.users||{});
+  return users.find(entry=>normalizeTxt(entry.user?.name)===q) ||
+    users.find(entry=>normalizeTxt(entry.user?.name).includes(q));
+}
+function chatbanSecondsFromToken(token){
+  const t=String(token||"").toLowerCase().trim();
+  const direct={m5:300,"5m":300,"15m":900,"30m":1800,"1h":3600,"6h":21600,"12h":43200,"1d":86400,"7d":604800,"14d":1209600};
+  if(direct[t])return direct[t];
+  const m=t.match(/^(\d+)\s*(m|min|h|std|d|tag|tage)$/);
+  if(!m)return 300;
+  const n=Math.max(1,Number(m[1])||1),u=m[2];
+  return u.startsWith("m")?n*60:u==="h"||u==="std"?n*3600:n*86400;
+}
+async function handleTeamChatCommand(input,value){
+  const m=String(value||"").trim().match(/^([!/])\s*(kick|ban|chatban)\s+(.+)$/i);
+  if(!m)return false;
+  const cmd=m[2].toLowerCase();
+  let rest=m[3].trim(),duration="5m";
+  if(cmd!=="kick"){
+    const parts=rest.split(/\s+/);
+    const last=parts[parts.length-1]||"";
+    if(/^\d+\s*(m|min|h|std|d|tag|tage)$|^(5m|15m|30m|1h|6h|12h|1d|7d|14d)$/i.test(last)){
+      duration=last;parts.pop();rest=parts.join(" ").trim();
+    }
+  }
+  const entry=findTeamUserByName(rest);
+  if(!entry){alert(`Mitglied "${rest}" wurde in den geladenen Verbandsdaten nicht gefunden.`);return true;}
+  const id=entry.user?.id,name=entry.user?.name||rest;
+  if(cmd==="kick"){
+    if(!canKickMembers()){alert("Deine geladene Rolle erlaubt im Script kein Rauswerfen.");return true;}
+    if(!window.confirm(`${name} wirklich aus dem Verband werfen?`))return true;
+    await runTeamAction(`/verband/kick/${id}`,"get");
+  }else{
+    if(!canChatbanMembers()){alert("Deine geladene Rolle erlaubt im Script keinen Chat-Bann.");return true;}
+    const sec=chatbanSecondsFromToken(duration);
+    const label=CHATBAN_OPTIONS.find(opt=>opt.sec===sec)?.label||`${Math.round(sec/60)} Minuten`;
+    if(!window.confirm(`${name} wirklich für ${label} im Verbandschat bannen?`))return true;
+    await runTeamAction(`/profile/${id}/chatban/${sec}`,"get");
+  }
+  input.value="";
+  alert("Aktion wurde ausgeführt.");
+  setTimeout(()=>fetchAlliance(),700);
+  return true;
+}
+function installTeamChatCommandHelper(){
+  document.addEventListener("keydown",e=>{
+    if(e.key!=="Enter"||e.shiftKey||e.ctrlKey||e.altKey)return;
+    const input=e.target;
+    if(!(input instanceof HTMLInputElement||input instanceof HTMLTextAreaElement))return;
+    const value=String(input.value||"").trim();
+    if(!/^([!/])\s*(kick|ban|chatban)\b/i.test(value))return;
+    e.preventDefault();e.stopPropagation();
+    handleTeamChatCommand(input,value).catch(err=>{console.warn("[LSS7] chat command",err);alert("Aktion konnte nicht ausgeführt werden.");});
+  },true);
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -4871,6 +5533,17 @@ function buildUI(){
     </section>
     <section class="asset-section">
       <div class="asset-section-head">
+        <div><span class="asset-section-title">Qualitätscheck & API-Lage</span><span class="asset-section-sub">Automatische Hinweise aus v2-Fahrzeugen, v2-Gebäuden, POIs, Einsatzdaten, Verbandsevents und AAO-Kategorien.</span></div>
+        <div class="asset-action-row"><button class="lbtn prime compact" id="fleet-refresh-analysis" type="button">Analyse aktualisieren</button><button class="lbtn compact" data-export="fleet" type="button">CSV Fuhrpark</button></div>
+      </div>
+      <div id="fleet-quality-board" class="quality-grid"><div class="lss7-empty"><span class="lspin"></span> Lade Qualitätscheck...</div></div>
+      <div class="asset-subhead"><span>Top-Fahrzeugtypen</span><span>aus /api/v2/vehicles</span></div>
+      <div id="fleet-type-board" class="fleet-type-board"><div class="lss7-empty"><span class="lspin"></span> Lade Fahrzeugtypen...</div></div>
+      <div class="asset-subhead"><span>Datenbasis</span><span>offizielle API-Endpunkte</span></div>
+      <div id="fleet-api-board" class="quality-grid compact-grid"></div>
+    </section>
+    <section class="asset-section">
+      <div class="asset-section-head">
         <div><span class="asset-section-title">Standorte, Personal & Ausbauten</span><span class="asset-section-sub">Betriebsstatus, Personalabdeckung, Spezialisierungen, Leitstellenbindung und vorhandene Kapazitäten aus der Gebäude-API.</span></div><span class="fleet-panel-live">Live API</span>
       </div>
       <div id="lss7-bld"><div class="lss7-empty"><span class="lspin"></span> Lade Gebäudedetails...</div></div>
@@ -4975,6 +5648,15 @@ function buildUI(){
   grpAct.append(mkBtn("7T","7-Tage-Verbandsverdienst zurücksetzen","id='sb-alliance-daily-reset' class='lbtn danger'"));
   setWrap.append(grpAct);
 
+  const grpExport=$(`<div class="set-group set-wide set-actions settings-export"><div class="set-head">Datenexport</div></div>`);
+  grpExport.append(`<button class="lbtn" data-export="fleet" type="button"><span class="lbtn-i">CSV</span><span class="lbtn-t">Fuhrpark exportieren</span></button>`);
+  grpExport.append(`<button class="lbtn" data-export="buildings" type="button"><span class="lbtn-i">CSV</span><span class="lbtn-t">Standorte exportieren</span></button>`);
+  grpExport.append(`<button class="lbtn" data-export="schoolings" type="button"><span class="lbtn-i">CSV</span><span class="lbtn-t">Lehrgänge exportieren</span></button>`);
+  grpExport.append(`<button class="lbtn" data-export="aaos" type="button"><span class="lbtn-i">CSV</span><span class="lbtn-t">AAO exportieren</span></button>`);
+  grpExport.append(`<button class="lbtn" data-export="team" type="button"><span class="lbtn-i">CSV</span><span class="lbtn-t">Mitspieler exportieren</span></button>`);
+  grpExport.append(`<button class="lbtn" data-export="history" type="button"><span class="lbtn-i">CSV</span><span class="lbtn-t">Verlauf exportieren</span></button>`);
+  setWrap.append(grpExport);
+
   const grpUpdate=$(`<div class="set-group set-wide settings-updates"><div class="set-head">Updates</div></div>`);
   grpUpdate.append(`<div class="update-status" id="sb-update-status"><strong>Automatische Updates</strong><span>Tampermonkey übernimmt Updates über die hinterlegte Update-URL. Beim Start wird zusätzlich geprüft, ob die installierte Version aktuell ist.</span></div>`);
   grpUpdate.append(`<div class="update-actions"><button class="lbtn prime" id="sb-update-check" type="button">Userscripte auf Updates prüfen</button><a class="lbtn" id="sb-update-install" href="${UPDATE_URL}" target="_blank" rel="noopener" style="display:none">Update manuell installieren</a></div>`);
@@ -5006,6 +5688,7 @@ function buildUI(){
       <option value="light"${S.settings.panelTheme==="light"?" selected":""}>Light</option>
       <option value="summer"${S.settings.panelTheme==="summer"?" selected":""}>Summer 2026</option>
       <option value="summer-dark"${S.settings.panelTheme==="summer-dark"?" selected":""}>Summer Dark 2026</option>
+      <option value="lcars"${S.settings.panelTheme==="lcars"?" selected":""}>LCARS 2364</option>
     </select>
   </label>`);
   setWrap.append(grpOpt);
@@ -5093,7 +5776,7 @@ function buildUI(){
   </div>`);
 
   const grpPn=$(`<div class="set-group set-wide settings-patch-notes"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v9.1.1</b><br>Professioneller Mitgliederbereich mit Verwaltung, überarbeitetes Spielerprofil, neue Tageslage, verbesserte Navigation und Logos, aufgeräumte Einstellungen sowie zahlreiche Darstellungs- und Stabilitätskorrekturen.</div>`);
+  grpPn.append(`<div class="set-note"><b>v9.2.3</b><br>LCARS 2364 wurde optisch komplett überarbeitet und kann jetzt optional auch die Leitstellenspiel-Oberfläche außerhalb des Dashboards passend gestalten.</div>`);
   setWrap.append(grpPn);
   setWrap.append(grpContact);
   setWrap.append(grpInfo);
@@ -5102,7 +5785,7 @@ function buildUI(){
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v9.1.1",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v9.2.3",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -5127,9 +5810,9 @@ function buildUI(){
     panel.find(`#${id}`).addClass("active");
 
     // Lazy fetch beim ersten Ã–ffnen
-    if(id==="tp-vehicles"  && !panel.data("lv")){panel.data("lv",1);fetchVehicleStates();fetchBuildings();}
+    if(id==="tp-vehicles"  && !panel.data("lv")){panel.data("lv",1);fetchVehicleStates();fetchBuildings();fetchFleetVehicles();fetchAnalysisMeta();}
     if(id==="tp-schoolings"&& !panel.data("ls")){panel.data("ls",1);fetchSchoolings();}
-    if(id==="tp-aao"       && !panel.data("la")){panel.data("la",1);fetchAAOs();}
+    if(id==="tp-aao"       && !panel.data("la")){panel.data("la",1);fetchAAOs();fetchAnalysisMeta();}
     if(id==="tp-history"){renderHistTab();}
     if(id==="tp-forecast"){renderForecast();}
     if(id==="tp-player-forecast"){renderPlayerForecast();fetchPlayerRanking();}
@@ -5144,6 +5827,14 @@ function buildUI(){
 
   // Settings buttons
   panel.on("click","#sb-refresh",  e=>{ e.stopPropagation(); fetchAllData(); });
+  panel.on("click","[data-export]",e=>{
+    e.stopPropagation();e.preventDefault();
+    exportDashboardData(String($(e.currentTarget).data("export")||""));
+  });
+  panel.on("click","#fleet-refresh-analysis",e=>{
+    e.stopPropagation();e.preventDefault();
+    fetchVehicleStates();fetchBuildings();fetchFleetVehicles();fetchAnalysisMeta();
+  });
   panel.on("click","#sb-update-check",e=>{
     e.stopPropagation();e.preventDefault();
     checkUpdate({manual:true});
@@ -5303,6 +5994,55 @@ function buildUI(){
   });
   panel.on("input","#team-search",filterTeamRows);
   panel.on("change","#team-filter",filterTeamRows);
+  panel.on("change",".team-select,#team-select-all",function(e){
+    e.stopPropagation();
+    if(this.id==="team-select-all"){
+      const checked=this.checked;
+      $("#lss7-team .team-card:not(.is-hidden) .team-select").prop("checked",checked);
+    }
+    updateTeamSelectionUi();
+  });
+  panel.on("click","#team-select-clear",e=>{
+    e.stopPropagation();e.preventDefault();
+    $("#lss7-team .team-select,#team-select-all").prop("checked",false).prop("indeterminate",false);
+    updateTeamSelectionUi();
+  });
+  panel.on("click","#team-select-inactive",e=>{
+    e.stopPropagation();e.preventDefault();
+    $("#lss7-team .team-select,#team-select-all").prop("checked",false).prop("indeterminate",false);
+    $("#lss7-team .team-card").each(function(){
+      const days=Number($(this).data("offline-days"))||0;
+      if(days>=90)$(this).find(".team-select").prop("checked",true);
+    });
+    updateTeamSelectionUi();
+  });
+  panel.on("click","#team-bulk-run",async function(e){
+    e.stopPropagation();e.preventDefault();
+    const selected=$("#lss7-team .team-select:checked").map((_,el)=>({id:String($(el).data("user-id")),name:String($(el).data("user-name")||"")})).get();
+    if(!selected.length){alert("Bitte zuerst mindestens ein Mitglied auswählen.");return;}
+    const action=String($("#team-bulk-action").val()||"");
+    if(!action){alert("Bitte eine Aktion auswählen.");return;}
+    const label=$("#team-bulk-action option:selected").text();
+    if(!window.confirm(`${label} für ${selected.length} Mitglied(er) wirklich ausführen?`))return;
+    const btn=$(this).prop("disabled",true).text("Wird ausgeführt...");
+    let ok=0,fail=0;
+    for(const user of selected){
+      let href="";
+      if(action==="kick")href=`/verband/kick/${user.id}`;
+      else if(action.startsWith("role:")){
+        const [,path,value]=action.split(":");
+        href=`/verband/${path}/${user.id}/${value}`;
+      }
+      if(!href)continue;
+      try{await runTeamAction(href,"get");ok++;}
+      catch{fail++;}
+      await new Promise(resolve=>setTimeout(resolve,220));
+    }
+    btn.prop("disabled",false).text("Aktion ausführen");
+    alert(`Fertig. Erfolgreich: ${ok}, fehlgeschlagen: ${fail}`);
+    S.teamAdmin.lastTs=0;S.teamAdmin.profiles={};
+    setTimeout(()=>fetchAlliance(),700);
+  });
   panel.on("click",".team-manage",function(e){
     e.stopPropagation();e.preventDefault();
     const btn=$(this),id=String(btn.data("user-id")||""),drawer=btn.closest(".team-card").find(".team-admin-drawer");
@@ -5312,10 +6052,23 @@ function buildUI(){
     drawer.toggleClass("open",open);btn.toggleClass("open",open);
     if(!open)return;
     drawer.html(`<div class="team-admin-loading"><span class="lspin"></span> Berechtigungen werden direkt beim Leitstellenspiel geprüft...</div>`);
-    fetchTeamProfileActions(id,actions=>drawer.html(teamAdminActionsHtml(id,actions)));
+    const stored=S.teamAdmin.users?.[id]||{};
+    fetchTeamProfileActions(id,actions=>drawer.html(teamAdminActionsHtml(id,actions,stored.user||{id,name:String(btn.data("user-name")||"")},stored.info||null)));
+  });
+  panel.on("click",".team-chatban-run",function(e){
+    e.stopImmediatePropagation();e.preventDefault();
+    const sel=$(this).closest(".team-admin-chatban").find(".team-chatban-select");
+    const opt=sel.find("option:selected");
+    const href=String(sel.val()||""),label=String(opt.data("label")||"Chat-Bann"),method=String(opt.data("method")||"get");
+    if(!href)return;
+    $(this).attr({"data-href":href,"data-label":label,"data-method":method,"data-danger":"1"}).trigger("team-action-run");
   });
   panel.on("click",".team-admin-action",async function(e){
     e.stopPropagation();e.preventDefault();
+    $(this).trigger("team-action-run");
+  });
+  panel.on("team-action-run",".team-admin-action",async function(e){
+    e.stopPropagation();
     const btn=$(this),href=String(btn.data("href")||""),method=String(btn.data("method")||"get").toUpperCase(),label=String(btn.data("label")||"Aktion");
     if(!href)return;
     if(/^\/messages\/new/i.test(href)){location.href=`${BASE}${href}`;return;}
@@ -5323,11 +6076,7 @@ function buildUI(){
     if(!window.confirm(warning))return;
     btn.prop("disabled",true).text("Wird ausgeführt...");
     try{
-      const headers={"X-Requested-With":"XMLHttpRequest","Accept":"text/html,application/xhtml+xml"};
-      const csrf=document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-      if(csrf)headers["X-CSRF-Token"]=csrf;
-      const response=await fetch(`${BASE}${href}`,{method:method==="POST"?"POST":"GET",credentials:"include",headers,redirect:"follow"});
-      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      await runTeamAction(href,method);
       btn.text("Ausgeführt");
       S.teamAdmin.lastTs=0;delete S.teamAdmin.profiles[String(btn.closest(".team-admin-drawer").data("admin-user")||"")];
       setTimeout(()=>fetchAlliance(),700);
@@ -5386,7 +6135,11 @@ function getLayoutAnchor(){
   const mapOuter=$("#map_outer").first();
   if(rowMain.length) return {el:rowMain, where:"before"};
   if(mapOuter.length) return {el:mapOuter, where:"before"};
-  return {el:$("body"), where:"prepend"};
+  return null;
+}
+function canUseEmbeddedPanel(){
+  if(/^\/(?:alliances|verband|profile|users)\b/i.test(location.pathname))return false;
+  return !!getLayoutAnchor();
 }
 function applyPanelMode(){
   const panel=$("#lss7");
@@ -5397,7 +6150,7 @@ function applyPanelMode(){
   btnLi.show();
 
   const mode=S.settings.panelMode||"floating";
-  if(mode==="embedded"){
+  if(mode==="embedded"&&canUseEmbeddedPanel()){
     const p=getLayoutAnchor();
     if(p.el && p.el.length){
       if(p.where==="before") p.el.before(panel);
@@ -5417,10 +6170,12 @@ function applyPanelMode(){
     const left=(p.endsWith("left")) ? "14px" : "auto";
     panel.css({top,bottom,right,left,width:"",height:""});
   }
-  panel.removeClass("theme-dark theme-light theme-summer theme-summer-dark");
+  panel.removeClass("theme-dark theme-light theme-summer theme-summer-dark theme-lcars");
   const th=String(S.settings.panelTheme||"summer");
   panel.addClass(`theme-${th}`);
-  $("#lss7-summer").toggle(["summer","summer-dark"].includes(th)).text(th==="summer-dark"?"SUMMER DARK 2026":"SUMMER 2026");
+  document.body.classList.toggle("lss7-lcars-global",th==="lcars");
+  const themeBadge={summer:"SUMMER 2026","summer-dark":"SUMMER DARK 2026",lcars:"LCARS 2364"}[th];
+  $("#lss7-summer").toggle(!!themeBadge).text(themeBadge||"");
   summerSceneCtl?.setTheme(th);
   $("#lss7-col").text(S.settings.panelCollapsed?"Eingeklappt":"Ausgeklappt");
   renderWeather();
@@ -5611,6 +6366,61 @@ function mkAccordion(icon,title,body){
 function patchHTML(){
   const groups=[
     {
+      title:"v9.2.3 — LCARS-Redesign & globaler LSS-Stil",
+      items:[
+        "LCARS 2364 wurde optisch komplett überarbeitet: weniger dominante Gelbflächen, ruhiger schwarzer Kern, präzisere Segmentleisten und deutlich bessere Kontraste.",
+        "Wenn LCARS 2364 aktiv ist, erhält jetzt auch das Leitstellenspiel außerhalb des Dashboards einen passenden LCARS-Stil.",
+        "Navbar, Dropdowns, Buttons, Eingabefelder, Tabellen, Panels, Missionslisten, Chat-/Funkbereiche und Kartenrahmen werden passend umgestaltet.",
+        "Der globale LCARS-Stil ist sauber gekapselt und wird automatisch wieder entfernt, sobald ein anderes Theme ausgewählt wird.",
+        "Version und Patch-Notes wurden auf v9.2.3 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.2.2 — LCARS-Theme & aktive Lehrgänge",
+      items:[
+        "Neues professionelles LCARS-2364-Theme ergänzt: dunkler Kern, farbige Interface-Bänder, pillenförmige Navigation, klare Kontraste und passende Dashboard-Akzente.",
+        "LCARS 2364 ist ab sofort in den Einstellungen unter Panel-Theme auswählbar.",
+        "Die Theme-Umschaltung erkennt LCARS vollständig und blendet die bisherige Summer-Badge-Logik passend um.",
+        "Lehrgänge werden strenger gefiltert: Fertige, abgeschlossene, abgelaufene oder per Timer bereits vergangene Lehrgänge werden nicht mehr angezeigt.",
+        "Der HTML-Fallback liest den Lehrgangs-Timer jetzt als echten Zeitstempel aus und nutzt ihn für die Aktiv-Prüfung.",
+        "Version und Patch-Notes wurden auf v9.2.2 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.2.1 — API-Analyse, Qualitätschecks & CSV-Export",
+      items:[
+        "Fuhrpark & Standorte wurde um einen Qualitätscheck erweitert: Standorte ohne Fahrzeug, Standorte ohne Personal, Unterbesetzung, deaktivierte Standorte sowie Ausbauten im Bau oder deaktivierte Ausbauten werden automatisch erkannt.",
+        "Die neue Analyse nutzt zusätzliche offizielle Datenquellen: /api/v2/vehicles, /api/v2/pois, /api/v1/aao_categories, /api/mission_type_data, einsaetze.json und alliance_event_types.json.",
+        "Die v2-Abrufe für Fahrzeuge, Gebäude und POIs unterstützen jetzt Pagination über den after-Parameter, damit größere Accounts vollständiger ausgewertet werden.",
+        "Top-Fahrzeugtypen werden jetzt direkt im Fuhrparkbereich angezeigt, sobald die Fahrzeugliste geladen wurde.",
+        "Die Datenbasis zeigt POIs, Einsatzdaten, Verbandsevents und AAO-Kategorien als eigene API-Kennzahlen.",
+        "Der AAO-Bereich wurde erweitert: Hotkey-Abdeckung, fehlende Hotkeys, Kategorien und eine Kategorieübersicht werden sichtbar.",
+        "In den Einstellungen gibt es jetzt CSV-Exporte für Fuhrpark, Standorte, Lehrgänge, AAO, Mitspieler und Verlauf.",
+        "Export- und Analyseaktionen geben jetzt eine kleine Dashboard-Benachrichtigung aus, ohne das Spiel zu stören.",
+        "Version und Patch-Notes wurden auf v9.2.1 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.2.0 — Mitgliederverwaltung, Online-Status & API-Update",
+      items:[
+        "Neue Mitgliederverwaltung mit Mehrfachauswahl, gesammeltem Entfernen von Rollen und optionaler Markierung von 90+ Tage inaktiven Mitgliedern ergänzt.",
+        "Verwaltungsaktionen orientieren sich an den echten Leitstellenspiel-Rechten und unterstützen Rauswerfen, Rollen setzen oder entfernen, Nachrichten, Bewerbungsverbot und Chat-Bann.",
+        "Chat-Banns werden jetzt als Dropdown mit den bekannten Laufzeiten von 5 Minuten bis 14 Tage angezeigt.",
+        "Mitgliederkarten zeigen private Nachrichten direkt über einen Brief-Button an.",
+        "Online- und Inaktivitätsstatus werden aus den LSS-Online-Icons gelesen und als echte farbige Punkte dargestellt: grün online, grau kurz offline, blau über 7 Tage, gelb über 14 Tage und rot über 30 Tage.",
+        "Die Mitgliederseite erkennt User-IDs jetzt robuster über Profil-Link, user_id und rights_...-Container.",
+        "Online-Hinweise wie < 30 Tage oder < 60 Tage werden zusätzlich über den Spielernamen aus dem LSS-Icon-Titel zugeordnet, falls Icon und Rechteblock nicht in derselben Tabellenzeile liegen.",
+        "Zuletzt-online-Hinweise werden jetzt als farbige Text-Badges angezeigt, damit Blau/Gelb/Rot und der genaue Offline-Zeitraum direkt sichtbar sind.",
+        "Dienstgrad und Credits der Mitglieder werden im Hintergrund aus den Profilseiten nachgeladen und in den Karten ergänzt, sofern Leitstellenspiel diese Daten freigibt.",
+        "Die Team-Zusammenfassung zeigt zusätzlich die aktuell online erkannten Mitglieder.",
+        "Die Gruppierung der Mitglieder wurde angepasst: Lehrgangsmeister steht jetzt vor Sprechwunsch Admin.",
+        "Dropdowns im Mitgliederbereich sind im Dark- und Summer-Dark-Theme wieder hell lesbar.",
+        "Das Dashboard startet auf Verbandsvorstellungs- und Verbandsverwaltungsseiten nicht mehr, damit keine Inhalte in Vorstellungstext oder Regeln eingebettet werden können.",
+        "Gebäudedaten werden auf den neuen offiziellen v2-Endpunkt /api/v2/buildings umgestellt; der neue v2-Endpunkt für Verbandsgebäude ist vorbereitet.",
+        "Version und Patch-Notes wurden auf v9.2.0 aktualisiert."
+      ]
+    },
+    {
       title:"v9.1.1 — Spielerprofil, Navigation & Updates",
       items:[
         "Das Spielerprofil wurde größer, übersichtlicher und professioneller aufgebaut; Dienstgrad und Verbandsrolle stehen jetzt gemeinsam in einer klaren Badge-Zeile.",
@@ -5633,6 +6443,16 @@ function patchHTML(){
         "Der Mitgliederbereich besitzt jetzt eine rollenabhängige Verwaltung. Angezeigt werden ausschließlich Aktionen, die Leitstellenspiel auf der Mitglieder- oder Profilseite wirklich freigibt.",
         "Unterstützt werden je nach Berechtigung Rauswerfen, Rollen setzen oder entfernen, Verbandschat-Banns, Bewerbungsverbot und direkte Nachrichten.",
         "Kritische Teamaktionen verlangen eine zusätzliche Bestätigung und verwenden bei POST-Aktionen den CSRF-Schutz des Spiels.",
+        "Mitgliederkarten zeigen jetzt Dienstgrad, Credits, Spieler-/Toplistenrang soweit verfügbar sowie einen farbigen Online- beziehungsweise Inaktivitätsstatus.",
+        "Alle Mitglieder besitzen einen direkten Nachrichten-Button, damit auch normale Mitglieder schnell privat angeschrieben werden können.",
+        "Chat-Banns werden in der Verwaltung als Dropdown mit den bekannten Laufzeiten von 5 Minuten bis 14 Tage angezeigt.",
+        "Mehrere Mitglieder können gleichzeitig ausgewählt werden; für berechtigte Rollen lassen sich Rechte gesammelt entfernen oder 90+ Tage inaktive Mitglieder markieren.",
+        "Zusätzliche Chat-Helfer erkennen eindeutige Befehle wie !kick, /kick, !chatban und /chatban und führen sie erst nach Bestätigung aus.",
+        "Online- und Inaktivitätsstatus werden jetzt direkt aus den LSS-Online-Icons der Verbandsmitgliederseite übernommen, inklusive blau/gelb/rot und Angaben wie < 30 oder < 60 Tage.",
+        "Dienstgrad und Credits der Mitglieder werden im Hintergrund aus den Profilseiten nachgeladen und anschließend direkt in den Mitgliederkarten ergänzt.",
+        "Die Team-Zusammenfassung zeigt jetzt zusätzlich, wie viele Mitglieder aktuell online sind.",
+        "Dropdowns im Mitgliederbereich sind im Dark- und Summer-Dark-Theme wieder hell lesbar.",
+        "Das Dashboard startet auf Verbandsvorstellungs- und Verbandsverwaltungsseiten nicht mehr, damit keine Inhalte in Vorstellungstext oder Regeln eingebettet werden können.",
         "Der Dashboard-Button im Spiel-Header übernimmt jetzt exakt die Höhe der originalen Navigationsleiste; das VS-Funksignal wurde neu zentriert und kompakter proportioniert.",
         "Die Übersicht zeigt neben dem heutigen Verbandsverdienst eine neue Live-Statistik für beobachtete abgeschlossene Verbandseinsätze sowie deren Patienten und Gefangene.",
         "Die Verbandsaktivität wird lokal gespeichert, täglich zurückgesetzt und zählt transparent nur Vorgänge, die bei geöffneter Spielseite live empfangen wurden.",
@@ -5706,7 +6526,7 @@ function patchHTML(){
         "Das Wetter zeigt zusätzlich zur Stundenansicht einen 7-Tage-Trend mit Wetterlage, Höchst- und Tiefsttemperatur, Regenwahrscheinlichkeit und maximalem Wind.",
         "Neues Summer Dark 2026 Theme mit animiertem Mond, funkelndem Sternenhimmel und ruhigen Sternschnuppen ergänzt.",
         "Die Theme-Auswahl wurde auf Light, Dark, Summer 2026 und Summer Dark 2026 reduziert.",
-        "Die Teamseite sortiert Mitglieder nun nach Owner, Administrator, Co. Administrator, Sprechwunsch Admin, Aufsichtsrat, Finanzminister, Lehrgangsmeister, Personal und Eventmanager; jede Rolle besitzt eine feste Farbe.",
+        "Die Teamseite sortiert Mitglieder nach Owner, Administrator, Co. Administrator, Lehrgangsmeister, Sprechwunsch Admin, Aufsichtsrat, Finanzminister, Personal und Eventmanager; jede Rolle besitzt eine feste Farbe.",
         "WM-Gruppentabellen stehen jetzt übersichtlich untereinander und lassen sich pro Gruppe einzeln ein- und ausklappen.",
         "Schwarze Tabellenflächen und abgeschnittene Ländernamen im hellen Sommerdesign wurden behoben.",
         "WM-2026, Coin-Sales, Credit-Boosts und weitere Leitstellenspiel-Events werden im Header jetzt als getrennte Live-Badges dargestellt.",
@@ -5736,118 +6556,7 @@ function patchHTML(){
         "Automatische Updates über Tampermonkey-Metadaten sowie eine manuelle Update-Prüfung in den Einstellungen ergänzt.",
         "Version und Patch-Notes wurden auf v9.0.0 aktualisiert."
       ]
-    },
-    {
-      title:"v7.0.0 — Prognose, Updates, Speicherung, Live-Events & WM",
-      items:[
-        "Das bisherige eigene Update-Popup wurde vollständig entfernt.",
-        "Automatische Updates werden jetzt ausschließlich über die offiziellen Tampermonkey-Metadaten @version, @updateURL und @downloadURL abgewickelt.",
-        "Beim Start wird zusätzlich im Hintergrund geprüft, ob auf GitHub eine neuere Version bereitsteht.",
-        "Nach einer erfolgreich installierten neuen Version erscheint ein dezenter Hinweis im Dashboard-Header mit Verweis auf die Patch-Notes.",
-        "Falls eine neuere Version erkannt wird, erscheint nur noch ein ruhiger Statushinweis im Header statt eines blockierenden Dialogfensters.",
-        "In den Einstellungen wurde der Button Userscripte auf Updates prüfen ergänzt.",
-        "Die manuelle Installation wird nur als Fallback angeboten, wenn tatsächlich eine neuere Version gefunden wurde.",
-        "Der Update-Bereich zeigt an, ob automatische Updates im Userscript-Manager aktiviert sind.",
-        "Die Einstellungen wurden erneut ausgerichtet: wichtige Bereiche nutzen volle Breite, Schnellaktionen stehen in einer stabilen Reihe und mobile Ansichten wechseln sauber auf eine Spalte.",
-        "Neue Verbandsprognose als deutlich gekennzeichneter BETA-Test ergänzt.",
-        "Eigener Menüpunkt Verbands Prognose mit Meilenstein, Restbetrag, Tagesdurchschnitt, Resttagen, prognostiziertem Erreichungsdatum und Diagramm hinzugefügt.",
-        "Die Prognose kann in den Einstellungen für die Übersicht ein- oder ausgeschaltet werden.",
-        "Der gewünschte Meilenstein kann von jedem Spieler lokal selbst festgelegt werden.",
-        "Die Prognose berechnet automatisch, in wie vielen Tagen und an welchem Datum der Meilenstein voraussichtlich erreicht wird.",
-        "Die Prognose-Box in der Übersicht wurde neu gestaltet und zeigt die wichtigsten Werte größer, klarer und übersichtlicher an.",
-        "Der Menüpunkt trägt jetzt den gut sichtbaren Zusatz [BETA] und die BETA-Hinweise wurden optisch deutlich hervorgehoben.",
-        "Hinweis ergänzt: Ab 3 bis 7 vollständigen Tagen wird die Prognose sicherer, leichte Abweichungen bleiben trotzdem möglich.",
-        "Verbandscredits werden beim Schließen des Browsers gespeichert; beim nächsten Öffnen wird eine positive Offline-Differenz anteilig den betroffenen Tagen zugerechnet.",
-        "Geschätzte Offline-Anteile werden in der 7-Tage-Statistik mit einer Tilde gekennzeichnet.",
-        "Die Tagesprognose verwendet einen robusteren Mittelwert, damit einzelne Event- oder Ausreißertage die Hochrechnung weniger stark verzerren.",
-        "In den Einstellungen kann der gespeicherte 7-Tage-Verbandsverdienst jetzt gezielt zurückgesetzt werden, ohne beim nächsten Abruf alte Credits erneut zu zählen.",
-        "Die Einstellungen wurden neu gegliedert, optisch aufgeräumt und für Layout- sowie Floating-Modus übersichtlicher gestaltet.",
-        "Coin-Sale aus der Spielnavigation wird jetzt als separates Live-Event mit Countdown erkannt.",
-        "Coin-Sale-Hover erklärt, dass die Echtgeldwährung Coins aktuell reduziert ist.",
-        "Der Coin-Sale ist jetzt anklickbar und öffnet direkt den Coin-Shop des Leitstellenspiels.",
-        "Spielzeit korrigiert: Beim Schließen oder Ausblenden des Spiels stoppt der Timer und Offline-Zeit wird nicht mehr nachgetragen.",
-        "Spielzeit korrigiert: Beim erneuten Öffnen läuft der Timer mit dem zuletzt gespeicherten Tagesstand weiter.",
-        "Der Tageswechsel wird jetzt direkt durch den Spielzeit-Timer erkannt und setzt die neue Tageszeit zuverlässig um 00:00 Uhr auf null.",
-        "Die abgeschlossene Spielzeit des Vortags bleibt weiterhin in der 7-Tage-Statistik erhalten.",
-        "WM-Spielplan erweitert: Bei gestarteten und beendeten Spielen werden vorhandene Torschützen inklusive Minute angezeigt.",
-        "Gelbe und rote Karten werden automatisch unterstützt, sobald die WM-API entsprechende echte Datenfelder bereitstellt.",
-        "Leitstellenspiel Live-Events ergänzt: laufende Event-Blöcke aus der Spiel-Navbar werden automatisch erkannt.",
-        "Live-Events werden direkt unter dem Spielerprofil angezeigt und nur dann gefüllt, wenn ein Event aktiv ist.",
-        "Mehrere Live-Events werden jetzt getrennt als eigene Zeilen gelistet, zum Beispiel Credit-Boost und Coin-/Einsatz-Event separat.",
-        "Credit-Events zeigen einen Diamant direkt rechts neben dem Eventnamen.",
-        "Diamant-Hover ergänzt: Beim Überfahren erscheint ein Hinweis zu doppelten Credits für reguläre Einsätze.",
-        "Coin-/Einsatz-Events zeigen ein Sirenen-Symbol mit eigenem Hover-Hinweis zum 50%-Rabatt beim sofortigen Beenden von Einsätzen.",
-        "Event-Hover stabilisiert: Countdowns werden aktualisiert, ohne die Symbol-Elemente jede Sekunde neu aufzubauen.",
-        "Event-Tooltip öffnet jetzt nach rechts, damit das Hinweisfenster nicht mehr abgeschnitten wird.",
-        "Flackernde Animationen am Live-Punkt und Diamanten entfernt und durch eine ruhige Statuslinie ersetzt.",
-        "Patch-Notes werden jetzt pro Version separat einklappbar angezeigt.",
-        "Alle Live-Event-Änderungen wurden in den gemeinsamen Patch-Notes von v7.0.0 zusammengeführt.",
-        "Version und Patch-Notes wurden auf v7.0.0 aktualisiert.",
-      ],
-    },
-    {
-      title:"v6.0.8 — Spielzeit, Wetter & WM-Event",
-      items:[
-        "Fehler behoben: Die Spielzeit wird jetzt anhand der lokalen Tagesgrenze um 00:00 Uhr deutscher Zeit zurückgesetzt.",
-        "In den Einstellungen kann die Spielzeit-Anzeige jetzt ein- und ausgeschaltet werden.",
-        "In den Einstellungen gibt es jetzt einen Button, um die heutige Spielzeit manuell auf 0 zurückzusetzen.",
-        "Klick auf die Spielzeit öffnet eine kleine 7-Tage-Statistik mit Tagesbalken und Gesamtsumme.",
-        "Verbandsverdienst stabilisiert: der letzte Gesamtstand bleibt als Gegenwert erhalten und Tageswerte werden aus den laufenden Gesamtcredits-Differenzen gebildet.",
-        "Menü-Position aus den Einstellungen entfernt; die Layout-Box ist jetzt der neue Standardmodus.",
-        "Player-Profil optisch überarbeitet: größerer Avatar, klarere Dienstgrad-Anzeige und besser lesbarer Fortschritt.",
-        "Rang wurde in der Übersicht zu Platzierung umbenannt, inklusive Platzierungsumfeld und Hinweistexte.",
-        "Platzierungsumfeld stabilisiert: Zuordnung priorisiert jetzt ID, exakten Namen und eine engere Credit-Prüfung.",
-        "Verbandsverdienst-Balken wirken aktiver und zeigen auch Null-Tage sauber als Sammelzustand an.",
-        "Verbandsverdienst-Balken optisch verstärkt, damit die Füllung im dunklen Layout klar sichtbar ist.",
-        "Fehler behoben: Die Füllung der Verbandsverdienst-Balken wird jetzt als Block gerendert und korrekt grün nach Verdienstbreite angezeigt.",
-        "Verbandsverdienst-Balken zusätzlich abgesichert: die grüne Füllung wird direkt im Balken-Markup gesetzt, damit sie zuverlässig sichtbar bleibt.",
-        "Die Wetterbox wurde professioneller gestaltet: klarere Wetterkarte, Temperatur, Wind, Stundenforecast, Warnbox und Quellenhinweis.",
-        "Wetterbox nachgeschärft: kompaktere Forecast-Zeile, kürzerer Ortsname und ruhigere Warn-/Quellenanzeige.",
-        "Wetter passt sich jetzt im Floating-Menü automatisch einspaltig an, damit die Vorhersage nicht abgeschnitten wird.",
-        "Wetterbox im Layout-Modus wieder flächiger dargestellt und um gefühlte Temperatur, Feuchte und Niederschlag erweitert.",
-        "Wetter lädt schneller: Wetterdaten werden sofort angezeigt, DWD-Warnungen werden anschließend im Hintergrund ergänzt.",
-        "Wetter-Cache ergänzt: Beim Öffnen werden passende zuletzt geladene Wetterdaten sofort angezeigt, neue Daten laden im Hintergrund nach.",
-        "Wetterabruf robuster gemacht: Open-Meteo, PLZ-Suche und DWD-Warnungen nutzen jetzt Timeouts und einen Browser-Fetch-Fallback.",
-        "Wetter-Ortssuche verbessert: reine PLZ, PLZ mit Ortsname und Ortsnamen mit Bundesland werden toleranter erkannt.",
-        "Wenn ein Ort eingetragen ist, zeigt die Wetterbox beim Laden jetzt einen Ladehinweis statt dauerhaft Keine Wetterdaten.",
-        "Userscript-Header erweitert: Match-Regel auf Leitstellenspiel-Unterseiten und @connect-Einträge für Wetter-, PLZ- und DWD-Dienste ergänzt.",
-        "Das WM-Event wurde optisch überarbeitet und zeigt jetzt einen klareren Event-Status sowie Statusinformationen pro Spiel.",
-        "Version und Patch-Notes wurden auf v6.0.8 aktualisiert.",
-      ],
-    },
-    {
-      title:"v6.0.7 — 7-Tage-Verbandsverdienst",
-      items:[
-        "Neue Übersicht-Box Verbandsverdienst 7 Tage hinzugefügt.",
-        "Der Verbandscounter speichert ab jetzt täglich den ersten und letzten bekannten Stand der Verbandscredits.",
-        "Aus diesen Tagesständen wird automatisch der Tagesverdienst berechnet und als kleine Balkenübersicht angezeigt.",
-        "Die Statistik wird lokal im Browser gespeichert und füllt sich ab dem Einbau nach und nach auf bis zu sieben Tage.",
-        "Versionsanzeige und Patch-Notes wurden auf v6.0.7 aktualisiert.",
-      ],
-    },
-    {
-      title:"v6.0.6 — Lehrgänge, Profil-Fortschritt & Fehlerbehebungen",
-      items:[
-        "Der Menüpunkt Schulungen heißt jetzt Lehrgänge.",
-        "Lehrgänge werden zuverlässiger geladen: zuerst über die API, danach automatisch als Fallback direkt aus der Lehrgänge-Seite.",
-        "Die Lehrgänge-Liste zeigt Name, freie Plätze, Kosten, Restzeit und ausführenden Spieler, wenn die Daten aus der Seite gelesen werden.",
-        "Fehler behoben: In der Fertig-Spalte der Lehrgänge werden keine Timer-Script-Fragmente mehr angezeigt.",
-        "Im Profilbereich wird zusätzlich angezeigt, wie viele Credits noch bis zur nächsten Beförderung fehlen.",
-      ],
-    },
-    {
-      title:"v6.0.5 — WM Event, Spielplan, Tipps & UI-Feinschliff",
-      items:[
-        "WM-Event-Tab mit Countdown bis zum Start am 11.06.2026 hinzugefügt.",
-        "Spielplan zeigt Teams, Zeit, Ergebnis/Status, Spielort und TV-Hinweis.",
-        "Lokale Tippfelder pro Spiel ergänzt; Tipps werden im eigenen Browser gespeichert.",
-        "Event-Box kann in den Einstellungen für die Übersicht ein- oder ausgeschaltet werden.",
-        "Header-Button im Spiel zeigt jetzt Dein Verband und einen Event-Hinweis.",
-        "Event-Button im Menü wurde deutlicher hervorgehoben.",
-        "Dark-Mode-Lesbarkeit verbessert, inklusive hellerer kleiner Texte und besser sichtbarer Profil-Fortschrittsanzeige.",
-        "Premium-Gold-Design ergänzt und mehrere UI-Fehler bereinigt.",
-      ],
-    },
+    }
   ];
   return groups.map((g,i)=>`<details class="patch-ver"${i===0?" open":""}>
     <summary>${escHtml(g.title)}</summary>
@@ -5861,7 +6570,7 @@ function infoHTML(){
     ["Ersteller","Fabian (Capt.BobbyNash)"],
     ["Supporter","m75e, twoyears"],
     ["Version",V],
-    ["APIs","allianceinfo · userinfo · vehicle_states · alliance_schoolings · schoolings · v2/vehicles · v1/aaos"],
+    ["APIs","allianceinfo · userinfo · vehicle_states · alliance_schoolings · v2/buildings · v2/vehicles · v2/pois · v1/aaos · mission_type_data"],
     ["Panel-Typ","Layout-Box Standard, Floating optional"],
     ["Alliance-Interval","60s"],
     ["7-Tage-Verdienst","lokal ab erstem Refresh"],
@@ -5879,7 +6588,7 @@ function infoHTML(){
 // â•‘  NAV TRIGGER                                                 â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 GM_addStyle(`
-/* v9.1.1 UI refinement */
+/* v9.2.0 UI refinement */
 #lss7-tabs{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(160px,.62fr) minmax(0,1fr);gap:6px;overflow:visible;padding:7px 9px;background:var(--bg1);}
 #lss7-tabs.player-menu-hidden{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);}
 .lss7-nav-group{display:flex;align-items:stretch;min-width:0;overflow-x:auto;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);scrollbar-width:thin;}
@@ -5979,13 +6688,27 @@ GM_addStyle(`
 .lss7-update-install{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:5px 9px;border:1px solid rgba(34,197,94,.38);border-radius:6px;background:rgba(34,197,94,.13);color:var(--greenh)!important;font-size:8.5px;font-weight:900;text-decoration:none!important;white-space:nowrap;}
 .lss7-update-install:hover{background:rgba(34,197,94,.23);border-color:rgba(34,197,94,.62);}
 .lss7-update-close{order:99!important;margin-left:4px!important;flex:0 0 22px!important;}
+.team-bulkbar{display:grid;grid-template-columns:auto auto auto 1fr minmax(190px,260px) auto;gap:8px;align-items:center;margin:9px 0;padding:10px;border:1px solid var(--b1);border-radius:8px;background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(255,255,255,.018));}
+.team-select-all{display:inline-flex;align-items:center;gap:6px;color:var(--t2);font-size:8.5px;font-weight:800;white-space:nowrap}.team-select-all input,.team-select{accent-color:var(--blue);}
+.team-bulk-count{color:var(--t3);font-size:8.5px;text-align:right}.team-bulk-count b{color:var(--blueh);font-family:var(--mono)}
+.team-bulk-btn{min-height:28px;padding:6px 9px;border:1px solid rgba(59,130,246,.28);border-radius:6px;background:var(--blue3);color:var(--blueh);font-size:8px;font-weight:850;cursor:pointer;white-space:nowrap}.team-bulk-btn.danger{border-color:rgba(239,68,68,.34);background:rgba(239,68,68,.10);color:#fca5a5}.team-bulk-btn:hover{filter:brightness(1.12)}
+.team-card{grid-template-columns:auto 38px minmax(0,1fr) auto;}
+.team-select-wrap{display:flex;align-items:center;justify-content:center;width:20px;height:28px;margin:0;}
+.team-name-row{display:flex;align-items:center;gap:6px;min-width:0}.team-activity-dot{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;font-size:0;color:transparent;background:#94a3b8;border:2px solid rgba(255,255,255,.20);box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 9px rgba(148,163,184,.28);flex:0 0 14px;}.team-activity-dot.online{background:#22c55e!important;box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 12px rgba(34,197,94,.62)!important}.team-activity-dot.recent{background:#e5e7eb!important;box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 9px rgba(226,232,240,.38)!important}.team-activity-dot.week{background:#3b82f6!important;box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 12px rgba(59,130,246,.58)!important}.team-activity-dot.two-weeks{background:#f59e0b!important;box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 12px rgba(245,158,11,.58)!important}.team-activity-dot.month{background:#ef4444!important;box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 12px rgba(239,68,68,.62)!important}.team-activity-dot.unknown{background:#94a3b8!important;}
+.team-meta-line{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-top:4px;color:var(--t4);font-size:8px;line-height:1.35}.team-meta-line b{color:var(--t2);font-weight:850}.team-grade{color:var(--blueh)!important}.team-rank{color:var(--amberh)!important}.team-credits{color:var(--greenh)!important}.team-last-online{display:inline-flex;align-items:center;min-height:17px;padding:2px 7px;border:1px solid var(--b1);border-radius:999px;background:rgba(148,163,184,.08);color:var(--t2)!important;font-weight:900;letter-spacing:.01em}.team-last-online.online{border-color:rgba(34,197,94,.38);background:rgba(34,197,94,.12);color:#86efac!important}.team-last-online.recent{border-color:rgba(226,232,240,.36);background:rgba(226,232,240,.11);color:#f8fafc!important}.team-last-online.week{border-color:rgba(59,130,246,.42);background:rgba(59,130,246,.13);color:#bfdbfe!important}.team-last-online.two-weeks{border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.14);color:#fde68a!important}.team-last-online.month{border-color:rgba(239,68,68,.44);background:rgba(239,68,68,.13);color:#fecaca!important}.team-last-online.unknown{color:var(--t3)!important}
+#lss7.theme-light .team-last-online.recent,#lss7.theme-summer .team-last-online.recent{color:#334155!important;background:rgba(100,116,139,.11);border-color:rgba(100,116,139,.28)}#lss7.theme-light .team-last-online.online,#lss7.theme-summer .team-last-online.online{color:#166534!important}#lss7.theme-light .team-last-online.week,#lss7.theme-summer .team-last-online.week{color:#1d4ed8!important}#lss7.theme-light .team-last-online.two-weeks,#lss7.theme-summer .team-last-online.two-weeks{color:#92400e!important}#lss7.theme-light .team-last-online.month,#lss7.theme-summer .team-last-online.month{color:#991b1b!important}
 .team-card-tools{display:flex;align-items:center;gap:5px;justify-self:end;}
+.team-mail{color:var(--cyanh)!important;border-color:rgba(34,211,238,.28)!important;background:rgba(34,211,238,.08)!important;}
 .team-manage{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(59,130,246,.30);border-radius:6px;background:var(--blue3);color:var(--blueh);font-size:12px;cursor:pointer;}
 .team-manage:hover,.team-manage.open{border-color:rgba(59,130,246,.58);background:rgba(59,130,246,.19);color:#fff;}
 .team-admin-drawer{display:none;grid-column:1/-1;margin-top:4px;padding:10px;border:1px solid var(--b1);border-radius:7px;background:rgba(3,9,18,.22);}
 .team-admin-drawer.open{display:block;}
 .team-admin-loading,.team-admin-empty,.team-admin-note{color:var(--t4);font-size:8.5px;line-height:1.4;}
 .team-admin-groups{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px;}
+.team-admin-chatban{display:grid;grid-template-columns:minmax(180px,280px) auto;gap:8px;align-items:end;margin-bottom:9px;padding:9px;border:1px solid rgba(239,68,68,.22);border-radius:7px;background:rgba(239,68,68,.055)}.team-admin-chatban label{display:flex;flex-direction:column;gap:4px;margin:0;color:var(--t3);font-size:8px;font-weight:850}.team-chatban-select{height:28px;border:1px solid rgba(239,68,68,.28);border-radius:6px;background:var(--bg2);color:var(--t1);font-size:8.5px;padding:4px 7px;}
+#lss7.theme-dark .team-chatban-select,#lss7.theme-summer-dark .team-chatban-select,#lss7.theme-dark #team-bulk-action,#lss7.theme-summer-dark #team-bulk-action{background:#0f1724!important;color:#f8fafc!important;border-color:rgba(148,163,184,.28)!important;}
+.team-chatban-select option,#team-bulk-action option{background:#0f1724;color:#f8fafc;}
+#lss7.theme-light .team-chatban-select option,#lss7.theme-summer .team-chatban-select option,#lss7.theme-light #team-bulk-action option,#lss7.theme-summer #team-bulk-action option{background:#ffffff;color:#162033;}
 .team-admin-action{min-height:27px;padding:5px 8px;border:1px solid rgba(59,130,246,.28);border-radius:6px;background:var(--blue3);color:var(--blueh);font-size:8px;font-weight:850;cursor:pointer;}
 .team-admin-action.role{border-color:rgba(34,197,94,.28);background:rgba(34,197,94,.08);color:var(--greenh);}
 .team-admin-action.contact{border-color:rgba(34,211,238,.28);background:rgba(34,211,238,.08);color:var(--cyanh);}
@@ -5993,6 +6716,7 @@ GM_addStyle(`
 .team-admin-action:hover{filter:brightness(1.16);transform:translateY(-1px);}
 .team-admin-action:disabled{opacity:.55;cursor:wait;transform:none;}
 #lss7.theme-light .team-admin-drawer,#lss7.theme-summer .team-admin-drawer{background:rgba(255,255,255,.62);}
+@media(max-width:880px){.team-bulkbar{grid-template-columns:1fr 1fr}.team-bulkbar .lss7-select,#team-bulk-run{grid-column:1/-1}.team-card{grid-template-columns:auto 34px minmax(0,1fr)}.team-card-tools{grid-column:2/-1;justify-self:start}.team-admin-chatban{grid-template-columns:1fr}}
 .nav-style-showcase{display:grid;grid-template-columns:minmax(210px,.72fr) minmax(0,1.28fr);gap:12px;align-items:center;margin:9px 0 10px;}
 .nav-style-preview-shell{padding:11px;border:1px solid var(--b1);border-radius:8px;background:#121923;}
 .nav-style-preview{min-height:42px;display:flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid rgba(148,163,184,.18);border-radius:7px;background:linear-gradient(180deg,#202a38,#141c27);color:#f8fafc;}
@@ -6239,6 +6963,7 @@ $(document).ready(()=>{
   initSummerScene();
   buildTrigger();
   installAllianceActivityHooks();
+  installTeamChatCommandHelper();
   applyPanelMode();
   updatePlaytimeUi();
   updateCoinsUi();
@@ -6252,7 +6977,9 @@ $(document).ready(()=>{
   fetchProfileCard();
   fetchBuildings();
   fetchVehicleStates();
+  fetchFleetVehicles();
   fetchSchoolings();
+  fetchAnalysisMeta();
   fetchDailyEarnFromOverview();
   fetchWeather();
   renderWeather();
@@ -6279,8 +7006,10 @@ $(document).ready(()=>{
   setInterval(fetchUserinfo,      ITV.userinfo);
   setInterval(fetchProfileCard,   ITV.profile);
   setInterval(fetchVehicleStates, ITV.vstates);
+  setInterval(fetchFleetVehicles, ITV.vehicles);
   setInterval(fetchBuildings,     ITV.buildings);
   setInterval(fetchSchoolings,    ITV.schools);
+  setInterval(fetchAnalysisMeta,  900000);
   setInterval(fetchDailyEarnFromOverview, ITV.dailyEarn);
   setInterval(fetchWeather,       ITV.weather);
   setInterval(scanGameEvents,     30000);
