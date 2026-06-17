@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.2.3
+// @version      9.2.5
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/*
@@ -23,7 +23,6 @@
 // @connect      api.zippopotam.us
 // @connect      www.dwd.de
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
-// @require      https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js
 // @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
 // @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
 // ==/UserScript==
@@ -42,7 +41,7 @@ if(/^\/(?:alliances\/\d+|verband(?:\/|$))/i.test(location.pathname))return;
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "9.2.3";
+const V   = "9.2.5";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
@@ -73,6 +72,8 @@ const API = {
   wmGames: "https://worldcup26.ir/get/games",
   wmStadiums: "https://worldcup26.ir/get/stadiums",
 };
+const DEBUG = false;
+function logDebug(...args){ if(DEBUG) console.debug("[LSS7]",...args); }
 
 const WEATHER_COUNTRIES = {
   DE:{label:"Deutschland",zip:/\b\d{5}\b/,language:"de"},
@@ -480,18 +481,18 @@ GM_addStyle(`
   min-width:108px;height:26px;padding:0 8px;border-radius:7px;flex-shrink:0;
   background:rgba(255,255,255,.04);border:1px solid var(--b1);
   color:var(--t3);font-size:11px;font-weight:600;cursor:pointer;
-  display:none;align-items:center;justify-content:center;
+  display:flex;align-items:center;justify-content:center;
   transition:all .15s;
 }
 #lss7-col:hover{background:var(--blue3);color:var(--blueh);border-color:rgba(59,130,246,.35);}
-#lss7.layout #lss7-col{display:flex;}
-#lss7.layout.emb-collapsed .prof-strip,
-#lss7.layout.emb-collapsed #lss7-qs,
-#lss7.layout.emb-collapsed #lss7-tabs,
-#lss7.layout.emb-collapsed #lss7-body,
-#lss7.layout.emb-collapsed #lss7-changelog,
-#lss7.layout.emb-collapsed .lacc,
-#lss7.layout.emb-collapsed #lss7-ft{display:none !important;}
+#lss7.emb-collapsed:not(.layout){height:auto!important;max-height:none!important;}
+#lss7.emb-collapsed .prof-strip,
+#lss7.emb-collapsed #lss7-qs,
+#lss7.emb-collapsed #lss7-tabs,
+#lss7.emb-collapsed #lss7-body,
+#lss7.emb-collapsed #lss7-changelog,
+#lss7.emb-collapsed .lacc,
+#lss7.emb-collapsed #lss7-ft{display:none !important;}
 
 /* â”€â”€ Quick-Stats Strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #lss7-qs {
@@ -1031,6 +1032,18 @@ GM_addStyle(`
 .settings-intro span{font-size:10px;color:var(--t3);line-height:1.45;}
 .set-head{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;color:var(--t2);padding-bottom:7px;margin-bottom:2px;border-bottom:1px solid var(--b1);}
 .set-group{display:flex;flex-direction:column;gap:6px;padding:11px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);min-width:0;}
+.hotkey-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.hotkey-capture{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;
+  width:100%;min-height:58px;padding:10px 11px;border:1px solid var(--b1);border-radius:8px;
+  background:linear-gradient(135deg,rgba(59,130,246,.07),rgba(255,255,255,.018));
+  color:var(--t2);text-align:left;cursor:pointer;transition:border-color .16s,background .16s,transform .16s;
+}
+.hotkey-capture:hover{border-color:var(--b2);background:var(--bgh);transform:translateY(-1px);}
+.hotkey-capture.recording{border-color:rgba(34,211,238,.58);background:rgba(34,211,238,.10);box-shadow:0 0 0 1px rgba(34,211,238,.15) inset;}
+.hotkey-title{font-size:10px;font-weight:850;color:var(--t2);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hotkey-value{grid-row:1/3;grid-column:2;min-width:86px;padding:6px 8px;border-radius:7px;border:1px solid var(--b2);background:rgba(0,0,0,.18);color:var(--t1);font:900 11px/1 var(--mono);text-align:center;}
+.hotkey-hint{font-size:8px;color:var(--t4);font-weight:750;}
 .set-group .tog-row{min-height:40px;}
 .set-group .lss7-select{flex:0 1 220px;min-width:0;}
 .set-group .set-note{margin-top:2px;}
@@ -1728,6 +1741,120 @@ body.lss7-lcars-global .progress{background:#17110d!important;border-radius:999p
 body.lss7-lcars-global .progress-bar{background:linear-gradient(90deg,#ff9d45,#ffba5c,#b89aff)!important;color:#030303!important;font-weight:900!important;}
 body.lss7-lcars-global .popover,body.lss7-lcars-global .tooltip-inner,body.lss7-lcars-global .leaflet-popup-content-wrapper{background:#070707!important;color:#fff3d0!important;border:1px solid #5a3a1a!important;border-radius:16px!important;box-shadow:0 18px 42px rgba(0,0,0,.55),inset 6px 0 #78d7ff!important;}
 body.lss7-lcars-global .leaflet-popup-tip{background:#070707!important;}
+
+/* LCARS 2364 refined cockpit pass */
+#lss7.theme-lcars{
+  --bg0:#050506;--bg1:#090908;--bg2:#10100e;--bg3:#17130f;--bg4:#201911;--bgh:#12100d;--bgc:#080807;
+  --b0:rgba(255,198,112,.09);--b1:rgba(255,198,112,.18);--b2:rgba(255,198,112,.30);--b3:rgba(255,198,112,.48);
+  --blue:#8fdcff;--blueh:#d5f4ff;--green:#9dffd2;--greenh:#d4ffe9;--amber:#f6b45d;--amberh:#ffe0a7;
+  --red:#ff8b82;--redh:#ffc1bc;--purple:#c7a8ff;--purpleh:#eadcff;--cyan:#91f2ff;--cyanh:#d9fbff;
+  --t1:#fff8e8;--t2:#ead0a2;--t3:#c19b67;--t4:#81684a;
+  border:1px solid rgba(246,180,93,.36);border-radius:20px 8px 8px 20px;background:#050506;
+  box-shadow:0 24px 70px rgba(0,0,0,.82),inset 12px 0 #f6b45d,inset 0 0 0 1px rgba(255,255,255,.035);
+}
+#lss7.theme-lcars::before{width:12px;background:linear-gradient(180deg,#f6b45d 0 20%,#c7a8ff 20% 39%,#8fdcff 39% 56%,#ff8b82 56% 73%,#ffe0a7 73% 100%);}
+#lss7.theme-lcars #lss7-hd{min-height:88px;padding:13px 16px 12px 32px;background:radial-gradient(circle at 88% 14%,rgba(143,220,255,.10),transparent 32%),#050506;border-bottom:1px solid rgba(246,180,93,.22);}
+#lss7.theme-lcars #lss7-hd::before{left:32px;right:150px;top:10px;height:13px;border-radius:18px 0 0 18px;background:linear-gradient(90deg,#f6b45d 0 18%,#ffe0a7 18% 34%,#c7a8ff 34% 51%,#8fdcff 51% 68%,#ff8b82 68% 82%,transparent 82%);box-shadow:none;opacity:.92;}
+#lss7.theme-lcars #lss7-hd::after{right:15px;top:7px;background:#11100e;color:#ffe0a7;border:1px solid rgba(246,180,93,.55);box-shadow:inset 5px 0 #f6b45d;padding:5px 12px;border-radius:18px 6px 6px 18px;}
+#lss7.theme-lcars #lss7-hd .hd-row{margin-top:22px;}
+#lss7.theme-lcars .hd-mark{width:58px;height:34px;border-radius:20px 7px 7px 20px;background:linear-gradient(90deg,#f6b45d,#ffe0a7);color:#070707;font-weight:950;}
+#lss7.theme-lcars .hd-title{font-size:14px;color:#fff8e8;text-shadow:0 0 12px rgba(246,180,93,.12);}
+#lss7.theme-lcars .hd-sub{color:#c19b67;}
+#lss7.theme-lcars #lss7-col,#lss7.theme-lcars #lss7-x{background:#11100e;color:#ffe0a7;border-color:rgba(246,180,93,.40);}
+#lss7.theme-lcars #lss7-col:hover,#lss7.theme-lcars #lss7-x:hover{background:#21170f;color:#fff8e8;border-color:#f6b45d;}
+#lss7.theme-lcars #lss7-qs{background:#070707;border-color:rgba(246,180,93,.20);}
+#lss7.theme-lcars .qs-cell{background:#090908;box-shadow:inset 5px 0 rgba(199,168,255,.86);}
+#lss7.theme-lcars .qs-cell:nth-child(4n+1){box-shadow:inset 5px 0 rgba(246,180,93,.92);}
+#lss7.theme-lcars .qs-cell:nth-child(4n+3){box-shadow:inset 5px 0 rgba(143,220,255,.88);}
+#lss7.theme-lcars .lss7-nav-group{border-color:rgba(246,180,93,.28);background:#080807;border-radius:18px 7px 7px 18px;}
+#lss7.theme-lcars .lss7-nav-group-label{background:#f6b45d;color:#050506;border-radius:0 18px 18px 0;font-weight:950;}
+#lss7.theme-lcars .ltab{background:#10100e;color:#fff8e8!important;border:1px solid rgba(246,180,93,.22);box-shadow:inset 5px 0 var(--purple);border-radius:15px 6px 6px 15px;text-shadow:none;}
+#lss7.theme-lcars .ltab:nth-child(2n),#lss7.theme-lcars .ltab:nth-child(3n),#lss7.theme-lcars .ltab:nth-child(4n){background:#10100e;}
+#lss7.theme-lcars .ltab:hover{background:#19130e;color:#ffe0a7!important;border-color:rgba(246,180,93,.48);}
+#lss7.theme-lcars .ltab.active{background:#f6b45d!important;color:#050506!important;box-shadow:inset 7px 0 #ffe0a7,0 0 0 1px rgba(246,180,93,.55);font-weight:950;}
+#lss7.theme-lcars .lbtn,#lss7.theme-lcars .team-admin-action,#lss7.theme-lcars .team-bulk-btn{background:#11100e;color:#fff8e8;border:1px solid rgba(246,180,93,.36);box-shadow:inset 5px 0 #f6b45d;border-radius:15px 6px 6px 15px;}
+#lss7.theme-lcars .lbtn:hover,#lss7.theme-lcars .team-admin-action:hover,#lss7.theme-lcars .team-bulk-btn:hover{background:#1d160f;color:#ffe0a7;border-color:#f6b45d;}
+#lss7.theme-lcars .lbtn.prime{background:#182337;color:#d5f4ff;border-color:rgba(143,220,255,.46);box-shadow:inset 5px 0 #8fdcff;}
+#lss7.theme-lcars .lbtn.danger,#lss7.theme-lcars .team-admin-action.danger{background:#2a1111;color:#ffc1bc;border-color:rgba(255,139,130,.46);box-shadow:inset 5px 0 #ff8b82;}
+#lss7.theme-lcars .lss7-select,#lss7.theme-lcars input,#lss7.theme-lcars select,#lss7.theme-lcars textarea{background:#080807!important;color:#fff8e8!important;border-color:rgba(246,180,93,.35)!important;border-radius:13px 5px 5px 13px!important;}
+#lss7.theme-lcars .lss7-select option{background:#080807!important;color:#fff8e8!important;}
+#lss7.theme-lcars .sc,#lss7.theme-lcars .set-group,#lss7.theme-lcars .asset-section,#lss7.theme-lcars .fleet-panel,#lss7.theme-lcars .event-card,#lss7.theme-lcars .prof-strip,#lss7.theme-lcars .vehicle-summary-card,#lss7.theme-lcars .forecast-controls,#lss7.theme-lcars .forecast-chart-box,#lss7.theme-lcars .quality-card{background:#080807;border-color:rgba(246,180,93,.20);border-radius:18px 7px 7px 18px;box-shadow:inset 7px 0 rgba(246,180,93,.92);}
+#lss7.theme-lcars .sv,#lss7.theme-lcars .qs-val,#lss7.theme-lcars .asset-section-title,#lss7.theme-lcars .set-head{color:#fff8e8;}
+#lss7.theme-lcars .sl,#lss7.theme-lcars .qs-lbl,#lss7.theme-lcars .asset-section-sub,#lss7.theme-lcars .quality-label{color:#c19b67;}
+#lss7.theme-lcars .rank-mini-row,#lss7.theme-lcars .wm-row,#lss7.theme-lcars .game-event-row,#lss7.theme-lcars .sch-row,#lss7.theme-lcars .arr-row,#lss7.theme-lcars .hist-row,#lss7.theme-lcars .team-card{background:#090908;border-color:rgba(246,180,93,.18);border-radius:15px 6px 6px 15px;}
+#lss7.theme-lcars .rank-mini-row.me{background:rgba(143,220,255,.12);border-color:rgba(143,220,255,.44);box-shadow:inset 6px 0 #8fdcff;}
+#lss7.theme-lcars #lss7-ft{background:#050506;border-top:5px solid #c7a8ff;color:#c19b67;}
+body.lss7-lcars-global{background:#050506!important;color:#fff8e8!important;}
+body.lss7-lcars-global::before{width:8px;background:linear-gradient(180deg,#f6b45d 0 22%,#c7a8ff 22% 44%,#8fdcff 44% 64%,#ff8b82 64% 82%,#ffe0a7 82% 100%);}
+body.lss7-lcars-global .navbar,body.lss7-lcars-global .navbar-default,body.lss7-lcars-global #navbar-main-collapse{background:#050506!important;border-color:rgba(246,180,93,.24)!important;box-shadow:inset 0 -5px #f6b45d!important;}
+body.lss7-lcars-global .btn:not(#lss7-btn):not(.lbtn),body.lss7-lcars-global .btn-default{background:#11100e!important;color:#fff8e8!important;border:1px solid rgba(246,180,93,.34)!important;border-radius:14px 5px 5px 14px!important;box-shadow:inset 5px 0 #f6b45d!important;}
+body.lss7-lcars-global .btn-primary{background:#162234!important;color:#d5f4ff!important;border-color:rgba(143,220,255,.45)!important;box-shadow:inset 5px 0 #8fdcff!important;}
+body.lss7-lcars-global .btn-success{background:#10251c!important;color:#d4ffe9!important;border-color:rgba(157,255,210,.38)!important;box-shadow:inset 5px 0 #9dffd2!important;}
+body.lss7-lcars-global .btn-danger{background:#2a1111!important;color:#ffc1bc!important;border-color:rgba(255,139,130,.42)!important;box-shadow:inset 5px 0 #ff8b82!important;}
+body.lss7-lcars-global .dropdown-menu>li>a:hover,body.lss7-lcars-global .list-group-item:hover{background:#1b140d!important;color:#ffe0a7!important;}
+
+/* LCARS 2364 command refit */
+#lss7.theme-lcars{
+  --bg0:#06070a;--bg1:#090b10;--bg2:#10131a;--bg3:#151925;--bg4:#1c2230;--bgh:#15110c;--bgc:#0b0d12;
+  --b0:rgba(232,169,88,.08);--b1:rgba(232,169,88,.18);--b2:rgba(232,169,88,.32);--b3:rgba(232,169,88,.48);
+  --amber:#e8a958;--amberh:#ffd99b;--blue:#85d6ff;--blueh:#d7f2ff;--purple:#bfa3ff;--purpleh:#eadfff;--green:#8dffd0;--greenh:#ccffe9;--red:#ff8f84;--redh:#ffc5be;
+  --t1:#fff7e8;--t2:#e8cfad;--t3:#b79466;--t4:#806b50;
+  background:linear-gradient(180deg,#06070a,#08080a 38%,#050506);
+  border:1px solid rgba(232,169,88,.32);border-radius:22px 8px 8px 22px;
+  box-shadow:0 22px 70px rgba(0,0,0,.82),inset 10px 0 #e8a958,inset 0 0 0 1px rgba(255,255,255,.035);
+}
+#lss7.theme-lcars::before{width:10px;background:linear-gradient(180deg,#e8a958 0 28%,#bfa3ff 28% 48%,#85d6ff 48% 68%,#ff8f84 68% 84%,#ffd99b 84% 100%);}
+#lss7.theme-lcars #lss7-hd{
+  min-height:82px;padding:12px 15px 11px 30px;background:
+    linear-gradient(90deg,rgba(232,169,88,.12),transparent 48%),
+    radial-gradient(circle at 88% 18%,rgba(133,214,255,.11),transparent 28%),
+    #06070a;
+  border-bottom:1px solid rgba(232,169,88,.24);
+}
+#lss7.theme-lcars #lss7-hd::before{left:30px;right:145px;top:9px;height:10px;border-radius:20px 0 0 20px;background:linear-gradient(90deg,#e8a958 0 26%,#ffd99b 26% 40%,#bfa3ff 40% 58%,#85d6ff 58% 76%,transparent 76%);opacity:.96;}
+#lss7.theme-lcars #lss7-hd::after{content:"LCARS 2364";right:14px;top:6px;background:#0e1015;color:#ffd99b;border:1px solid rgba(232,169,88,.48);box-shadow:inset 6px 0 #e8a958;border-radius:18px 6px 6px 18px;padding:5px 12px;font-size:8px;}
+#lss7.theme-lcars #lss7-hd .hd-row{margin-top:18px;}
+#lss7.theme-lcars .hd-mark{background:linear-gradient(135deg,#e8a958,#ffd99b);color:#06070a;border-radius:20px 7px 7px 20px;box-shadow:0 0 0 1px rgba(232,169,88,.34);}
+#lss7.theme-lcars .hd-title{color:#fff7e8;font-size:14px;letter-spacing:.9px}.theme-lcars .hd-sub{color:#a98d67;}
+#lss7.theme-lcars .bd-summer{background:#12151f;color:#ffd99b;border:1px solid rgba(232,169,88,.45);box-shadow:none;}
+#lss7.theme-lcars #lss7-qs,#lss7.theme-lcars #lss7-tabs{background:#07080b;border-color:rgba(232,169,88,.20);}
+#lss7.theme-lcars .qs-cell{background:#0b0d12;box-shadow:inset 4px 0 #bfa3ff;}
+#lss7.theme-lcars .qs-cell:nth-child(4n+1){box-shadow:inset 4px 0 #e8a958;}
+#lss7.theme-lcars .qs-cell:nth-child(4n+3){box-shadow:inset 4px 0 #85d6ff;}
+#lss7.theme-lcars .lss7-nav-group{border-color:rgba(232,169,88,.25);background:#0b0d12;border-radius:18px 7px 7px 18px;}
+#lss7.theme-lcars .lss7-nav-group-label{background:#0f1218;color:#ffd99b;border-right:1px solid rgba(232,169,88,.32);border-radius:18px 0 0 18px;margin:0;padding:0 11px;box-shadow:inset 5px 0 #e8a958;}
+#lss7.theme-lcars .ltab{
+  background:#10131a!important;color:#e8cfad!important;border:1px solid rgba(232,169,88,.22);
+  border-radius:14px 6px 6px 14px;box-shadow:inset 4px 0 #bfa3ff;text-transform:none;font-weight:850;letter-spacing:.1px;
+}
+#lss7.theme-lcars .ltab:hover{background:#171a22!important;color:#fff7e8!important;border-color:rgba(232,169,88,.48);}
+#lss7.theme-lcars .ltab.active{background:#21170f!important;color:#ffd99b!important;border-color:rgba(232,169,88,.62);box-shadow:inset 5px 0 #e8a958,0 0 0 1px rgba(232,169,88,.16);}
+#lss7.theme-lcars .sc,#lss7.theme-lcars .set-group,#lss7.theme-lcars .asset-section,#lss7.theme-lcars .fleet-panel,#lss7.theme-lcars .event-card,#lss7.theme-lcars .prof-strip,#lss7.theme-lcars .vehicle-summary-card,#lss7.theme-lcars .forecast-controls,#lss7.theme-lcars .forecast-chart-box,#lss7.theme-lcars .quality-card{
+  background:linear-gradient(180deg,#0b0d12,#08090d);border-color:rgba(232,169,88,.19);border-radius:18px 7px 7px 18px;box-shadow:inset 6px 0 rgba(232,169,88,.90);
+}
+#lss7.theme-lcars .sc:nth-child(2n),#lss7.theme-lcars .vehicle-summary-card:nth-child(2n),#lss7.theme-lcars .quality-card:nth-child(2n){box-shadow:inset 6px 0 rgba(191,163,255,.88);}
+#lss7.theme-lcars .sc:nth-child(3n),#lss7.theme-lcars .vehicle-summary-card:nth-child(3n),#lss7.theme-lcars .quality-card:nth-child(3n){box-shadow:inset 6px 0 rgba(133,214,255,.88);}
+#lss7.theme-lcars .lbtn,#lss7.theme-lcars .team-admin-action,#lss7.theme-lcars .team-bulk-btn,#lss7.theme-lcars .hotkey-capture{
+  background:#10131a;color:#fff7e8;border:1px solid rgba(232,169,88,.30);box-shadow:inset 5px 0 #e8a958;border-radius:15px 6px 6px 15px;text-shadow:none;
+}
+#lss7.theme-lcars .lbtn:hover,#lss7.theme-lcars .team-admin-action:hover,#lss7.theme-lcars .team-bulk-btn:hover,#lss7.theme-lcars .hotkey-capture:hover{background:#171a22;color:#ffd99b;border-color:rgba(232,169,88,.55);}
+#lss7.theme-lcars .lbtn.prime{background:#101a25;color:#d7f2ff;border-color:rgba(133,214,255,.42);box-shadow:inset 5px 0 #85d6ff;}
+#lss7.theme-lcars .lbtn.danger,#lss7.theme-lcars .team-admin-action.danger{background:#211112;color:#ffc5be;border-color:rgba(255,143,132,.42);box-shadow:inset 5px 0 #ff8f84;}
+#lss7.theme-lcars .hotkey-value{background:#06070a;color:#ffd99b;border-color:rgba(232,169,88,.42);}
+#lss7.theme-lcars .hotkey-capture.recording{background:#10202a;color:#d7f2ff;border-color:rgba(133,214,255,.58);box-shadow:inset 5px 0 #85d6ff;}
+#lss7.theme-lcars .lss7-select,#lss7.theme-lcars input,#lss7.theme-lcars select,#lss7.theme-lcars textarea{background:#0b0d12!important;color:#fff7e8!important;border:1px solid rgba(232,169,88,.32)!important;border-radius:13px 5px 5px 13px!important;}
+#lss7.theme-lcars .rank-mini-row,#lss7.theme-lcars .wm-row,#lss7.theme-lcars .game-event-row,#lss7.theme-lcars .sch-row,#lss7.theme-lcars .arr-row,#lss7.theme-lcars .hist-row,#lss7.theme-lcars .team-card{background:#0b0d12;border-color:rgba(232,169,88,.16);border-radius:15px 6px 6px 15px;}
+#lss7.theme-lcars .rank-mini-row.me{background:rgba(133,214,255,.10);border-color:rgba(133,214,255,.42);box-shadow:inset 5px 0 #85d6ff;}
+#lss7.theme-lcars #lss7-ft{background:#06070a;border-top:4px solid #bfa3ff;color:#b79466;}
+body.lss7-lcars-global{background:#06070a!important;color:#fff7e8!important;}
+body.lss7-lcars-global::before{width:5px;background:linear-gradient(180deg,#e8a958,#bfa3ff 45%,#85d6ff 70%,#ff8f84);}
+body.lss7-lcars-global .navbar,body.lss7-lcars-global .navbar-default,body.lss7-lcars-global #navbar-main-collapse{background:#07080b!important;border-color:rgba(232,169,88,.22)!important;box-shadow:inset 0 -4px #e8a958!important;}
+body.lss7-lcars-global .navbar a,body.lss7-lcars-global .navbar .navbar-text{color:#fff7e8!important;}
+body.lss7-lcars-global .btn:not(#lss7-btn):not(.lbtn),body.lss7-lcars-global .btn-default,body.lss7-lcars-global .btn-primary,body.lss7-lcars-global .btn-success{
+  background:#10131a!important;color:#fff7e8!important;border:1px solid rgba(232,169,88,.30)!important;border-radius:14px 5px 5px 14px!important;box-shadow:inset 5px 0 #e8a958!important;
+}
+body.lss7-lcars-global .btn-danger{background:#211112!important;color:#ffc5be!important;border-color:rgba(255,143,132,.42)!important;box-shadow:inset 5px 0 #ff8f84!important;}
+body.lss7-lcars-global .panel,body.lss7-lcars-global .well,body.lss7-lcars-global .modal-content,body.lss7-lcars-global .missionSideBarEntry,body.lss7-lcars-global #mission_list .missionSideBarEntry,body.lss7-lcars-global #chat_panel,body.lss7-lcars-global #radio_messages{background:#0b0d12!important;color:#fff7e8!important;border-color:rgba(232,169,88,.20)!important;box-shadow:inset 6px 0 #e8a958!important;}
 @keyframes summer-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 @keyframes summer-glow{0%,100%{box-shadow:0 3px 10px rgba(230,163,0,.12)}50%{box-shadow:0 4px 18px rgba(230,163,0,.34)}}
 @keyframes summer-card-in{from{opacity:.25;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
@@ -1957,6 +2084,9 @@ const S = {
     playtimeEnabled:true,
     forecastEnabled:true,
     forecastTarget:30000000000,
+    hotkeysEnabled:true,
+    panelHotkey:"Alt+V",
+    collapseHotkey:"Alt+C",
   },
 };
 
@@ -2062,6 +2192,10 @@ function load(){
   if(typeof S.settings.playtimeEnabled!=="boolean") S.settings.playtimeEnabled=true;
   if(typeof S.settings.forecastEnabled!=="boolean") S.settings.forecastEnabled=true;
   S.settings.forecastTarget=Math.max(1,Number(S.settings.forecastTarget)||30000000000);
+  if(typeof S.settings.hotkeysEnabled!=="boolean") S.settings.hotkeysEnabled=true;
+  S.settings.panelHotkey=S.settings.panelHotkey===""?"":(normalizeHotkey(S.settings.panelHotkey)||"Alt+V");
+  S.settings.collapseHotkey=S.settings.collapseHotkey===""?"":(normalizeHotkey(S.settings.collapseHotkey)||"Alt+C");
+  if(S.settings.panelHotkey && S.settings.panelHotkey===S.settings.collapseHotkey)S.settings.collapseHotkey=S.settings.panelHotkey==="Alt+C"?"Alt+V":"Alt+C";
   delete S.settings.forecastDeadline;
   loadWeatherCache();
   if(!GM_getValue("v7_layout_default_done",false)){
@@ -2153,6 +2287,80 @@ function fmtWmCountdown(){
 }
 function escHtml(v){
   return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+function normalizeHotkey(value){
+  const raw=String(value||"").trim();
+  if(!raw)return "";
+  const parts=raw.split("+").map(x=>x.trim()).filter(Boolean);
+  const key=parts.pop();
+  if(!key)return "";
+  const mods=new Set(parts.map(x=>x.toLowerCase()));
+  const out=[];
+  if(mods.has("ctrl")||mods.has("control")||mods.has("strg"))out.push("Ctrl");
+  if(mods.has("alt"))out.push("Alt");
+  if(mods.has("shift")||mods.has("umschalt"))out.push("Shift");
+  const k=key.length===1?key.toUpperCase():key.charAt(0).toUpperCase()+key.slice(1);
+  out.push(k);
+  return out.join("+");
+}
+function hotkeyLabel(value){
+  return normalizeHotkey(value)||"Nicht belegt";
+}
+function hotkeyCaptureButton(key,label,value){
+  return `<button class="hotkey-capture" type="button" data-hotkey-key="${escHtml(key)}" title="Klicken und danach gewünschte Taste drücken">
+    <span class="hotkey-title">${escHtml(label)}</span>
+    <span class="hotkey-value">${escHtml(hotkeyLabel(value))}</span>
+    <span class="hotkey-hint">Klicken zum Ändern</span>
+  </button>`;
+}
+function eventHotkey(e){
+  if(["Control","Alt","Shift","Meta"].includes(e.key))return "";
+  const key=e.key===" "?"Space":(String(e.key||"").length===1?String(e.key).toUpperCase():String(e.key||""));
+  return `${e.ctrlKey?"Ctrl+":""}${e.altKey?"Alt+":""}${e.shiftKey?"Shift+":""}${key}`;
+}
+function isTypingTarget(target){
+  if(!target)return false;
+  const el=target instanceof Element?target:null;
+  if(!el)return false;
+  if(el.closest(".hotkey-capture"))return false;
+  return !!el.closest("input,textarea,select,[contenteditable='true'],[contenteditable='']");
+}
+let activeHotkeyCapture="";
+function refreshHotkeyButtons(){
+  $(".hotkey-capture").each(function(){
+    const key=String($(this).data("hotkey-key")||"");
+    $(this).toggleClass("recording",activeHotkeyCapture===key);
+    $(this).find(".hotkey-value").text(activeHotkeyCapture===key?"Taste drücken...":hotkeyLabel(S.settings[key]));
+    $(this).find(".hotkey-hint").text(activeHotkeyCapture===key?"Esc bricht ab · Entf löscht":"Klicken zum Ändern");
+  });
+}
+function startHotkeyCapture(key){
+  activeHotkeyCapture=String(key||"");
+  refreshHotkeyButtons();
+}
+function commitHotkeyCapture(value){
+  const key=activeHotkeyCapture;
+  if(!key)return false;
+  if(["Control","Alt","Shift","Meta"].includes(String(value||"")))return true;
+  if(value==="Escape"){
+    activeHotkeyCapture="";
+    refreshHotkeyButtons();
+    return true;
+  }
+  if(value==="Backspace"||value==="Delete"){
+    S.settings[key]="";
+    activeHotkeyCapture="";
+    save();refreshHotkeyButtons();
+    return true;
+  }
+  const next=normalizeHotkey(value);
+  if(!next)return true;
+  if(key==="panelHotkey" && next===normalizeHotkey(S.settings.collapseHotkey))S.settings.collapseHotkey="";
+  if(key==="collapseHotkey" && next===normalizeHotkey(S.settings.panelHotkey))S.settings.panelHotkey="";
+  S.settings[key]=next;
+  activeHotkeyCapture="";
+  save();refreshHotkeyButtons();
+  return true;
 }
 function wmTeamDe(name){
   const raw=String(name||"");
@@ -2417,11 +2625,13 @@ function apiGet(url,cb,onErr){
     method:"GET",url,
     onload(r){
       if(r.status===200){
-        try{cb(JSON.parse(r.responseText));}
-        catch(e){console.error("[LSS7] parse:",url,e);}
+        const txt=String(r.responseText||"").trim();
+        if(!txt || /^</.test(txt)){ onErr&&onErr("parse"); logDebug("api returned html/empty",url); return; }
+        try{cb(JSON.parse(txt));}
+        catch(e){onErr&&onErr("parse"); logDebug("api parse",url,e);}
       } else { onErr&&onErr(r.status); }
     },
-    onerror(){onErr&&onErr(-1);console.warn("[LSS7] fail:",url);}
+    onerror(){onErr&&onErr(-1);logDebug("api fail",url);}
   });
 }
 function pageGet(url,cb,onErr){
@@ -2431,10 +2641,10 @@ function pageGet(url,cb,onErr){
       method:"GET",url,timeout:12000,
       onload(r){
         if(r.status===200) cb(r.responseText||"");
-        else fallback();
+        else { onErr&&onErr(r.status); }
       },
-      onerror(){fallback();console.warn("[LSS7] fail:",url);},
-      ontimeout(){fallback();console.warn("[LSS7] timeout:",url);}
+      onerror(){fallback();logDebug("page fail",url);},
+      ontimeout(){fallback();logDebug("page timeout",url);}
     });
   }catch{fallback();}
 }
@@ -2444,7 +2654,7 @@ function fetchTextFallback(url,cb,onErr){
     if(!r.ok)throw new Error(String(r.status));
     return r.text();
   }).then(txt=>cb(txt||"")).catch(e=>{
-    console.warn("[LSS7] fetch fallback fail:",url,e);
+    logDebug("fetch fallback fail",url,e);
     onErr&&onErr(String(e?.message||"network"));
   });
 }
@@ -3893,7 +4103,7 @@ async function fetchPlayerRanking(force=false){
     ranking.lastTs=Date.now();
   }catch(e){
     ranking.status="Topliste derzeit nicht erreichbar";
-    console.warn("[LSS7] player ranking",e);
+    logDebug("player ranking",e);
   }finally{
     ranking.loading=false;save();renderPlayerForecast();
   }
@@ -3901,6 +4111,7 @@ async function fetchPlayerRanking(force=false){
 
 function fetchUserinfo(){
   apiGet(API.userinfo,d=>{
+    const oldId=S.userId;
     S.userId=Number(d.id)||S.userId||null;
     const domCredits=readOwnCreditsFromNavbar();
     const domCoins=readOwnCoinsFromNavbar();
@@ -3908,6 +4119,9 @@ function fetchUserinfo(){
     S.userCoins=(domCoins!==null?domCoins:(d.coins||0));
     setV("#qs-credits",fmtMoney(S.userCredits));
     setV("#qs-coins",fmt(S.userCoins));
+    if(S.userId && (!oldId || S.profile.name==="-" || !S.profile.avatar)){
+      setTimeout(fetchProfileCard,80);
+    }
   });
 }
 
@@ -3959,8 +4173,7 @@ function fetchProfileCard(){
   if(nav.avatar) S.profile.avatar=nav.avatar;
   renderProfileQuick();
 
-  const profileUrl=S.userId?`${BASE}/profile/${S.userId}`:`${BASE}/profile`;
-  pageGet(profileUrl, html=>{
+  if(S.userId) pageGet(`${BASE}/profile/${S.userId}`, html=>{
     const doc=new DOMParser().parseFromString(html,"text/html");
     const name=(doc.querySelector(".user_name, .profile-header h1, h1, .navbar-profile-name, .username")?.textContent||"").trim() || S.profile.name || "-";
     const avatarDom=(
@@ -5136,7 +5349,7 @@ function installTeamChatCommandHelper(){
     const value=String(input.value||"").trim();
     if(!/^([!/])\s*(kick|ban|chatban)\b/i.test(value))return;
     e.preventDefault();e.stopPropagation();
-    handleTeamChatCommand(input,value).catch(err=>{console.warn("[LSS7] chat command",err);alert("Aktion konnte nicht ausgeführt werden.");});
+    handleTeamChatCommand(input,value).catch(err=>{logDebug("chat command",err);alert("Aktion konnte nicht ausgeführt werden.");});
   },true);
 }
 
@@ -5674,6 +5887,11 @@ function buildUI(){
   grpOpt.append(mkToggle("tog-notif","Browser-Benachrichtigungen","notifications"));
   grpOpt.append(mkToggle("tog-coins","Coins anzeigen","coins"));
   grpOpt.append(mkToggle("tog-playtime","Spielzeit anzeigen","playtimeEnabled"));
+  grpOpt.append(mkToggle("tog-hotkeys","Tastenkürzel aktivieren","hotkeysEnabled"));
+  grpOpt.append(`<div class="hotkey-grid">
+    ${hotkeyCaptureButton("panelHotkey","Menü öffnen / schließen",S.settings.panelHotkey)}
+    ${hotkeyCaptureButton("collapseHotkey","Menü ein- / ausklappen",S.settings.collapseHotkey)}
+  </div>`);
   grpOpt.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Menü-Modus</span>
     <select id="sb-panel-mode" class="lss7-select">
@@ -5776,7 +5994,7 @@ function buildUI(){
   </div>`);
 
   const grpPn=$(`<div class="set-group set-wide settings-patch-notes"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v9.2.3</b><br>LCARS 2364 wurde optisch komplett überarbeitet und kann jetzt optional auch die Leitstellenspiel-Oberfläche außerhalb des Dashboards passend gestalten.</div>`);
+  grpPn.append(`<div class="set-note"><b>v9.2.5</b><br>Tastenkürzel können jetzt direkt per Tastendruck aufgenommen werden. LCARS 2364 wurde nochmals professioneller, ruhiger und lesbarer überarbeitet.</div>`);
   setWrap.append(grpPn);
   setWrap.append(grpContact);
   setWrap.append(grpInfo);
@@ -5785,7 +6003,7 @@ function buildUI(){
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v9.2.3",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v9.2.5",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -5895,6 +6113,10 @@ function buildUI(){
     S.settings.playerForecastPlacement=String($(e.currentTarget).val()||"profile");
     save();applyPlayerForecastPlacement();
   });
+  panel.on("click",".hotkey-capture",e=>{
+    e.stopPropagation();e.preventDefault();
+    startHotkeyCapture($(e.currentTarget).data("hotkey-key"));
+  });
   panel.on("change","#sb-language",e=>{
     S.settings.language=String($(e.currentTarget).val()||"de");
     save();location.reload();
@@ -5913,8 +6135,7 @@ function buildUI(){
   });
   panel.on("click","#lss7-col",e=>{
     e.stopPropagation();e.preventDefault();
-    S.settings.panelCollapsed=!S.settings.panelCollapsed;
-    save();applyPanelMode();
+    togglePanelCollapse();
   });
   panel.on("change","#sb-weather-mode",e=>{
     S.settings.weatherMode=String($(e.currentTarget).val()||"off");
@@ -6159,7 +6380,6 @@ function applyPanelMode(){
       else p.el.append(panel);
     }
     panel.addClass("layout");
-    if(S.settings.panelCollapsed) panel.addClass("emb-collapsed");
     panel.css({top:"auto",bottom:"auto",right:"auto",left:"auto",width:"100%",height:"auto"});
   } else {
     if(!panel.parent().is("body")) $("body").append(panel);
@@ -6170,6 +6390,7 @@ function applyPanelMode(){
     const left=(p.endsWith("left")) ? "14px" : "auto";
     panel.css({top,bottom,right,left,width:"",height:""});
   }
+  if(S.settings.panelCollapsed) panel.addClass("emb-collapsed");
   panel.removeClass("theme-dark theme-light theme-summer theme-summer-dark theme-lcars");
   const th=String(S.settings.panelTheme||"summer");
   panel.addClass(`theme-${th}`);
@@ -6365,6 +6586,34 @@ function mkAccordion(icon,title,body){
 }
 function patchHTML(){
   const groups=[
+    {
+      title:"v9.2.5 — Individuelle Hotkeys & LCARS-Refit",
+      items:[
+        "Hotkeys werden jetzt nicht mehr nur über eine feste Liste gewählt: In den Einstellungen kann das jeweilige Hotkey-Feld angeklickt und anschließend direkt die gewünschte Taste oder Tastenkombination gedrückt werden.",
+        "Esc bricht die Hotkey-Aufnahme ab; Entf oder Backspace löscht das jeweilige Tastenkürzel.",
+        "Wenn ein neu gesetzter Hotkey bereits für die andere Aktion belegt ist, wird die andere Belegung automatisch geleert, damit keine Doppelbelegung entsteht.",
+        "Leere Hotkey-Felder bleiben auch nach einem Neuladen leer und springen nicht mehr automatisch auf Standardwerte zurück.",
+        "LCARS 2364 wurde nochmals überarbeitet: dunklere Cockpit-Basis, weniger grelle Flächen, lesbarere Tabs, bessere Buttons und ruhigere globale LSS-Anpassungen.",
+        "Die Hotkey-Felder wurden optisch als klare Key-Capture-Karten gestaltet und sind auch im LCARS-Theme gut lesbar.",
+        "Version und Patch-Notes wurden auf v9.2.5 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.2.4 — Tastenkürzel, LCARS-Rework & Stabilität",
+      items:[
+        "In den Einstellungen gibt es jetzt Tastenkürzel für Menü öffnen/schließen und Menü ein-/ausklappen.",
+        "Standardmäßig öffnet bzw. schließt Alt+V das Dashboard; Alt+C klappt das Dashboard ein oder aus.",
+        "Die Tastenkürzel können in den Einstellungen geändert oder komplett deaktiviert werden.",
+        "Hotkeys greifen nicht in Eingabefeldern, Chatfeldern, Dropdowns oder bearbeitbaren Bereichen, damit beim Tippen nichts versehentlich ausgelöst wird.",
+        "Das Ein-/Ausklappen funktioniert jetzt im Layout-Modus und im Floating-Fenster einheitlich.",
+        "LCARS 2364 wurde erneut deutlich überarbeitet: dunklere Basis, ruhigere Akzentleisten, bessere Button-Kontraste, lesbarere Dropdowns und klarere Panel-Struktur.",
+        "Der globale LCARS-Stil für die Leitstellenspiel-Oberfläche wurde professioneller abgestimmt, damit Navbar, Buttons, Tabellen und Panels besser lesbar bleiben.",
+        "Der fehlerhafte /profile-Aufruf ohne Spieler-ID wurde entfernt; Profilseiten werden erst mit echter User-ID geladen.",
+        "API-Antworten, die HTML statt JSON liefern, erzeugen keine lauten Parser-Fehler mehr in der Browser-Konsole.",
+        "Das Three.js-Require wurde entfernt, um die wiederholte Deprecated-Warnung aus Tampermonkey/Browser-Konsole zu vermeiden. Die Sommerszene bleibt weiterhin optional und wird nur genutzt, wenn Three.js bereits verfügbar ist.",
+        "Version und Patch-Notes wurden auf v9.2.4 aktualisiert."
+      ]
+    },
     {
       title:"v9.2.3 — LCARS-Redesign & globaler LSS-Stil",
       items:[
@@ -6847,7 +7096,7 @@ function buildTrigger(){
 
   const nb=$("#navbar-main-collapse .navbar-nav");
   if(nb.length)nb.append(li);
-  else console.error("[LSS7] Navbar nicht gefunden.");
+  else logDebug("Navbar nicht gefunden.");
   applyNavButtonStyle();
 }
 
@@ -6860,6 +7109,32 @@ function togglePanel(force){
   $("#lss7").toggleClass("open",panelOpen);
   $("#lss7-btn").toggleClass("open",panelOpen);
   if(panelOpen) setTimeout(drawChart,80);
+}
+function togglePanelCollapse(force){
+  S.settings.panelCollapsed=force!==undefined?!!force:!S.settings.panelCollapsed;
+  save();
+  if(!panelOpen) togglePanel(true);
+  applyPanelMode();
+}
+function installGlobalHotkeys(){
+  document.addEventListener("keydown",e=>{
+    if(activeHotkeyCapture){
+      e.preventDefault();e.stopPropagation();
+      commitHotkeyCapture(eventHotkey(e)||String(e.key||""));
+      return;
+    }
+    if(!S.settings.hotkeysEnabled || isTypingTarget(e.target))return;
+    const pressed=eventHotkey(e);
+    const panelKey=normalizeHotkey(S.settings.panelHotkey);
+    const collapseKey=normalizeHotkey(S.settings.collapseHotkey);
+    if(pressed && pressed===panelKey){
+      e.preventDefault();e.stopPropagation();
+      togglePanel();
+    }else if(pressed && pressed===collapseKey){
+      e.preventDefault();e.stopPropagation();
+      togglePanelCollapse();
+    }
+  },true);
 }
 
 // AuÃŸerhalb klicken â†’ schlieÃŸen
@@ -6964,6 +7239,7 @@ $(document).ready(()=>{
   buildTrigger();
   installAllianceActivityHooks();
   installTeamChatCommandHelper();
+  installGlobalHotkeys();
   applyPanelMode();
   updatePlaytimeUi();
   updateCoinsUi();
