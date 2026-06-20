@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.2.5
+// @version      9.3.0
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/*
@@ -41,7 +41,7 @@ if(/^\/(?:alliances\/\d+|verband(?:\/|$))/i.test(location.pathname))return;
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "9.2.5";
+const V   = "9.3.0";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
@@ -86,7 +86,7 @@ const WEATHER_COUNTRIES = {
 const I18N = {
   en:{
     "Übersicht":"Overview","Verbands Prognose [BETA]":"Alliance forecast [BETA]","Fuhrpark & Standorte":"Fleet & locations",
-    "Lehrgänge":"Courses","Verlauf":"History","Team":"Team","Mitglieder & Verwaltung":"Members & management","Event":"Event","Einstellungen":"Settings",
+    "Lehrgänge":"Courses","Verlauf":"History","Team":"Team","Mitglieder":"Members","Event":"Event","Einstellungen":"Settings",
     "Spielzeit":"Playtime","Eigene Credits":"Your credits","Tagesverd.":"Daily earnings","Uhrzeit":"Time",
     "Verband":"Alliance","Credits gesamt":"Total credits","Verbandskasse":"Alliance funds","Platzierung":"Ranking",
     "Mitglieder":"Members","Coins":"Coins","Tagesverdienst":"Daily earnings","Verbandsverdienst heute":"Alliance earnings today","Verbandsverdienst 7 Tage":"Alliance earnings: 7 days","Verbandsaktivität heute":"Alliance activity today","Tageslage Verband":"Alliance daily overview","Einsätze":"Missions","Einsätze abgeschlossen":"Missions completed","Patienten":"Patients","Patienten transportiert":"Patients transported","Gefangene":"Prisoners","Gefangene transportiert":"Prisoners transported",
@@ -119,7 +119,7 @@ const I18N = {
   },
   fr:{
     "Übersicht":"Aperçu","Verbands Prognose [BETA]":"Prévision de l'alliance [BÊTA]","Fuhrpark & Standorte":"Véhicules et sites",
-    "Lehrgänge":"Formations","Verlauf":"Historique","Team":"Équipe","Mitglieder & Verwaltung":"Membres et gestion","Event":"Événement","Einstellungen":"Paramètres",
+    "Lehrgänge":"Formations","Verlauf":"Historique","Team":"Équipe","Mitglieder":"Membres","Event":"Événement","Einstellungen":"Paramètres",
     "Spielzeit":"Temps de jeu","Eigene Credits":"Vos crédits","Tagesverd.":"Gain du jour","Uhrzeit":"Heure",
     "Verband":"Alliance","Credits gesamt":"Crédits totaux","Verbandskasse":"Caisse de l'alliance","Platzierung":"Classement",
     "Mitglieder":"Membres","Coins":"Pièces","Tagesverdienst":"Gain du jour","Verbandsverdienst heute":"Gain de l'alliance aujourd'hui","Verbandsverdienst 7 Tage":"Gains de l'alliance sur 7 jours","Verbandsaktivität heute":"Activité de l'alliance aujourd'hui","Tageslage Verband":"Bilan quotidien de l'alliance","Einsätze":"Interventions","Einsätze abgeschlossen":"Interventions terminées","Patienten":"Patients","Patienten transportiert":"Patients transportés","Gefangene":"Prisonniers","Gefangene transportiert":"Prisonniers transportés",
@@ -207,28 +207,6 @@ const ALLIANCE_ROLE_DEFS = [
   {id:"personnel",label:"Personal",color:"#aeb8c6",text:"#17202b",aliases:["staff","personnel","personal","member_admin"]},
   {id:"event",label:"Eventmanager",color:"#a96835",text:"#ffffff",aliases:["event_manager","eventmanager","event"]},
 ];
-const TEAM_ROLE_ACTIONS = [
-  {id:"admin",path:"admin",label:"Admin"},
-  {id:"coadmin",path:"coadmin",label:"Co-Admin"},
-  {id:"schooling",path:"schooling",label:"Lehrgangsmeister"},
-  {id:"radio",path:"sprechwunsch_admin",label:"Sprechwunsch-Admin"},
-  {id:"board",path:"aufsichtsrat",label:"Aufsichtsrat"},
-  {id:"finance",path:"finance",label:"Finanzminister"},
-  {id:"personnel",path:"staff",label:"Personal"},
-  {id:"event",path:"event_manager",label:"Eventmanager"},
-];
-const CHATBAN_OPTIONS = [
-  {sec:300,label:"5 Minuten"},
-  {sec:900,label:"15 Minuten"},
-  {sec:1800,label:"30 Minuten"},
-  {sec:3600,label:"1 Stunde"},
-  {sec:21600,label:"6 Stunden"},
-  {sec:43200,label:"12 Stunden"},
-  {sec:86400,label:"1 Tag"},
-  {sec:604800,label:"7 Tage"},
-  {sec:1209600,label:"14 Tage"},
-];
-
 const ITV = {
   clock:    1000,
   timer:    1000,
@@ -1703,8 +1681,8 @@ GM_addStyle(`
 }
 #lss7.theme-lcars .sc:nth-child(2n),#lss7.theme-lcars .vehicle-summary-card:nth-child(2n),#lss7.theme-lcars .quality-card:nth-child(2n){box-shadow:inset 7px 0 #b89aff;}
 #lss7.theme-lcars .sc:nth-child(3n),#lss7.theme-lcars .vehicle-summary-card:nth-child(3n),#lss7.theme-lcars .quality-card:nth-child(3n){box-shadow:inset 7px 0 #78d7ff;}
-#lss7.theme-lcars .lbtn,#lss7.theme-lcars .team-admin-action,#lss7.theme-lcars .team-bulk-btn{background:#ff9d45;color:#030303;border:0;border-radius:999px;font-weight:950;text-align:center;justify-content:center;}
-#lss7.theme-lcars .lbtn.prime{background:#b89aff;color:#030303}#lss7.theme-lcars .lbtn.danger,#lss7.theme-lcars .team-admin-action.danger{background:#ff7b73;color:#030303;}
+#lss7.theme-lcars .lbtn{background:#ff9d45;color:#030303;border:0;border-radius:999px;font-weight:950;text-align:center;justify-content:center;}
+#lss7.theme-lcars .lbtn.prime{background:#b89aff;color:#030303}#lss7.theme-lcars .lbtn.danger{background:#ff7b73;color:#030303;}
 #lss7.theme-lcars .lss7-select{background:#0b0b0b!important;color:#fff3d0!important;border-color:#5a3a1a!important;border-radius:999px;}
 #lss7.theme-lcars .vb-fill,#lss7.theme-lcars .pt-fill,#lss7.theme-lcars .prof-fill,#lss7.theme-lcars .forecast-progress-fill{background:linear-gradient(90deg,#ff9d45,#ffba5c,#b89aff)!important;}
 #lss7.theme-lcars .wm-row,#lss7.theme-lcars .game-event-row,#lss7.theme-lcars .sch-row,#lss7.theme-lcars .arr-row,#lss7.theme-lcars .hist-row,#lss7.theme-lcars .rank-mini-row,#lss7.theme-lcars .team-card{background:#070707;border-color:#21170f;border-radius:16px 7px 7px 16px;}
@@ -1772,10 +1750,10 @@ body.lss7-lcars-global .leaflet-popup-tip{background:#070707!important;}
 #lss7.theme-lcars .ltab:nth-child(2n),#lss7.theme-lcars .ltab:nth-child(3n),#lss7.theme-lcars .ltab:nth-child(4n){background:#10100e;}
 #lss7.theme-lcars .ltab:hover{background:#19130e;color:#ffe0a7!important;border-color:rgba(246,180,93,.48);}
 #lss7.theme-lcars .ltab.active{background:#f6b45d!important;color:#050506!important;box-shadow:inset 7px 0 #ffe0a7,0 0 0 1px rgba(246,180,93,.55);font-weight:950;}
-#lss7.theme-lcars .lbtn,#lss7.theme-lcars .team-admin-action,#lss7.theme-lcars .team-bulk-btn{background:#11100e;color:#fff8e8;border:1px solid rgba(246,180,93,.36);box-shadow:inset 5px 0 #f6b45d;border-radius:15px 6px 6px 15px;}
-#lss7.theme-lcars .lbtn:hover,#lss7.theme-lcars .team-admin-action:hover,#lss7.theme-lcars .team-bulk-btn:hover{background:#1d160f;color:#ffe0a7;border-color:#f6b45d;}
+#lss7.theme-lcars .lbtn{background:#11100e;color:#fff8e8;border:1px solid rgba(246,180,93,.36);box-shadow:inset 5px 0 #f6b45d;border-radius:15px 6px 6px 15px;}
+#lss7.theme-lcars .lbtn:hover{background:#1d160f;color:#ffe0a7;border-color:#f6b45d;}
 #lss7.theme-lcars .lbtn.prime{background:#182337;color:#d5f4ff;border-color:rgba(143,220,255,.46);box-shadow:inset 5px 0 #8fdcff;}
-#lss7.theme-lcars .lbtn.danger,#lss7.theme-lcars .team-admin-action.danger{background:#2a1111;color:#ffc1bc;border-color:rgba(255,139,130,.46);box-shadow:inset 5px 0 #ff8b82;}
+#lss7.theme-lcars .lbtn.danger{background:#2a1111;color:#ffc1bc;border-color:rgba(255,139,130,.46);box-shadow:inset 5px 0 #ff8b82;}
 #lss7.theme-lcars .lss7-select,#lss7.theme-lcars input,#lss7.theme-lcars select,#lss7.theme-lcars textarea{background:#080807!important;color:#fff8e8!important;border-color:rgba(246,180,93,.35)!important;border-radius:13px 5px 5px 13px!important;}
 #lss7.theme-lcars .lss7-select option{background:#080807!important;color:#fff8e8!important;}
 #lss7.theme-lcars .sc,#lss7.theme-lcars .set-group,#lss7.theme-lcars .asset-section,#lss7.theme-lcars .fleet-panel,#lss7.theme-lcars .event-card,#lss7.theme-lcars .prof-strip,#lss7.theme-lcars .vehicle-summary-card,#lss7.theme-lcars .forecast-controls,#lss7.theme-lcars .forecast-chart-box,#lss7.theme-lcars .quality-card{background:#080807;border-color:rgba(246,180,93,.20);border-radius:18px 7px 7px 18px;box-shadow:inset 7px 0 rgba(246,180,93,.92);}
@@ -1834,12 +1812,12 @@ body.lss7-lcars-global .dropdown-menu>li>a:hover,body.lss7-lcars-global .list-gr
 }
 #lss7.theme-lcars .sc:nth-child(2n),#lss7.theme-lcars .vehicle-summary-card:nth-child(2n),#lss7.theme-lcars .quality-card:nth-child(2n){box-shadow:inset 6px 0 rgba(191,163,255,.88);}
 #lss7.theme-lcars .sc:nth-child(3n),#lss7.theme-lcars .vehicle-summary-card:nth-child(3n),#lss7.theme-lcars .quality-card:nth-child(3n){box-shadow:inset 6px 0 rgba(133,214,255,.88);}
-#lss7.theme-lcars .lbtn,#lss7.theme-lcars .team-admin-action,#lss7.theme-lcars .team-bulk-btn,#lss7.theme-lcars .hotkey-capture{
+#lss7.theme-lcars .lbtn,#lss7.theme-lcars .hotkey-capture{
   background:#10131a;color:#fff7e8;border:1px solid rgba(232,169,88,.30);box-shadow:inset 5px 0 #e8a958;border-radius:15px 6px 6px 15px;text-shadow:none;
 }
-#lss7.theme-lcars .lbtn:hover,#lss7.theme-lcars .team-admin-action:hover,#lss7.theme-lcars .team-bulk-btn:hover,#lss7.theme-lcars .hotkey-capture:hover{background:#171a22;color:#ffd99b;border-color:rgba(232,169,88,.55);}
+#lss7.theme-lcars .lbtn:hover,#lss7.theme-lcars .hotkey-capture:hover{background:#171a22;color:#ffd99b;border-color:rgba(232,169,88,.55);}
 #lss7.theme-lcars .lbtn.prime{background:#101a25;color:#d7f2ff;border-color:rgba(133,214,255,.42);box-shadow:inset 5px 0 #85d6ff;}
-#lss7.theme-lcars .lbtn.danger,#lss7.theme-lcars .team-admin-action.danger{background:#211112;color:#ffc5be;border-color:rgba(255,143,132,.42);box-shadow:inset 5px 0 #ff8f84;}
+#lss7.theme-lcars .lbtn.danger{background:#211112;color:#ffc5be;border-color:rgba(255,143,132,.42);box-shadow:inset 5px 0 #ff8f84;}
 #lss7.theme-lcars .hotkey-value{background:#06070a;color:#ffd99b;border-color:rgba(232,169,88,.42);}
 #lss7.theme-lcars .hotkey-capture.recording{background:#10202a;color:#d7f2ff;border-color:rgba(133,214,255,.58);box-shadow:inset 5px 0 #85d6ff;}
 #lss7.theme-lcars .lss7-select,#lss7.theme-lcars input,#lss7.theme-lcars select,#lss7.theme-lcars textarea{background:#0b0d12!important;color:#fff7e8!important;border:1px solid rgba(232,169,88,.32)!important;border-radius:13px 5px 5px 13px!important;}
@@ -2004,7 +1982,8 @@ body.lss7-lcars-global .panel,body.lss7-lcars-global .well,body.lss7-lcars-globa
 .rank-mini-row{display:grid;grid-template-columns:46px 1fr 140px;gap:8px;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.02);}
 .rank-mini-row.me{background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.35);}
 .rank-mini-r{font-size:11px;color:var(--t3);font-family:var(--mono);}
-.rank-mini-n{font-size:11px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rank-mini-n{font-size:11px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none;min-width:0;}
+a.rank-mini-n:hover{color:var(--blueh);text-decoration:underline;}
 .rank-mini-c{font-size:11px;color:var(--green);text-align:right;font-family:var(--mono);}
 
 /* 9.1.0: fleet cockpit */
@@ -2030,7 +2009,8 @@ body.lss7-lcars-global .panel,body.lss7-lcars-global .well,body.lss7-lcars-globa
 .player-forecast-kpi{padding:11px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.02);min-width:0;}
 .player-forecast-kpi span{display:block;font-size:8px;color:var(--t4);text-transform:uppercase;letter-spacing:.7px;font-weight:850}.player-forecast-kpi b{display:block;margin-top:5px;color:var(--t1);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .player-forecast-progress{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid var(--b1);}.player-forecast-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green));transition:width .35s ease;}
-.player-rank-context{display:flex;flex-direction:column;gap:5px}.player-rank-row{display:grid;grid-template-columns:56px minmax(0,1fr) 150px;gap:8px;padding:7px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.02);font-size:10px;}.player-rank-row.me{border-color:rgba(59,130,246,.42);background:var(--blue3)}.player-rank-row span:last-child{text-align:right;color:var(--greenh);font-family:var(--mono)}
+.player-rank-context{display:flex;flex-direction:column;gap:5px}.player-rank-row{display:grid;grid-template-columns:56px minmax(0,1fr) 150px;gap:8px;padding:7px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.02);font-size:10px;}.player-rank-row.me{border-color:rgba(59,130,246,.42);background:var(--blue3)}.player-rank-row span:last-child{text-align:right;color:var(--greenh);font-family:var(--mono)}.player-rank-row a,.player-rank-row b{color:var(--t1);font-weight:850;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none}.player-rank-row a:hover{color:var(--blueh);text-decoration:underline}
+.rank-delta.up,.prof-placement-history.up{color:#86efac!important}.rank-delta.down,.prof-placement-history.down{color:#fca5a5!important}.rank-delta.neutral,.prof-placement-history.neutral{color:var(--t3)!important}.rank-delta{font-family:var(--mono);font-weight:950}.prof-placement-history{font-weight:850;}
 .prof-placement{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;border:1px solid rgba(245,158,11,.30);background:var(--amber3);color:var(--amberh);font-size:9px;font-weight:900;white-space:nowrap;}
 @media(max-width:720px){.player-forecast-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.player-rank-row{grid-template-columns:46px minmax(0,1fr) 110px;}.prof-row{grid-template-columns:58px minmax(0,1fr)}.prof-av{width:58px;height:48px}.prof-placement{grid-column:1/-1;min-height:54px}.prof-badges{align-items:flex-start}}
 `);
@@ -2050,6 +2030,7 @@ const S = {
   userCredits:0, userCoins:0, userId:null,
   playerDaily:[],
   playerRanking:{rank:null,status:"",rows:[],lastTs:0,loading:false},
+  playerRankHistory:{date:"",startRank:null,lastRank:null,bestRank:null,worstRank:null,updates:0,lastTs:0},
   allianceId:null, allianceName:"", allianceRank:null, allianceCredits:0,
   weather:null, weatherTs:0, weatherLoc:"",
   gameEvents:[],
@@ -2059,7 +2040,7 @@ const S = {
   profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:"",roles:[],totalCredits:0},
   weatherAlertKey:"",
   lastApiTs:null,
-  teamAdmin:{rights:{},profiles:{},details:{},selected:{},loading:false,lastTs:0,error:""},
+  teamAdmin:{details:{},detailsByName:{},users:{},loading:false,lastTs:0,error:""},
   allianceActivity:{date:"",missions:0,patients:0,prisoners:0,seen:[]},
   allianceActivityLive:{},
   dataCache:{vehicles:{},buildings:[],schoolings:[],aaos:[],aaoCategories:[],pois:[],missionTypes:null,missions:[],allianceEventTypes:[],lastMetaTs:0},
@@ -2106,6 +2087,7 @@ function save(){
   GM_setValue("v7_pd",  JSON.stringify(S.playtimeDaily));
   GM_setValue("v7_player_daily",JSON.stringify(S.playerDaily));
   GM_setValue("v7_player_rank",JSON.stringify(S.playerRanking));
+  GM_setValue("v7_player_rank_hist",JSON.stringify(S.playerRankHistory));
   GM_setValue("v7_alliance_activity",JSON.stringify(S.allianceActivity));
   GM_setValue("v7_set", JSON.stringify(S.settings));
 }
@@ -2147,6 +2129,7 @@ function load(){
   try{S.playtimeDaily=JSON.parse(GM_getValue("v7_pd","[]"))||[];}catch{S.playtimeDaily=[];}
   try{S.playerDaily=JSON.parse(GM_getValue("v7_player_daily","[]"))||[];}catch{S.playerDaily=[];}
   try{Object.assign(S.playerRanking,JSON.parse(GM_getValue("v7_player_rank","{}"))||{});}catch{}
+  try{Object.assign(S.playerRankHistory,JSON.parse(GM_getValue("v7_player_rank_hist","{}"))||{});}catch{}
   try{Object.assign(S.allianceActivity,JSON.parse(GM_getValue("v7_alliance_activity","{}"))||{});}catch{}
   S.allianceActivity.date=String(S.allianceActivity.date||today);
   S.allianceActivity.missions=Math.max(0,Number(S.allianceActivity.missions)||0);
@@ -2155,6 +2138,7 @@ function load(){
   S.allianceActivity.seen=Array.isArray(S.allianceActivity.seen)?S.allianceActivity.seen.map(String).slice(-500):[];
   if(S.allianceActivity.date!==today)S.allianceActivity={date:today,missions:0,patients:0,prisoners:0,seen:[]};
   S.playerRanking.loading=false;
+  normalizePlayerRankHistory();
   if(newDay && saved && storedPlaytime>0)recordPlaytimeDay(saved,storedPlaytime);
   try{S.wmTips=JSON.parse(GM_getValue("v7_wm_tips","{}"))||{};}catch{S.wmTips={};}
   try{Object.assign(S.settings,JSON.parse(GM_getValue("v7_set","{}"))||{});}catch{}
@@ -3999,14 +3983,74 @@ function playerDailyBoardHtml(){
   }).join("")}</div>`;
 }
 
+function normalizePlayerRankHistory(){
+  const today=localDateKey();
+  const h=S.playerRankHistory||{};
+  if(h.date!==today){
+    S.playerRankHistory={date:today,startRank:null,lastRank:null,bestRank:null,worstRank:null,updates:0,lastTs:0};
+    return;
+  }
+  S.playerRankHistory={
+    date:today,
+    startRank:Number(h.startRank)||null,
+    lastRank:Number(h.lastRank)||null,
+    bestRank:Number(h.bestRank)||null,
+    worstRank:Number(h.worstRank)||null,
+    updates:Number(h.updates)||0,
+    lastTs:Number(h.lastTs)||0
+  };
+}
+function recordPlayerRank(rank){
+  rank=Number(rank)||0;
+  if(!rank)return;
+  normalizePlayerRankHistory();
+  const h=S.playerRankHistory;
+  if(!h.startRank)h.startRank=rank;
+  h.lastRank=rank;
+  h.bestRank=h.bestRank?Math.min(h.bestRank,rank):rank;
+  h.worstRank=h.worstRank?Math.max(h.worstRank,rank):rank;
+  h.updates=(Number(h.updates)||0)+1;
+  h.lastTs=Date.now();
+}
+function playerRankDelta(){
+  normalizePlayerRankHistory();
+  const h=S.playerRankHistory||{};
+  if(!h.startRank||!h.lastRank)return {delta:0,cls:"neutral",label:"Tageshistorie startet",short:"Heute: -"};
+  const delta=Number(h.startRank)-Number(h.lastRank);
+  if(delta>0)return {delta,cls:"up",label:`${fmt(delta)} Plätze heute aufgestiegen`,short:`▲ ${fmt(delta)}`};
+  if(delta<0)return {delta,cls:"down",label:`${fmt(Math.abs(delta))} Plätze heute abgestiegen`,short:`▼ ${fmt(Math.abs(delta))}`};
+  return {delta:0,cls:"neutral",label:"Heute unverändert",short:"▬ 0"};
+}
+function playerProfileLink(row){
+  const id=Number(row?.id)||0;
+  return id?`${BASE}/profile/${encodeURIComponent(id)}`:"";
+}
+
+function openPlayerForecastPanel(forceFetch=false){
+  const panel=$("#lss7");
+  S.settings.panelCollapsed=false;
+  applyPanelMode();
+  panel.find(".prof-view-btn").removeClass("active");
+  panel.find('.prof-view-btn[data-prof-view="forecast"]').addClass("active");
+  $("#prof-forecast-panel").addClass("open");
+  renderPlayerForecast();
+  fetchPlayerRanking(!!forceFetch);
+  document.getElementById("prof-forecast-panel")?.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
 function renderPlayerForecast(){
   const roots=$("#player-forecast-view,#player-profile-forecast-view");
   const model=playerForecastModel();
   const rank=S.playerRanking?.rank;
-  $("#prof-placement").html(`<span class="prof-placement-kicker">Spielerplatzierung</span><strong>${rank?`#${fmt(rank)}`:"Wird ermittelt"}</strong><small>Topliste</small>`);
+  const delta=playerRankDelta();
+  $("#prof-placement").html(`<span class="prof-placement-kicker">Spielerplatzierung</span><strong>${rank?`#${fmt(rank)}`:"Wird ermittelt"}</strong><small class="prof-placement-history ${delta.cls}">${escHtml(delta.label)}</small>`);
   if(!roots.length)return;
   const eta=model.eta?model.eta.toLocaleDateString(uiLocale(),{day:"2-digit",month:"2-digit",year:"numeric"}):"Noch keine Daten";
-  const rows=(S.playerRanking?.rows||[]).map(row=>`<div class="player-rank-row${row.me?" me":""}"><span>#${fmt(row.rank)}</span><b>${escHtml(row.name)}</b><span>${fmtMoney(row.credits)}</span></div>`).join("");
+  const rows=(S.playerRanking?.rows||[]).map(row=>{
+    const href=playerProfileLink(row);
+    const nameHtml=href?`<a href="${href}" target="_blank" rel="noopener">${escHtml(row.name)}</a>`:`<b>${escHtml(row.name)}</b>`;
+    return `<div class="player-rank-row${row.me?" me":""}"><span>#${fmt(row.rank)}</span>${nameHtml}<span>${fmtMoney(row.credits)}</span></div>`;
+  }).join("");
   const html=`<div class="player-forecast">
     <div class="player-forecast-head"><div><div class="player-forecast-title">Spielerprognose</div><div class="player-forecast-sub">Prognose bis zur nächsten Beförderung auf Basis deiner lokal erfassten Tagesverdienste. Ab 3 bis 7 vollständigen Tagen wird die Schätzung belastbarer.</div></div></div>
     <div class="player-forecast-grid">
@@ -4014,6 +4058,7 @@ function renderPlayerForecast(){
       <div class="player-forecast-kpi"><span>Nächste Beförderung</span><b>${escHtml(model.next?.rank||"Höchster Rang")}</b></div>
       <div class="player-forecast-kpi"><span>Noch benötigt</span><b>${model.next?fmtMoney(model.remaining):"Erreicht"}</b></div>
       <div class="player-forecast-kpi"><span>Spielerplatzierung</span><b>${rank?`#${fmt(rank)}`:escHtml(S.playerRanking?.status||"Wird geladen")}</b></div>
+      <div class="player-forecast-kpi"><span>Platzänderung heute</span><b class="rank-delta ${delta.cls}">${escHtml(delta.short)}</b></div>
       <div class="player-forecast-kpi"><span>Ø pro Tag</span><b>${model.average?fmtMoney(model.average):"Sammle Daten"}</b></div>
       <div class="player-forecast-kpi"><span>Prognose</span><b>${model.days!==null?`${fmt(model.days)} Tage`:"Noch offen"}</b></div>
       <div class="player-forecast-kpi"><span>Voraussichtlich</span><b>${escHtml(eta)}</b></div>
@@ -4021,7 +4066,7 @@ function renderPlayerForecast(){
     </div>
     <div class="player-forecast-progress"><div class="player-forecast-fill" style="width:${model.progress.toFixed(2)}%"></div></div>
     ${playerDailyBoardHtml()}
-    <div class="set-note"><b>Beta-Hinweis:</b> Offline-Zeiten, Events und schwankende Tagesverdienste können zu Abweichungen führen. Die Werte werden nur in diesem Browser gespeichert.</div>
+    <div class="set-note">Offline-Zeiten, Events und schwankende Tagesverdienste können zu Abweichungen führen. Die Werte werden nur in diesem Browser gespeichert.</div>
     <div class="player-rank-context">${rows||`<div class="lss7-empty">${escHtml(S.playerRanking?.status||"Spielerplatzierung wird geladen...")}</div>`}</div>
   </div>`;
   roots.html(html);
@@ -4094,6 +4139,7 @@ async function fetchPlayerRanking(force=false){
       ranking.rank=found.rank;
       ranking.rows=combined.slice(Math.max(0,idx-2),idx+3).map(row=>({...row,me:row.rank===found.rank}));
       ranking.status="Aktuell";
+      recordPlayerRank(found.rank);
     }else{
       const closest=[...combined].sort((a,b)=>Math.abs(a.credits-target)-Math.abs(b.credits-target))[0];
       ranking.rank=closest?.rank||null;
@@ -4903,24 +4949,8 @@ function renderHistTab(){
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  RENDER â€” TEAM TAB                                           â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-function teamActionFromLink(link,prefix=""){
-  const href=String(link?.getAttribute("href")||"").trim();
-  if(!href)return null;
-  const allowed=/^\/(?:verband\/(?:kick|admin|coadmin|sprechwunsch_admin|aufsichtsrat|finance|schooling|staff|event_manager)\/\d+(?:\/[01])?|profile\/\d+\/chatban\/\d+|allianceIgnore\/\d+\/(?:add|remove)|ignoriert\/hinzufuegen\/\d+\?|freunde\/hinzufuegen\/\d+\?|coins\?gift_for_user=|messages\/new\?)/i;
-  if(!allowed.test(href))return null;
-  const raw=String(link.textContent||"").replace(/\s+/g," ").trim();
-  const label=`${prefix}${raw}`.trim();
-  const danger=link.classList.contains("btn-danger")||/kick|chatban|allianceIgnore|ignoriert|rauswerfen|entfernen|bannen|verbieten/i.test(`${href} ${label}`);
-  const chatban=href.includes("/chatban/");
-  return {href,label,method:String(link.dataset.method||"get").toLowerCase(),danger,chatban};
-}
-function parseTeamRightsPage(html){
-  const doc=new DOMParser().parseFromString(html||"","text/html"),rights={};
-  doc.querySelectorAll('[id^="rights_"]').forEach(box=>{
-    const id=String(box.id||"").match(/rights_(\d+)/)?.[1];
-    if(!id)return;
-    rights[id]=Array.from(box.querySelectorAll("a[href]"),a=>teamActionFromLink(a)).filter(Boolean);
-  });
+function parseTeamMemberPageDetails(html){
+  const doc=new DOMParser().parseFromString(html||"","text/html");
   const details={};
   const detailsByName={};
   doc.querySelectorAll("img.online_icon,.online_icon").forEach(icon=>{
@@ -4963,27 +4993,6 @@ function parseTeamRightsPage(html){
     S.teamAdmin.details[id]={...(S.teamAdmin.details[id]||{}),...detail,ts:Date.now()};
   });
   S.teamAdmin.detailsByName={...(S.teamAdmin.detailsByName||{}),...detailsByName};
-  return rights;
-}
-function currentUserRoleIds(){
-  const ids=(Array.isArray(S.profile.roles)?S.profile.roles:[]).map(role=>String(role.id||""));
-  return new Set(ids);
-}
-function canLoadTeamModeration(){
-  const ids=currentUserRoleIds();
-  return ["owner","admin","coadmin","radio","personnel"].some(id=>ids.has(id));
-}
-function canManageMemberRoles(){
-  const ids=currentUserRoleIds();
-  return ["owner","admin","coadmin"].some(id=>ids.has(id));
-}
-function canKickMembers(){
-  const ids=currentUserRoleIds();
-  return ["owner","admin","coadmin","personnel"].some(id=>ids.has(id));
-}
-function canChatbanMembers(){
-  const ids=currentUserRoleIds();
-  return ["owner","admin","coadmin","radio"].some(id=>ids.has(id));
 }
 function teamCreditsFromUser(user){
   const keys=["credits_earned","credits","earned_credits","creditsTotal","credits_total"];
@@ -5042,58 +5051,15 @@ function teamActivityInfo(user,details){
   if(days<30)return {cls:"two-weeks",dot:"",label:"Mehr als 14 Tage offline",hint:`Offline: ${days} Tage`,days};
   return {cls:"month",dot:"",label:"Mehr als 30 Tage offline",hint:`Offline: ${days} Tage`,days};
 }
-function generatedTeamActions(id,info,name){
-  const actions=[];
-  const roleIds=new Set((info?.all?.length?info.all:[info?.primary]).filter(Boolean).map(role=>role.id));
-  if(canKickMembers())actions.push({href:`/verband/kick/${id}`,label:"Rauswerfen",method:"get",danger:true,kind:"kick"});
-  if(canManageMemberRoles()){
-    TEAM_ROLE_ACTIONS.forEach(role=>{
-      const active=roleIds.has(role.id);
-      actions.push({
-        href:`/verband/${role.path}/${id}/${active?0:1}`,
-        label:`Als ${role.label} ${active?"entfernen":"hinzufügen"}`,
-        method:"get",
-        danger:active,
-        kind:"role"
-      });
-    });
-  }
-  if(canChatbanMembers()){
-    CHATBAN_OPTIONS.forEach(opt=>actions.push({
-      href:`/profile/${id}/chatban/${opt.sec}`,
-      label:`Chat-Bann: ${opt.label}`,
-      method:"get",
-      danger:true,
-      chatban:true,
-      kind:"chatban"
-    }));
-  }
-  if(name)actions.push({href:`/messages/new?target=${encodeURIComponent(name)}`,label:"Nachricht senden",method:"get",danger:false,kind:"message"});
-  return actions;
-}
-function fetchTeamAdminRights(users,force=false){
+function fetchTeamMemberDetails(users,force=false){
   const admin=S.teamAdmin;
   if(admin.loading)return;
   if(!force&&admin.lastTs&&Date.now()-admin.lastTs<300000)return;
   admin.loading=true;admin.error="";
   pageGet(`${BASE}/verband/mitglieder`,html=>{
-    admin.loading=false;admin.lastTs=Date.now();admin.rights=parseTeamRightsPage(html);
+    admin.loading=false;admin.lastTs=Date.now();parseTeamMemberPageDetails(html);
     renderTeam(users||[]);
-  },()=>{admin.loading=false;admin.error="Berechtigungen konnten nicht geladen werden.";});
-}
-function fetchTeamProfileActions(id,done){
-  const key=String(id||"");if(!key)return done([]);
-  const cached=S.teamAdmin.profiles[key];
-  if(cached&&Date.now()-cached.ts<300000)return done(cached.actions||[]);
-  pageGet(`${BASE}/profile/${encodeURIComponent(key)}`,html=>{
-    const doc=new DOMParser().parseFromString(html||"","text/html"),actions=[];
-    doc.querySelectorAll("#userinfo > a[href]").forEach(a=>{const item=teamActionFromLink(a);if(item)actions.push(item);});
-    doc.querySelectorAll("#userinfo .btn-group .dropdown-menu a[href*='/chatban/']").forEach(a=>{const item=teamActionFromLink(a,"Chat-Bann: ");if(item)actions.push(item);});
-    const details=parseTeamProfileDetails(doc,html);
-    S.teamAdmin.details[key]={...(S.teamAdmin.details[key]||{}),...details,ts:Date.now()};
-    updateTeamCardDetails(key);
-    S.teamAdmin.profiles[key]={ts:Date.now(),actions};done(actions);
-  },()=>done([]));
+  },()=>{admin.loading=false;admin.error="Mitgliederstatus konnte nicht geladen werden.";});
 }
 function fetchTeamProfileDetails(id,force=false){
   const key=String(id||"");if(!key)return;
@@ -5159,23 +5125,6 @@ function updateTeamCardDetails(id){
   card.find(".team-last-online").attr("class",`team-last-online ${activity.cls}`).text(activity.hint).attr("title",activity.label);
   if(activity.days!==null&&activity.days!==undefined)card.attr("data-offline-days",activity.days);
 }
-function teamAdminActionsHtml(id,profileActions=[],user=null,info=null){
-  const rights=S.teamAdmin.rights[String(id)]||[];
-  const generated=generatedTeamActions(id,info,String(user?.name||""));
-  const all=[...rights,...profileActions,...generated].filter((item,index,list)=>list.findIndex(x=>x.href===item.href)===index);
-  if(!all.length)return `<div class="team-admin-empty">Für diesen Spieler zeigt Leitstellenspiel keine Verwaltungsaktion an.</div>`;
-  const chatbans=all.filter(action=>action.chatban);
-  const others=all.filter(action=>!action.chatban);
-  const chatbanHtml=chatbans.length?`<div class="team-admin-chatban">
-    <label><span>Chat-Bann</span><select class="team-chatban-select">${chatbans.map(action=>`<option value="${escHtml(action.href)}" data-label="${escHtml(action.label)}" data-method="${escHtml(action.method)}" data-danger="${action.danger?"1":"0"}">${escHtml(action.label.replace(/^Chat-Bann:\s*/,""))}</option>`).join("")}</select></label>
-    <button class="team-admin-action danger team-chatban-run" type="button">Chat-Bann ausführen</button>
-  </div>`:"";
-  return `${chatbanHtml}<div class="team-admin-groups">${others.map(action=>{
-    const contact=/^\/messages\/new/i.test(action.href);
-    return `<button class="team-admin-action ${action.danger?"danger":contact?"contact":"role"}" type="button" data-href="${escHtml(action.href)}" data-method="${escHtml(action.method)}" data-label="${escHtml(action.label)}" data-danger="${action.danger?"1":"0"}">${escHtml(action.label)}</button>`;
-  }).join("")}</div><div class="team-admin-note">Es werden ausschließlich Aktionen angezeigt, die Leitstellenspiel für deinen Account freigibt.</div>`;
-}
-
 function renderTeam(users){
   const cont=$("#lss7-team").empty();
   if(!users.length){cont.html(`<div class="lss7-empty">Keine Mitgliederdaten.</div>`);return;}
@@ -5191,7 +5140,6 @@ function renderTeam(users){
     const details={...(S.teamAdmin.detailsByName?.[normalizeTxt(u.name||"")]||{}),...(S.teamAdmin.details[String(u.id)]||{})};
     return teamActivityInfo(u,details).cls==="online";
   }).length;
-  const canBulk=canLoadTeamModeration();
   cont.append(`<div class="team-summary">
     <div class="team-summary-card"><span>${tr("Mitglieder gesamt")}</span><b>${fmt(users.length)}</b></div>
     <div class="team-summary-card online"><span>Aktuell online</span><b>${fmt(onlineCount)}</b></div>
@@ -5199,20 +5147,6 @@ function renderTeam(users){
     <div class="team-summary-card"><span>${tr("Sonderrollen")}</span><b>${fmt(special)}</b></div>
     <div class="team-summary-card"><span>${tr("Mitglieder ohne Leitungsrolle")}</span><b>${fmt(regular)}</b></div>
   </div>`);
-  if(canBulk){
-    const bulkOptions=[
-      ...(canKickMembers()?[`<option value="kick">Ausgewählte Mitglieder rauswerfen</option>`]:[]),
-      ...(canManageMemberRoles()?TEAM_ROLE_ACTIONS.map(role=>`<option value="role:${role.path}:0">Recht entfernen: ${escHtml(role.label)}</option>`):[])
-    ].join("");
-    cont.append(`<div class="team-bulkbar">
-      <label class="team-select-all"><input type="checkbox" id="team-select-all"> Alle sichtbaren auswählen</label>
-      <button class="team-bulk-btn" id="team-select-inactive" type="button">90+ Tage inaktive markieren</button>
-      <button class="team-bulk-btn" id="team-select-clear" type="button">Auswahl leeren</button>
-      <span class="team-bulk-count"><b id="team-selected-count">0</b> ausgewählt</span>
-      <select id="team-bulk-action" class="lss7-select">${bulkOptions}</select>
-      <button class="team-bulk-btn danger" id="team-bulk-run" type="button">Aktion ausführen</button>
-    </div>`);
-  }
   cont.append(`<div class="team-toolbar">
     <input id="team-search" class="lss7-select" type="search" placeholder="${tr("Mitglied suchen...")}">
     <select id="team-filter" class="lss7-select">
@@ -5238,11 +5172,8 @@ function renderTeam(users){
       const level=details.rank || String(u.rank_name||u.rank_title||u.level_name||"") || (credits!==null?pickLevelByCredits(Number(credits)||0).rank:"Dienstgrad unbekannt");
       const toplist=String(details.toplistRank||u.rank||u.position||u.toplist_rank||u.place||"").replace(/[^\d]/g,"");
       const activity=teamActivityInfo(u,details);
-      const hasRights=(S.teamAdmin.rights[String(u.id)]||[]).length>0;
-      const canManage=hasRights||canLoadTeamModeration();
       const inactiveDays=activity.days!==null&&activity.days!==undefined?activity.days:(activity.hint.match(/(\d+)\s*Tage/)?.[1]||"");
       grid.append(`<article class="team-card" data-user-id="${escHtml(u.id)}" data-name="${escHtml(name.toLowerCase())}" data-roles="${escHtml(roleIds.join(","))}" data-offline-days="${escHtml(inactiveDays)}">
-        ${canBulk?`<label class="team-select-wrap"><input class="team-select" type="checkbox" data-user-id="${escHtml(u.id)}" data-user-name="${escHtml(name)}"></label>`:""}
         <div class="team-avatar">${escHtml(initials)}</div>
         <div class="team-main">
           <div class="team-name-row"><span class="team-activity-dot ${activity.cls}" title="${escHtml(activity.label)}">${activity.dot}</span><span class="team-name" title="${escHtml(name)}">${escHtml(name)}</span></div>
@@ -5250,17 +5181,15 @@ function renderTeam(users){
           <div class="team-meta-line"><span>Dienstgrad: <b class="team-grade">${escHtml(level||"-")}</b></span><span>Spielerrang: <b class="team-rank">${toplist?`#${fmt(toplist)}`:"-"}</b></span></div>
           <div class="team-meta-line"><span>Credits: <b class="team-credits">${credits!==null?fmtMoney(credits):"-"}</b></span><span>Zuletzt online: <b class="team-last-online ${activity.cls}" title="${escHtml(activity.label)}">${escHtml(activity.hint)}</b></span></div>
         </div>
-        <div class="team-card-tools"><a class="team-open team-mail" href="${BASE}/messages/new?target=${encodeURIComponent(name)}" title="Nachricht senden">✉</a><a class="team-open" href="${BASE}/profile/${encodeURIComponent(u.id)}" target="_blank" rel="noopener" title="${tr("Profil öffnen")}">↗</a>${canManage?`<button class="team-manage" type="button" data-user-id="${escHtml(u.id)}" data-user-name="${escHtml(name)}" title="Mitglied verwalten">⚙</button>`:""}</div>
-        ${canManage?`<div class="team-admin-drawer" data-admin-user="${escHtml(u.id)}"><div class="team-admin-loading">Verwaltungsrechte werden beim Öffnen geprüft.</div></div>`:""}
+        <div class="team-card-tools"><a class="team-open team-mail" href="${BASE}/messages/new?target=${encodeURIComponent(name)}" title="Nachricht senden">✉</a><a class="team-open" href="${BASE}/profile/${encodeURIComponent(u.id)}" target="_blank" rel="noopener" title="${tr("Profil öffnen")}">↗</a></div>
       </article>`);
     });
     cont.append(section);
   });
   cont.append(`<div class="lss7-empty team-empty-filter">Keine passenden Mitglieder gefunden.</div>`);
   applyTranslations(cont.get(0));
-  fetchTeamAdminRights(users);
+  fetchTeamMemberDetails(users);
   hydrateTeamProfileDetails(users);
-  updateTeamSelectionUi();
 }
 
 function filterTeamRows(){
@@ -5277,80 +5206,6 @@ function filterTeamRows(){
     $(this).toggleClass("is-hidden",$(this).find(".team-card:not(.is-hidden)").length===0);
   });
   $("#lss7-team .team-empty-filter").toggle(visible===0);
-  updateTeamSelectionUi();
-}
-function updateTeamSelectionUi(){
-  const selected=$("#lss7-team .team-select:checked").length;
-  $("#team-selected-count").text(fmt(selected));
-  const visible=$("#lss7-team .team-card:not(.is-hidden) .team-select");
-  const checked=visible.filter(":checked");
-  $("#team-select-all").prop("checked",visible.length>0&&visible.length===checked.length).prop("indeterminate",checked.length>0&&checked.length<visible.length);
-}
-async function runTeamAction(href,method="get"){
-  const headers={"X-Requested-With":"XMLHttpRequest","Accept":"text/html,application/xhtml+xml"};
-  const csrf=document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-  if(csrf)headers["X-CSRF-Token"]=csrf;
-  const response=await fetch(`${BASE}${href}`,{method:String(method).toUpperCase()==="POST"?"POST":"GET",credentials:"include",headers,redirect:"follow"});
-  if(!response.ok)throw new Error(`HTTP ${response.status}`);
-  return response;
-}
-function findTeamUserByName(query){
-  const q=normalizeTxt(query);
-  if(!q)return null;
-  const users=Object.values(S.teamAdmin.users||{});
-  return users.find(entry=>normalizeTxt(entry.user?.name)===q) ||
-    users.find(entry=>normalizeTxt(entry.user?.name).includes(q));
-}
-function chatbanSecondsFromToken(token){
-  const t=String(token||"").toLowerCase().trim();
-  const direct={m5:300,"5m":300,"15m":900,"30m":1800,"1h":3600,"6h":21600,"12h":43200,"1d":86400,"7d":604800,"14d":1209600};
-  if(direct[t])return direct[t];
-  const m=t.match(/^(\d+)\s*(m|min|h|std|d|tag|tage)$/);
-  if(!m)return 300;
-  const n=Math.max(1,Number(m[1])||1),u=m[2];
-  return u.startsWith("m")?n*60:u==="h"||u==="std"?n*3600:n*86400;
-}
-async function handleTeamChatCommand(input,value){
-  const m=String(value||"").trim().match(/^([!/])\s*(kick|ban|chatban)\s+(.+)$/i);
-  if(!m)return false;
-  const cmd=m[2].toLowerCase();
-  let rest=m[3].trim(),duration="5m";
-  if(cmd!=="kick"){
-    const parts=rest.split(/\s+/);
-    const last=parts[parts.length-1]||"";
-    if(/^\d+\s*(m|min|h|std|d|tag|tage)$|^(5m|15m|30m|1h|6h|12h|1d|7d|14d)$/i.test(last)){
-      duration=last;parts.pop();rest=parts.join(" ").trim();
-    }
-  }
-  const entry=findTeamUserByName(rest);
-  if(!entry){alert(`Mitglied "${rest}" wurde in den geladenen Verbandsdaten nicht gefunden.`);return true;}
-  const id=entry.user?.id,name=entry.user?.name||rest;
-  if(cmd==="kick"){
-    if(!canKickMembers()){alert("Deine geladene Rolle erlaubt im Script kein Rauswerfen.");return true;}
-    if(!window.confirm(`${name} wirklich aus dem Verband werfen?`))return true;
-    await runTeamAction(`/verband/kick/${id}`,"get");
-  }else{
-    if(!canChatbanMembers()){alert("Deine geladene Rolle erlaubt im Script keinen Chat-Bann.");return true;}
-    const sec=chatbanSecondsFromToken(duration);
-    const label=CHATBAN_OPTIONS.find(opt=>opt.sec===sec)?.label||`${Math.round(sec/60)} Minuten`;
-    if(!window.confirm(`${name} wirklich für ${label} im Verbandschat bannen?`))return true;
-    await runTeamAction(`/profile/${id}/chatban/${sec}`,"get");
-  }
-  input.value="";
-  alert("Aktion wurde ausgeführt.");
-  setTimeout(()=>fetchAlliance(),700);
-  return true;
-}
-function installTeamChatCommandHelper(){
-  document.addEventListener("keydown",e=>{
-    if(e.key!=="Enter"||e.shiftKey||e.ctrlKey||e.altKey)return;
-    const input=e.target;
-    if(!(input instanceof HTMLInputElement||input instanceof HTMLTextAreaElement))return;
-    const value=String(input.value||"").trim();
-    if(!/^([!/])\s*(kick|ban|chatban)\b/i.test(value))return;
-    e.preventDefault();e.stopPropagation();
-    handleTeamChatCommand(input,value).catch(err=>{logDebug("chat command",err);alert("Aktion konnte nicht ausgeführt werden.");});
-  },true);
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -5619,7 +5474,7 @@ function buildUI(){
     {id:"tp-schoolings",icon:"", label:"Lehrgänge"},
     {id:"tp-aao",       icon:"", label:"AAO"},
     {id:"tp-history",   icon:"", label:"Verlauf"},
-    {id:"tp-team",      icon:"", label:"Mitglieder & Verwaltung"},
+    {id:"tp-team",      icon:"", label:"Mitglieder"},
     {id:"tp-event",     icon:"", label:"Event"},
     {id:"tp-settings",  icon:"", label:"Einstellungen"},
   ];
@@ -5994,7 +5849,7 @@ function buildUI(){
   </div>`);
 
   const grpPn=$(`<div class="set-group set-wide settings-patch-notes"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v9.2.5</b><br>Tastenkürzel können jetzt direkt per Tastendruck aufgenommen werden. LCARS 2364 wurde nochmals professioneller, ruhiger und lesbarer überarbeitet.</div>`);
+  grpPn.append(`<div class="set-note"><b>v9.3.0</b><br>Mitglieder & Verwaltung wurde zur reinen Mitgliederübersicht zurückgebaut. Die Spielerplatzierung merkt sich jetzt den Tagesstart und zeigt Auf- oder Abstiege seit 0:00 Uhr an.</div>`);
   setWrap.append(grpPn);
   setWrap.append(grpContact);
   setWrap.append(grpInfo);
@@ -6003,7 +5858,7 @@ function buildUI(){
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v9.2.5",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v9.3.0",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -6081,14 +5936,14 @@ function buildUI(){
   panel.on("click",".prof-view-btn",e=>{
     e.stopPropagation();e.preventDefault();
     const view=String($(e.currentTarget).data("prof-view")||"summary");
+    if(view==="forecast"){openPlayerForecastPanel(false);return;}
     panel.find(".prof-view-btn").removeClass("active");
     $(e.currentTarget).addClass("active");
-    $("#prof-forecast-panel").toggleClass("open",view==="forecast");
-    if(view==="forecast"){renderPlayerForecast();fetchPlayerRanking();}
+    $("#prof-forecast-panel").removeClass("open");
   });
   panel.on("click","#prof-placement",e=>{
     e.stopPropagation();e.preventDefault();
-    panel.find('.prof-view-btn[data-prof-view="forecast"]').trigger("click");
+    openPlayerForecastPanel(false);
   });
   panel.on("click",e=>{
     if(!$(e.target).closest("#qs-playtime-cell").length) $("#playtime-pop").removeClass("open");
@@ -6215,96 +6070,6 @@ function buildUI(){
   });
   panel.on("input","#team-search",filterTeamRows);
   panel.on("change","#team-filter",filterTeamRows);
-  panel.on("change",".team-select,#team-select-all",function(e){
-    e.stopPropagation();
-    if(this.id==="team-select-all"){
-      const checked=this.checked;
-      $("#lss7-team .team-card:not(.is-hidden) .team-select").prop("checked",checked);
-    }
-    updateTeamSelectionUi();
-  });
-  panel.on("click","#team-select-clear",e=>{
-    e.stopPropagation();e.preventDefault();
-    $("#lss7-team .team-select,#team-select-all").prop("checked",false).prop("indeterminate",false);
-    updateTeamSelectionUi();
-  });
-  panel.on("click","#team-select-inactive",e=>{
-    e.stopPropagation();e.preventDefault();
-    $("#lss7-team .team-select,#team-select-all").prop("checked",false).prop("indeterminate",false);
-    $("#lss7-team .team-card").each(function(){
-      const days=Number($(this).data("offline-days"))||0;
-      if(days>=90)$(this).find(".team-select").prop("checked",true);
-    });
-    updateTeamSelectionUi();
-  });
-  panel.on("click","#team-bulk-run",async function(e){
-    e.stopPropagation();e.preventDefault();
-    const selected=$("#lss7-team .team-select:checked").map((_,el)=>({id:String($(el).data("user-id")),name:String($(el).data("user-name")||"")})).get();
-    if(!selected.length){alert("Bitte zuerst mindestens ein Mitglied auswählen.");return;}
-    const action=String($("#team-bulk-action").val()||"");
-    if(!action){alert("Bitte eine Aktion auswählen.");return;}
-    const label=$("#team-bulk-action option:selected").text();
-    if(!window.confirm(`${label} für ${selected.length} Mitglied(er) wirklich ausführen?`))return;
-    const btn=$(this).prop("disabled",true).text("Wird ausgeführt...");
-    let ok=0,fail=0;
-    for(const user of selected){
-      let href="";
-      if(action==="kick")href=`/verband/kick/${user.id}`;
-      else if(action.startsWith("role:")){
-        const [,path,value]=action.split(":");
-        href=`/verband/${path}/${user.id}/${value}`;
-      }
-      if(!href)continue;
-      try{await runTeamAction(href,"get");ok++;}
-      catch{fail++;}
-      await new Promise(resolve=>setTimeout(resolve,220));
-    }
-    btn.prop("disabled",false).text("Aktion ausführen");
-    alert(`Fertig. Erfolgreich: ${ok}, fehlgeschlagen: ${fail}`);
-    S.teamAdmin.lastTs=0;S.teamAdmin.profiles={};
-    setTimeout(()=>fetchAlliance(),700);
-  });
-  panel.on("click",".team-manage",function(e){
-    e.stopPropagation();e.preventDefault();
-    const btn=$(this),id=String(btn.data("user-id")||""),drawer=btn.closest(".team-card").find(".team-admin-drawer");
-    const open=!drawer.hasClass("open");
-    $("#lss7-team .team-admin-drawer").not(drawer).removeClass("open");
-    $("#lss7-team .team-manage").not(btn).removeClass("open");
-    drawer.toggleClass("open",open);btn.toggleClass("open",open);
-    if(!open)return;
-    drawer.html(`<div class="team-admin-loading"><span class="lspin"></span> Berechtigungen werden direkt beim Leitstellenspiel geprüft...</div>`);
-    const stored=S.teamAdmin.users?.[id]||{};
-    fetchTeamProfileActions(id,actions=>drawer.html(teamAdminActionsHtml(id,actions,stored.user||{id,name:String(btn.data("user-name")||"")},stored.info||null)));
-  });
-  panel.on("click",".team-chatban-run",function(e){
-    e.stopImmediatePropagation();e.preventDefault();
-    const sel=$(this).closest(".team-admin-chatban").find(".team-chatban-select");
-    const opt=sel.find("option:selected");
-    const href=String(sel.val()||""),label=String(opt.data("label")||"Chat-Bann"),method=String(opt.data("method")||"get");
-    if(!href)return;
-    $(this).attr({"data-href":href,"data-label":label,"data-method":method,"data-danger":"1"}).trigger("team-action-run");
-  });
-  panel.on("click",".team-admin-action",async function(e){
-    e.stopPropagation();e.preventDefault();
-    $(this).trigger("team-action-run");
-  });
-  panel.on("team-action-run",".team-admin-action",async function(e){
-    e.stopPropagation();
-    const btn=$(this),href=String(btn.data("href")||""),method=String(btn.data("method")||"get").toUpperCase(),label=String(btn.data("label")||"Aktion");
-    if(!href)return;
-    if(/^\/messages\/new/i.test(href)){location.href=`${BASE}${href}`;return;}
-    const warning=String(btn.data("danger"))==="1"?`Achtung: ${label} wirklich ausführen?`:`${label} wirklich ausführen?`;
-    if(!window.confirm(warning))return;
-    btn.prop("disabled",true).text("Wird ausgeführt...");
-    try{
-      await runTeamAction(href,method);
-      btn.text("Ausgeführt");
-      S.teamAdmin.lastTs=0;delete S.teamAdmin.profiles[String(btn.closest(".team-admin-drawer").data("admin-user")||"")];
-      setTimeout(()=>fetchAlliance(),700);
-    }catch{
-      btn.prop("disabled",false).text("Fehlgeschlagen - erneut versuchen");
-    }
-  });
   panel.on("input","#schooling-search",filterSchoolingRows);
   panel.on("change","#schooling-filter",filterSchoolingRows);
   panel.on("click","#schooling-refresh",e=>{
@@ -6518,9 +6283,12 @@ function renderRankMini(ctx){
   const rows=ctx.slice.map(x=>{
     const isMe=x===ctx.me;
     const rankTxt=isMe && S.allianceRank ? `#${S.allianceRank}` : `#${x.rank}`;
+    const nameHtml=x.id
+      ? `<a class="rank-mini-n" href="${BASE}/alliances/${encodeURIComponent(x.id)}" target="_blank" rel="noopener" title="${escHtml(x.name)}">${escHtml(x.name)}</a>`
+      : `<div class="rank-mini-n" title="${escHtml(x.name)}">${escHtml(x.name)}</div>`;
     return `<div class="rank-mini-row ${isMe?"me":""}">
       <div class="rank-mini-r">${rankTxt}</div>
-      <div class="rank-mini-n">${escHtml(x.name)}</div>
+      ${nameHtml}
       <div class="rank-mini-c">${fmtMoney(x.credits)}</div>
     </div>`;
   }).join("");
@@ -6586,6 +6354,22 @@ function mkAccordion(icon,title,body){
 }
 function patchHTML(){
   const groups=[
+    {
+      title:"v9.3.0 — Mitgliederübersicht & Spielerplatzierung",
+      items:[
+        "Der Bereich Mitglieder & Verwaltung wurde zur reinen Mitgliederübersicht zurückgebaut.",
+        "Rechtevergabe, Rollenänderungen, Rauswerfen, Chat-Bann, Mehrfachauswahl und Chatbefehle wurden vollständig aus dem Dashboard entfernt.",
+        "Mitgliederkarten behalten Suche, Rollenfilter, Online-/Inaktivitätsstatus, Dienstgrad, Credits, Spielerrang sowie Profil- und Nachrichtenlink.",
+        "Die Spielerplatzierung speichert jetzt den Tagesstart lokal und beginnt um 0:00 Uhr automatisch eine neue Historie.",
+        "Im Spielerprofil wird angezeigt, ob du seit Tagesstart Plätze aufgestiegen oder abgestiegen bist, inklusive grünem Aufwärtshinweis und rotem Abwärtshinweis.",
+        "Die Spielerprognose zeigt die Platzänderung des aktuellen Tages zusätzlich als eigene Kennzahl.",
+        "Namen im Platzierungsumfeld der Spielerprognose sind jetzt anklickbar und öffnen direkt das jeweilige Profil.",
+        "Verbände im Platzierungsumfeld der Übersicht sind jetzt anklickbar und öffnen direkt die jeweilige Verbandsseite.",
+        "Die Spielerplatzierungsbox im Profil öffnet die Spielerprognose jetzt direkt und zuverlässiger.",
+        "Der BETA-Hinweis wurde aus der Spielerprognose entfernt.",
+        "Version und Patch-Notes wurden auf v9.3.0 aktualisiert."
+      ]
+    },
     {
       title:"v9.2.5 — Individuelle Hotkeys & LCARS-Refit",
       items:[
@@ -6937,35 +6721,11 @@ GM_addStyle(`
 .lss7-update-install{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:5px 9px;border:1px solid rgba(34,197,94,.38);border-radius:6px;background:rgba(34,197,94,.13);color:var(--greenh)!important;font-size:8.5px;font-weight:900;text-decoration:none!important;white-space:nowrap;}
 .lss7-update-install:hover{background:rgba(34,197,94,.23);border-color:rgba(34,197,94,.62);}
 .lss7-update-close{order:99!important;margin-left:4px!important;flex:0 0 22px!important;}
-.team-bulkbar{display:grid;grid-template-columns:auto auto auto 1fr minmax(190px,260px) auto;gap:8px;align-items:center;margin:9px 0;padding:10px;border:1px solid var(--b1);border-radius:8px;background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(255,255,255,.018));}
-.team-select-all{display:inline-flex;align-items:center;gap:6px;color:var(--t2);font-size:8.5px;font-weight:800;white-space:nowrap}.team-select-all input,.team-select{accent-color:var(--blue);}
-.team-bulk-count{color:var(--t3);font-size:8.5px;text-align:right}.team-bulk-count b{color:var(--blueh);font-family:var(--mono)}
-.team-bulk-btn{min-height:28px;padding:6px 9px;border:1px solid rgba(59,130,246,.28);border-radius:6px;background:var(--blue3);color:var(--blueh);font-size:8px;font-weight:850;cursor:pointer;white-space:nowrap}.team-bulk-btn.danger{border-color:rgba(239,68,68,.34);background:rgba(239,68,68,.10);color:#fca5a5}.team-bulk-btn:hover{filter:brightness(1.12)}
-.team-card{grid-template-columns:auto 38px minmax(0,1fr) auto;}
-.team-select-wrap{display:flex;align-items:center;justify-content:center;width:20px;height:28px;margin:0;}
 .team-name-row{display:flex;align-items:center;gap:6px;min-width:0}.team-activity-dot{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;font-size:0;color:transparent;background:#94a3b8;border:2px solid rgba(255,255,255,.20);box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 9px rgba(148,163,184,.28);flex:0 0 14px;}.team-activity-dot.online{background:#22c55e!important;box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 12px rgba(34,197,94,.62)!important}.team-activity-dot.recent{background:#e5e7eb!important;box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 9px rgba(226,232,240,.38)!important}.team-activity-dot.week{background:#3b82f6!important;box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 12px rgba(59,130,246,.58)!important}.team-activity-dot.two-weeks{background:#f59e0b!important;box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 12px rgba(245,158,11,.58)!important}.team-activity-dot.month{background:#ef4444!important;box-shadow:0 0 0 1px rgba(15,23,42,.35),0 0 12px rgba(239,68,68,.62)!important}.team-activity-dot.unknown{background:#94a3b8!important;}
 .team-meta-line{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-top:4px;color:var(--t4);font-size:8px;line-height:1.35}.team-meta-line b{color:var(--t2);font-weight:850}.team-grade{color:var(--blueh)!important}.team-rank{color:var(--amberh)!important}.team-credits{color:var(--greenh)!important}.team-last-online{display:inline-flex;align-items:center;min-height:17px;padding:2px 7px;border:1px solid var(--b1);border-radius:999px;background:rgba(148,163,184,.08);color:var(--t2)!important;font-weight:900;letter-spacing:.01em}.team-last-online.online{border-color:rgba(34,197,94,.38);background:rgba(34,197,94,.12);color:#86efac!important}.team-last-online.recent{border-color:rgba(226,232,240,.36);background:rgba(226,232,240,.11);color:#f8fafc!important}.team-last-online.week{border-color:rgba(59,130,246,.42);background:rgba(59,130,246,.13);color:#bfdbfe!important}.team-last-online.two-weeks{border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.14);color:#fde68a!important}.team-last-online.month{border-color:rgba(239,68,68,.44);background:rgba(239,68,68,.13);color:#fecaca!important}.team-last-online.unknown{color:var(--t3)!important}
 #lss7.theme-light .team-last-online.recent,#lss7.theme-summer .team-last-online.recent{color:#334155!important;background:rgba(100,116,139,.11);border-color:rgba(100,116,139,.28)}#lss7.theme-light .team-last-online.online,#lss7.theme-summer .team-last-online.online{color:#166534!important}#lss7.theme-light .team-last-online.week,#lss7.theme-summer .team-last-online.week{color:#1d4ed8!important}#lss7.theme-light .team-last-online.two-weeks,#lss7.theme-summer .team-last-online.two-weeks{color:#92400e!important}#lss7.theme-light .team-last-online.month,#lss7.theme-summer .team-last-online.month{color:#991b1b!important}
 .team-card-tools{display:flex;align-items:center;gap:5px;justify-self:end;}
 .team-mail{color:var(--cyanh)!important;border-color:rgba(34,211,238,.28)!important;background:rgba(34,211,238,.08)!important;}
-.team-manage{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(59,130,246,.30);border-radius:6px;background:var(--blue3);color:var(--blueh);font-size:12px;cursor:pointer;}
-.team-manage:hover,.team-manage.open{border-color:rgba(59,130,246,.58);background:rgba(59,130,246,.19);color:#fff;}
-.team-admin-drawer{display:none;grid-column:1/-1;margin-top:4px;padding:10px;border:1px solid var(--b1);border-radius:7px;background:rgba(3,9,18,.22);}
-.team-admin-drawer.open{display:block;}
-.team-admin-loading,.team-admin-empty,.team-admin-note{color:var(--t4);font-size:8.5px;line-height:1.4;}
-.team-admin-groups{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px;}
-.team-admin-chatban{display:grid;grid-template-columns:minmax(180px,280px) auto;gap:8px;align-items:end;margin-bottom:9px;padding:9px;border:1px solid rgba(239,68,68,.22);border-radius:7px;background:rgba(239,68,68,.055)}.team-admin-chatban label{display:flex;flex-direction:column;gap:4px;margin:0;color:var(--t3);font-size:8px;font-weight:850}.team-chatban-select{height:28px;border:1px solid rgba(239,68,68,.28);border-radius:6px;background:var(--bg2);color:var(--t1);font-size:8.5px;padding:4px 7px;}
-#lss7.theme-dark .team-chatban-select,#lss7.theme-summer-dark .team-chatban-select,#lss7.theme-dark #team-bulk-action,#lss7.theme-summer-dark #team-bulk-action{background:#0f1724!important;color:#f8fafc!important;border-color:rgba(148,163,184,.28)!important;}
-.team-chatban-select option,#team-bulk-action option{background:#0f1724;color:#f8fafc;}
-#lss7.theme-light .team-chatban-select option,#lss7.theme-summer .team-chatban-select option,#lss7.theme-light #team-bulk-action option,#lss7.theme-summer #team-bulk-action option{background:#ffffff;color:#162033;}
-.team-admin-action{min-height:27px;padding:5px 8px;border:1px solid rgba(59,130,246,.28);border-radius:6px;background:var(--blue3);color:var(--blueh);font-size:8px;font-weight:850;cursor:pointer;}
-.team-admin-action.role{border-color:rgba(34,197,94,.28);background:rgba(34,197,94,.08);color:var(--greenh);}
-.team-admin-action.contact{border-color:rgba(34,211,238,.28);background:rgba(34,211,238,.08);color:var(--cyanh);}
-.team-admin-action.danger{border-color:rgba(239,68,68,.34);background:rgba(239,68,68,.09);color:#fca5a5;}
-.team-admin-action:hover{filter:brightness(1.16);transform:translateY(-1px);}
-.team-admin-action:disabled{opacity:.55;cursor:wait;transform:none;}
-#lss7.theme-light .team-admin-drawer,#lss7.theme-summer .team-admin-drawer{background:rgba(255,255,255,.62);}
-@media(max-width:880px){.team-bulkbar{grid-template-columns:1fr 1fr}.team-bulkbar .lss7-select,#team-bulk-run{grid-column:1/-1}.team-card{grid-template-columns:auto 34px minmax(0,1fr)}.team-card-tools{grid-column:2/-1;justify-self:start}.team-admin-chatban{grid-template-columns:1fr}}
 .nav-style-showcase{display:grid;grid-template-columns:minmax(210px,.72fr) minmax(0,1.28fr);gap:12px;align-items:center;margin:9px 0 10px;}
 .nav-style-preview-shell{padding:11px;border:1px solid var(--b1);border-radius:8px;background:#121923;}
 .nav-style-preview{min-height:42px;display:flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid rgba(148,163,184,.18);border-radius:7px;background:linear-gradient(180deg,#202a38,#141c27);color:#f8fafc;}
@@ -7238,7 +6998,6 @@ $(document).ready(()=>{
   initSummerScene();
   buildTrigger();
   installAllianceActivityHooks();
-  installTeamChatCommandHelper();
   installGlobalHotkeys();
   applyPanelMode();
   updatePlaytimeUi();
