@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.3.0
+// @version      9.3.1
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/*
@@ -41,7 +41,7 @@ if(/^\/(?:alliances\/\d+|verband(?:\/|$))/i.test(location.pathname))return;
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "9.3.0";
+const V   = "9.3.1";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
@@ -85,7 +85,7 @@ const WEATHER_COUNTRIES = {
 
 const I18N = {
   en:{
-    "Übersicht":"Overview","Verbands Prognose [BETA]":"Alliance forecast [BETA]","Fuhrpark & Standorte":"Fleet & locations",
+    "Übersicht":"Overview","Verbandsprognose":"Alliance forecast","Fuhrpark & Standorte":"Fleet & locations",
     "Lehrgänge":"Courses","Verlauf":"History","Team":"Team","Mitglieder":"Members","Event":"Event","Einstellungen":"Settings",
     "Spielzeit":"Playtime","Eigene Credits":"Your credits","Tagesverd.":"Daily earnings","Uhrzeit":"Time",
     "Verband":"Alliance","Credits gesamt":"Total credits","Verbandskasse":"Alliance funds","Platzierung":"Ranking",
@@ -118,7 +118,7 @@ const I18N = {
     "Er ist kein vollständiges Spielprotokoll: Werte entstehen nur, während das Skript Daten abrufen kann.":"It is not a complete game log: entries are created only while the script can retrieve data."
   },
   fr:{
-    "Übersicht":"Aperçu","Verbands Prognose [BETA]":"Prévision de l'alliance [BÊTA]","Fuhrpark & Standorte":"Véhicules et sites",
+    "Übersicht":"Aperçu","Verbandsprognose":"Prévision de l'alliance","Fuhrpark & Standorte":"Véhicules et sites",
     "Lehrgänge":"Formations","Verlauf":"Historique","Team":"Équipe","Mitglieder":"Membres","Event":"Événement","Einstellungen":"Paramètres",
     "Spielzeit":"Temps de jeu","Eigene Credits":"Vos crédits","Tagesverd.":"Gain du jour","Uhrzeit":"Heure",
     "Verband":"Alliance","Credits gesamt":"Crédits totaux","Verbandskasse":"Caisse de l'alliance","Platzierung":"Classement",
@@ -511,6 +511,7 @@ GM_addStyle(`
 .pt-time{font-size:10px;color:var(--green);font-weight:800;text-align:right;font-family:var(--mono);}
 .prof-strip{
   flex-shrink:0;
+  position:relative;
   margin:0;
   border-top:1px solid var(--b1);
   border-bottom:1px solid var(--b1);
@@ -518,48 +519,68 @@ GM_addStyle(`
   border-right:none;
   border-radius:0;
   background:
-    linear-gradient(135deg,rgba(59,130,246,.10),rgba(34,211,238,.035)),
+    radial-gradient(circle at 14% 0%,rgba(34,211,238,.12),transparent 34%),
+    radial-gradient(circle at 92% 8%,rgba(245,158,11,.13),transparent 31%),
+    linear-gradient(135deg,rgba(59,130,246,.12),rgba(34,211,238,.035)),
     linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01));
-  padding:10px 12px;
+  padding:13px 14px;
+  overflow:hidden;
 }
-.prof-row{display:grid;grid-template-columns:74px minmax(0,1fr) minmax(145px,185px);align-items:center;gap:13px;min-width:0;}
+.prof-strip::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--cyan),var(--blue),var(--amber));
+  opacity:.82;
+}
+.prof-row{position:relative;display:grid;grid-template-columns:82px minmax(0,1fr) minmax(220px,250px);align-items:center;gap:16px;min-width:0;}
 .prof-av{
-  width:74px;height:58px;border-radius:8px;
-  object-fit:cover;border:1px solid rgba(96,165,250,.28);background:var(--bg3);flex-shrink:0;
-  box-shadow:0 8px 18px rgba(0,0,0,.18);
+  width:82px;height:70px;border-radius:12px;
+  object-fit:cover;border:1px solid rgba(96,165,250,.36);background:var(--bg3);flex-shrink:0;
+  box-shadow:0 14px 28px rgba(0,0,0,.26),0 0 0 3px rgba(34,211,238,.045);
 }
-.prof-meta{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1;}
+.prof-meta{display:flex;flex-direction:column;gap:7px;min-width:0;flex:1;}
 .prof-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;}
-.prof-name{font-size:14px;font-weight:900;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;}
+.prof-name{font-size:16px;font-weight:950;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;text-shadow:0 1px 12px rgba(96,165,250,.12);}
 .prof-rank{
   display:inline-flex;align-items:center;max-width:100%;
-  padding:3px 7px;border-radius:999px;border:1px solid rgba(34,211,238,.28);
-  background:rgba(34,211,238,.09);font-size:10px;color:var(--cyan);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800;
+  padding:4px 9px;border-radius:999px;border:1px solid rgba(34,211,238,.34);
+  background:linear-gradient(135deg,rgba(34,211,238,.15),rgba(59,130,246,.08));font-size:10px;color:var(--cyanh);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:900;
+  box-shadow:0 0 14px rgba(34,211,238,.08) inset;
 }
 .prof-progress-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;}
 .prof-sub{font-size:10px;color:var(--t1);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .prof-reward{font-size:10px;color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;font-weight:800;}
 .prof-next{font-size:10px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;font-weight:700;text-align:right;}
-.prof-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:0;border:1px solid rgba(255,255,255,.04);}
-.prof-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--cyan));}
+.prof-bar{height:9px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:0;border:1px solid rgba(255,255,255,.055);box-shadow:0 1px 0 rgba(255,255,255,.035) inset;}
+.prof-fill{position:relative;height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--cyan),#6ee7b7);overflow:hidden;}
+.prof-fill::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent);transform:translateX(-120%);animation:profile-progress-sheen 4.8s ease-in-out infinite;}
 .prof-roles{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-height:0;}
 .prof-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;}
 .prof-placement{
   position:relative;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
-  min-height:62px;padding:9px 12px 9px 48px;border:1px solid rgba(245,158,11,.38);border-radius:8px;
-  background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(59,130,246,.08));color:var(--t1);
-  box-shadow:0 9px 24px rgba(0,0,0,.16),inset 0 1px rgba(255,255,255,.06);cursor:pointer;text-align:left;
+  min-height:78px;padding:12px 14px 12px 54px;border:1px solid rgba(245,158,11,.42);border-radius:11px;
+  background:
+    linear-gradient(135deg,rgba(245,158,11,.18),rgba(59,130,246,.10)),
+    linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
+  color:var(--t1);overflow:hidden;isolation:isolate;
+  box-shadow:0 14px 32px rgba(0,0,0,.23),0 1px 0 rgba(255,255,255,.07) inset,0 0 24px rgba(245,158,11,.08);
+  cursor:pointer;text-align:left;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,filter .18s ease;
 }
-.prof-placement::before{content:'#';position:absolute;left:13px;top:50%;transform:translateY(-52%);font:950 31px/1 var(--mono);color:var(--amber);opacity:.9;}
+.prof-placement::before{content:'#';position:absolute;left:15px;top:50%;transform:translateY(-52%);font:950 34px/1 var(--mono);color:var(--amber);opacity:.94;text-shadow:0 0 18px rgba(245,158,11,.32);z-index:1;}
+.prof-placement::after{content:"";position:absolute;inset:-45% auto -45% -70%;width:58%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent);transform:rotate(15deg);animation:profile-placement-sweep 5.6s ease-in-out infinite;pointer-events:none;z-index:0;}
 .prof-placement-kicker{font-size:7.5px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--amberh);}
-.prof-placement strong{display:block;margin-top:2px;font:950 15px/1.1 var(--mono);color:var(--t1);}
-.prof-placement small{display:block;margin-top:3px;color:var(--t3);font-size:7.5px;}
-.prof-placement:hover{transform:translateY(-1px);border-color:rgba(245,158,11,.62);box-shadow:0 12px 28px rgba(0,0,0,.20),0 0 18px rgba(245,158,11,.10);}
-.prof-subnav{display:flex;align-items:center;gap:5px;margin-top:9px;padding-top:8px;border-top:1px solid var(--b1);}
-.prof-view-btn{min-height:28px;padding:6px 10px;border:1px solid var(--b1);border-radius:6px;background:rgba(255,255,255,.025);color:var(--t2);font-size:8.5px;font-weight:850;cursor:pointer;}
-.prof-view-btn:hover,.prof-view-btn.active{border-color:rgba(59,130,246,.42);background:var(--blue3);color:var(--blueh);}
-.prof-forecast-panel{display:none;margin-top:8px;padding:10px;border:1px solid var(--b1);border-radius:8px;background:rgba(4,10,19,.18);}
+.prof-placement-kicker,.prof-placement-main,.prof-placement-caption{position:relative;z-index:1;}
+.prof-placement-main{display:flex;align-items:center;gap:9px;min-width:0;margin-top:2px;}
+.prof-placement strong{display:inline-flex;margin-top:0;font:950 17px/1.1 var(--mono);color:var(--t1);white-space:nowrap;}
+.prof-placement small{display:block;margin-top:0;color:var(--t3);font-size:7.5px;}
+.prof-placement-caption{display:block;margin-top:6px;color:var(--t4);font-size:8px;font-weight:850;letter-spacing:.25px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.prof-placement:hover{transform:translateY(-2px);filter:brightness(1.04);border-color:rgba(245,158,11,.68);box-shadow:0 18px 38px rgba(0,0,0,.28),0 0 26px rgba(245,158,11,.16),0 1px 0 rgba(255,255,255,.09) inset;}
+.prof-placement:active{transform:translateY(0);}
+.prof-subnav{display:flex;align-items:center;gap:6px;margin-top:11px;padding-top:9px;border-top:1px solid var(--b1);}
+.prof-view-btn{min-height:30px;padding:7px 12px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.026);color:var(--t2);font-size:8.5px;font-weight:900;cursor:pointer;transition:background .16s ease,border-color .16s ease,color .16s ease,transform .16s ease;}
+.prof-view-btn:hover,.prof-view-btn.active{border-color:rgba(59,130,246,.48);background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(34,211,238,.07));color:var(--blueh);box-shadow:0 8px 18px rgba(2,12,27,.18);}
+.prof-view-btn:hover{transform:translateY(-1px);}
+.prof-forecast-panel{display:none;margin-top:10px;padding:10px;border:1px solid var(--b1);border-radius:10px;background:linear-gradient(180deg,rgba(4,10,19,.24),rgba(4,10,19,.14));box-shadow:0 10px 28px rgba(0,0,0,.14) inset;}
 .prof-forecast-panel.open{display:block;}
 .prof-role{
   display:inline-flex;align-items:center;min-height:20px;padding:3px 8px;border-radius:6px;
@@ -570,6 +591,9 @@ GM_addStyle(`
 }
 .prof-role:nth-child(2){animation-delay:.4s}.prof-role:nth-child(3){animation-delay:.8s}
 @keyframes profile-role-glow{0%,100%{filter:brightness(1);transform:translateY(0)}50%{filter:brightness(1.15);transform:translateY(-1px)}}
+@keyframes profile-progress-sheen{0%,72%{transform:translateX(-125%)}88%,100%{transform:translateX(125%)}}
+@keyframes profile-placement-sweep{0%,72%{left:-74%;opacity:.0}84%{opacity:.62}100%{left:132%;opacity:0}}
+@media (prefers-reduced-motion: reduce){.prof-fill::after,.prof-placement::after,.prof-role{animation:none!important}.prof-placement,.prof-view-btn{transition:none!important}}
 .prof-event-strip{
   flex-shrink:0;
   position:relative;
@@ -924,6 +948,56 @@ GM_addStyle(`
 @media(max-width:560px){.forecast-mini-card{grid-template-columns:1fr}.forecast-mini-time{font-size:19px;}}
 @media(max-width:700px){.forecast-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}.forecast-canvas{height:130px;}}
 
+.forecast-pro .forecast-head{position:relative;padding:14px;border:1px solid rgba(59,130,246,.24);border-radius:10px;background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(34,211,238,.045));overflow:hidden;}
+.forecast-pro .forecast-head::after{content:"";position:absolute;right:-46px;top:-70px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.16),transparent 66%);pointer-events:none;}
+.forecast-pro .forecast-title{font-size:16px;font-weight:950;}
+.forecast-pro .forecast-sub{margin-top:4px;line-height:1.5;max-width:780px;}
+.forecast-pro .forecast-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;background:transparent;border:0;border-radius:0;overflow:visible;}
+.forecast-pro .forecast-kpi{position:relative;padding:11px;border:1px solid var(--b1);border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.012));overflow:hidden;}
+.forecast-pro .forecast-kpi::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--cyan));opacity:.42;}
+.forecast-pro .forecast-kpi small{display:block;margin-top:4px;color:var(--t4);font-size:8px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.forecast-v.red{color:#fca5a5;}
+.forecast-mini.pro .forecast-mini-card{grid-template-columns:minmax(170px,.78fr) minmax(0,1.22fr);}
+.forecast-mini.pro .forecast-mini-hero{position:relative;padding:13px;border-color:rgba(34,197,94,.28);border-radius:9px;background:linear-gradient(135deg,rgba(34,197,94,.12),rgba(59,130,246,.07));overflow:hidden;}
+.forecast-mini.pro .forecast-mini-hero::after{content:"";position:absolute;right:-24px;top:-34px;width:96px;height:96px;border-radius:50%;background:radial-gradient(circle,rgba(34,197,94,.18),transparent 66%);}
+.forecast-mini.pro .forecast-mini-time{font-size:24px;font-weight:950;}
+.forecast-mini.pro .forecast-mini-data{grid-template-columns:repeat(3,minmax(0,1fr));}
+.forecast-mini-stat b.blue{color:var(--blueh);}.forecast-mini-stat b.red{color:#fca5a5;}
+.forecast-details{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(260px,.92fr);gap:10px;}
+.forecast-panel{border:1px solid var(--b1);border-radius:9px;background:rgba(255,255,255,.018);padding:11px;min-width:0;}
+.forecast-panel-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px;color:var(--t2);font-size:10px;font-weight:950;letter-spacing:.55px;text-transform:uppercase;}
+.forecast-panel-title span{color:var(--t4);font-size:8px;font-weight:850;text-transform:none;letter-spacing:0;}
+.forecast-horizon{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+.forecast-horizon-card{padding:9px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);}
+.forecast-horizon-card span{display:block;color:var(--t4);font-size:8px;font-weight:850;text-transform:uppercase;letter-spacing:.45px;}
+.forecast-horizon-card b{display:block;margin-top:4px;color:var(--t1);font:900 11px/1.1 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.forecast-insights{display:flex;flex-direction:column;gap:7px;}
+.forecast-insight{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 8px;border:1px solid var(--b0);border-radius:7px;background:rgba(255,255,255,.014);}
+.forecast-insight span{color:var(--t3);font-size:9px;font-weight:800;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.forecast-insight b{color:var(--t1);font:900 10px/1.1 var(--mono);white-space:nowrap;}
+.forecast-quality{height:8px;border-radius:999px;background:rgba(255,255,255,.075);overflow:hidden;border:1px solid rgba(255,255,255,.035);}
+.forecast-quality span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#f59e0b,#22c55e);}
+.overview-command{grid-column:1/-1;position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:15px;border:1px solid rgba(59,130,246,.25);border-radius:10px;background:linear-gradient(135deg,rgba(59,130,246,.13),rgba(34,211,238,.045));overflow:hidden;}
+.overview-command::after{content:"";position:absolute;right:-40px;top:-64px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.16),transparent 66%);pointer-events:none;}
+.overview-command-copy{position:relative;z-index:1;min-width:0;}
+.overview-eyebrow{display:block;color:var(--blueh);font-size:8px;font-weight:950;letter-spacing:.9px;text-transform:uppercase;}
+.overview-title{display:block;margin-top:4px;color:var(--t1);font:950 17px/1.15 var(--head);}
+.overview-title a{color:var(--t1);text-decoration:none;}
+.overview-title a:hover{color:var(--blueh);text-decoration:underline;}
+.overview-title-suffix{margin-left:6px;color:var(--t3);font-weight:850;}
+.overview-sub{display:block;margin-top:5px;color:var(--t3);font-size:10px;line-height:1.45;max-width:820px;}
+.overview-command-metrics{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,minmax(110px,1fr));gap:7px;min-width:250px;}
+.overview-pill{padding:8px 9px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.028);}
+.overview-pill span{display:block;color:var(--t4);font-size:7.5px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;}
+.overview-pill b{display:block;margin-top:3px;color:var(--t1);font:950 11px/1.1 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sc.overview-card{position:relative;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.012));border:1px solid rgba(148,163,184,.12);overflow:hidden;}
+.sc.overview-card::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--card-accent,var(--blue));opacity:.58;}
+.sc.overview-card .sv{font-size:17px;font-weight:900;}
+.overview-card.alliance{--card-accent:var(--blueh)}.overview-card.total{--card-accent:var(--green)}.overview-card.cash{--card-accent:var(--cyan)}.overview-card.rank{--card-accent:var(--amber)}.overview-card.members{--card-accent:var(--blue)}
+.overview-card.members{background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(34,197,94,.035))!important;}
+@media(max-width:760px){.forecast-details,.forecast-mini.pro .forecast-mini-card,.overview-command{grid-template-columns:1fr}.forecast-mini.pro .forecast-mini-data,.forecast-horizon,.forecast-pro .forecast-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}.overview-command-metrics{min-width:0;grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:560px){.forecast-mini.pro .forecast-mini-data,.forecast-horizon,.forecast-pro .forecast-kpis,.overview-command-metrics{grid-template-columns:1fr}.forecast-canvas{height:130px;}}
+
 /* â”€â”€ Credit History â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .hist-row{
   display:flex;gap:8px;padding:5px 14px;
@@ -1004,7 +1078,7 @@ GM_addStyle(`
 .set-wrap{padding:14px;display:grid;grid-template-columns:1fr;gap:10px;align-items:start;}
 #lss7.layout .set-wrap{grid-template-columns:repeat(12,minmax(0,1fr));}
 .settings-intro,.set-wide{grid-column:1/-1;}
-.settings-intro{order:0}.nav-style-setting{order:1}.settings-actions{order:2}.settings-export{order:3}.settings-updates{order:4}.settings-appearance{order:5}.settings-feature-grid{order:6}.settings-patch-notes{order:7}.settings-contact{order:8}.settings-info{order:9}
+.settings-intro{order:0}.nav-style-setting{order:1}.settings-actions{order:2}.settings-export{order:3}.settings-updates{order:4}.settings-appearance{order:5}.settings-feature-grid{order:6}.settings-patch-notes{order:7}.settings-contact{order:8}.settings-diagnostics{order:9}.settings-info{order:10}
 .settings-intro{padding:12px 13px;border:1px solid rgba(59,130,246,.24);border-radius:8px;background:linear-gradient(135deg,rgba(59,130,246,.10),rgba(34,197,94,.035));}
 .settings-intro b{display:block;color:var(--t1);font-size:13px;margin-bottom:3px;}
 .settings-intro span{font-size:10px;color:var(--t3);line-height:1.45;}
@@ -1029,9 +1103,21 @@ GM_addStyle(`
 .settings-feature-column{display:flex;flex-direction:column;gap:10px;min-width:0;}
 .settings-feature-column>.set-group{flex:0 0 auto;}
 .settings-info-grid{display:grid;grid-template-columns:minmax(260px,.72fr) minmax(0,1.28fr);gap:18px;align-items:start;}
+.diagnostics-note{width:100%;max-width:none!important;min-height:72px;resize:vertical;font-family:var(--mono);line-height:1.45;}
+.diagnostics-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+.settings-diagnostics{border-color:rgba(34,211,238,.22)!important;background:linear-gradient(135deg,rgba(34,211,238,.055),rgba(59,130,246,.025))!important;}
+.diagnostics-results{display:flex;flex-direction:column;gap:6px;margin-top:2px;}
+.diagnostics-result{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 9px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);}
+.diagnostics-result i{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;font-style:normal;font-size:10px;font-weight:950;border:1px solid var(--b2);}
+.diagnostics-result.ok i{color:#86efac;border-color:rgba(34,197,94,.42);background:rgba(34,197,94,.12);}
+.diagnostics-result.warn i{color:#fde68a;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.13);}
+.diagnostics-result.error i{color:#fecaca;border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.13);}
+.diagnostics-result b{display:block;color:var(--t1);font-size:10px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.diagnostics-result span{display:block;margin-top:2px;color:var(--t3);font-size:8.5px;line-height:1.35;}
+.diagnostics-result small{color:var(--t4);font:850 8px/1 var(--mono);text-transform:uppercase;}
 .settings-contact .set-note{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;}
 .settings-contact .set-note>div{margin-top:0!important;}.settings-contact .lbtn{min-width:170px;justify-content:center;}
-@media(max-width:920px){.settings-feature-grid,.settings-info-grid{grid-template-columns:1fr}.settings-contact .set-note{grid-template-columns:1fr}.settings-contact .lbtn{width:100%}}
+@media(max-width:920px){.settings-feature-grid,.settings-info-grid{grid-template-columns:1fr}.settings-contact .set-note,.diagnostics-actions{grid-template-columns:1fr}.settings-contact .lbtn{width:100%}}
 @media(max-width:760px){#lss7.layout .set-wrap{grid-template-columns:1fr}.set-wide,.settings-intro{grid-column:1;}}
 .lbtn{
   display:flex;align-items:center;gap:8px;padding:9px 12px;
@@ -2010,9 +2096,41 @@ a.rank-mini-n:hover{color:var(--blueh);text-decoration:underline;}
 .player-forecast-kpi span{display:block;font-size:8px;color:var(--t4);text-transform:uppercase;letter-spacing:.7px;font-weight:850}.player-forecast-kpi b{display:block;margin-top:5px;color:var(--t1);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .player-forecast-progress{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid var(--b1);}.player-forecast-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green));transition:width .35s ease;}
 .player-rank-context{display:flex;flex-direction:column;gap:5px}.player-rank-row{display:grid;grid-template-columns:56px minmax(0,1fr) 150px;gap:8px;padding:7px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.02);font-size:10px;}.player-rank-row.me{border-color:rgba(59,130,246,.42);background:var(--blue3)}.player-rank-row span:last-child{text-align:right;color:var(--greenh);font-family:var(--mono)}.player-rank-row a,.player-rank-row b{color:var(--t1);font-weight:850;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none}.player-rank-row a:hover{color:var(--blueh);text-decoration:underline}
-.rank-delta.up,.prof-placement-history.up{color:#86efac!important}.rank-delta.down,.prof-placement-history.down{color:#fca5a5!important}.rank-delta.neutral,.prof-placement-history.neutral{color:var(--t3)!important}.rank-delta{font-family:var(--mono);font-weight:950}.prof-placement-history{font-weight:850;}
-.prof-placement{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;border:1px solid rgba(245,158,11,.30);background:var(--amber3);color:var(--amberh);font-size:9px;font-weight:900;white-space:nowrap;}
+.rank-delta.up,.prof-placement-history.up{color:#86efac!important}.rank-delta.down,.prof-placement-history.down{color:#fca5a5!important}.rank-delta.neutral,.prof-placement-history.neutral{color:var(--t3)!important}
+.rank-delta,.prof-placement-history{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-weight:950;line-height:1.2;max-width:100%;flex-wrap:nowrap;transform:none!important;writing-mode:horizontal-tb!important;}
+.player-forecast-kpi b.rank-delta{display:flex!important;align-items:center!important;gap:6px!important;margin-top:5px!important;overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important;min-height:18px;}
+.prof-placement-history{margin-top:4px;font-size:9px;white-space:nowrap!important;overflow:visible;align-self:flex-start;}
+.prof-placement small.prof-placement-history{display:inline-flex!important;align-items:center!important;gap:5px!important;margin-top:4px!important;font-size:9px!important;white-space:nowrap!important;overflow:visible!important;}
+.rank-delta .rank-trend-label,.prof-placement-history .rank-trend-label{display:inline!important;color:inherit!important;font-size:inherit!important;font-weight:inherit!important;text-transform:none!important;letter-spacing:0!important;white-space:nowrap!important;transform:none!important;writing-mode:horizontal-tb!important;}
+.rank-delta .rank-trend-icon,.prof-placement-history .rank-trend-icon{display:inline-flex!important;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;font-size:10px!important;font-weight:950;line-height:1;background:rgba(148,163,184,.14);border:1px solid rgba(148,163,184,.28);flex:0 0 16px;text-transform:none!important;letter-spacing:0!important;transform:none!important;writing-mode:horizontal-tb!important;}
+.rank-delta.up .rank-trend-icon,.prof-placement-history.up .rank-trend-icon{background:rgba(34,197,94,.14);border-color:rgba(34,197,94,.42);color:#22c55e;}
+.rank-delta.down .rank-trend-icon,.prof-placement-history.down .rank-trend-icon{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.42);color:#ef4444;}
+.rank-delta.neutral .rank-trend-icon,.prof-placement-history.neutral .rank-trend-icon{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.28);color:var(--t3);}
+.player-forecast.pro{gap:12px;padding:14px;}
+.player-forecast.pro .player-forecast-head{position:relative;padding:15px;border-color:rgba(59,130,246,.25);border-radius:10px;background:linear-gradient(135deg,rgba(59,130,246,.13),rgba(34,211,238,.05));overflow:hidden;}
+.player-forecast.pro .player-forecast-head::after{content:"";position:absolute;right:-42px;top:-64px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.15),transparent 66%);pointer-events:none;}
+.player-forecast.pro .player-forecast-title{font-size:16px;font-weight:950;}
+.player-forecast.pro .player-forecast-sub{max-width:820px;color:var(--t3);}
+.player-forecast-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.95fr);gap:10px;align-items:stretch;}
+.player-forecast-hero-main,.player-forecast-hero-grid{border:1px solid var(--b1);border-radius:9px;background:linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.012));}
+.player-forecast-hero-main{position:relative;display:flex;flex-direction:column;justify-content:center;gap:5px;padding:14px;overflow:hidden;}
+.player-forecast-hero-main::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--green),var(--cyan));opacity:.65;}
+.player-forecast-eyebrow{color:var(--greenh);font-size:8px;font-weight:950;letter-spacing:.8px;text-transform:uppercase;}
+.player-forecast-hero-rank{color:var(--t1);font:950 19px/1.15 var(--head);}
+.player-forecast-hero-meta{color:var(--t3);font-size:10px;line-height:1.45;}
+.player-forecast-hero-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--b1);overflow:hidden;}
+.player-forecast-hero-stat{padding:11px;background:rgba(255,255,255,.018);min-width:0;}
+.player-forecast-hero-stat span{display:block;color:var(--t4);font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;}
+.player-forecast-hero-stat b{display:block;margin-top:5px;color:var(--t1);font:950 12px/1.1 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.player-forecast.pro .player-forecast-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
+.player-forecast.pro .player-forecast-kpi{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.012));overflow:hidden;}
+.player-forecast.pro .player-forecast-kpi::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--card-accent,var(--blue));opacity:.45;}
+.player-forecast.pro .player-forecast-kpi.progress{--card-accent:var(--green)}
+.player-forecast.pro .player-forecast-kpi.rank{--card-accent:var(--amber)}
+.player-forecast.pro .player-forecast-kpi.data{--card-accent:var(--cyan)}
 @media(max-width:720px){.player-forecast-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.player-rank-row{grid-template-columns:46px minmax(0,1fr) 110px;}.prof-row{grid-template-columns:58px minmax(0,1fr)}.prof-av{width:58px;height:48px}.prof-placement{grid-column:1/-1;min-height:54px}.prof-badges{align-items:flex-start}}
+@media(max-width:820px){.player-forecast-hero{grid-template-columns:1fr}.player-forecast-hero-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:560px){.player-forecast.pro .player-forecast-grid,.player-forecast-hero-grid{grid-template-columns:1fr;}}
 `);
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -2045,6 +2163,7 @@ const S = {
   allianceActivityLive:{},
   dataCache:{vehicles:{},buildings:[],schoolings:[],aaos:[],aaoCategories:[],pois:[],missionTypes:null,missions:[],allianceEventTypes:[],lastMetaTs:0},
   update:{previousVersion:"",justUpdated:false,availableVersion:"",checking:false,lastCheck:0,error:""},
+  diagnostics:{errors:[],created:0,lastReportTs:0,lastAnalysis:null},
   settings:{
     notifications:true,
     coins:true,
@@ -2089,6 +2208,7 @@ function save(){
   GM_setValue("v7_player_rank",JSON.stringify(S.playerRanking));
   GM_setValue("v7_player_rank_hist",JSON.stringify(S.playerRankHistory));
   GM_setValue("v7_alliance_activity",JSON.stringify(S.allianceActivity));
+  GM_setValue("v7_diag",JSON.stringify(S.diagnostics));
   GM_setValue("v7_set", JSON.stringify(S.settings));
 }
 function saveWmTips(){ GM_setValue("v7_wm_tips", JSON.stringify(S.wmTips||{})); }
@@ -2131,6 +2251,11 @@ function load(){
   try{Object.assign(S.playerRanking,JSON.parse(GM_getValue("v7_player_rank","{}"))||{});}catch{}
   try{Object.assign(S.playerRankHistory,JSON.parse(GM_getValue("v7_player_rank_hist","{}"))||{});}catch{}
   try{Object.assign(S.allianceActivity,JSON.parse(GM_getValue("v7_alliance_activity","{}"))||{});}catch{}
+  try{Object.assign(S.diagnostics,JSON.parse(GM_getValue("v7_diag","{}"))||{});}catch{}
+  S.diagnostics.errors=Array.isArray(S.diagnostics.errors)?S.diagnostics.errors.slice(0,40):[];
+  S.diagnostics.created=Math.max(0,Number(S.diagnostics.created)||0);
+  S.diagnostics.lastReportTs=Math.max(0,Number(S.diagnostics.lastReportTs)||0);
+  S.diagnostics.lastAnalysis=S.diagnostics.lastAnalysis&&typeof S.diagnostics.lastAnalysis==="object"?S.diagnostics.lastAnalysis:null;
   S.allianceActivity.date=String(S.allianceActivity.date||today);
   S.allianceActivity.missions=Math.max(0,Number(S.allianceActivity.missions)||0);
   S.allianceActivity.patients=Math.max(0,Number(S.allianceActivity.patients)||0);
@@ -2604,18 +2729,21 @@ function setV(sel,val){
 function setH(sel,html){const root=$("#lss7");(root.is(sel)?root:root.find(sel)).html(html);}
 function spin(sel){const root=$("#lss7");(root.is(sel)?root:root.find(sel)).html(`<span class="lspin"></span>`);}
 
+function shouldRecordApiIssue(url){
+  return !/\/api\/v1\/aao_categories(?:\?|$)/.test(String(url||""));
+}
 function apiGet(url,cb,onErr){
   GM_xmlhttpRequest({
     method:"GET",url,
     onload(r){
       if(r.status===200){
         const txt=String(r.responseText||"").trim();
-        if(!txt || /^</.test(txt)){ onErr&&onErr("parse"); logDebug("api returned html/empty",url); return; }
+        if(!txt || /^</.test(txt)){ onErr&&onErr("parse"); if(shouldRecordApiIssue(url))recordDiagnosticError("api.empty",`Leere oder HTML-Antwort von ${url}`,{url,status:r.status}); logDebug("api returned html/empty",url); return; }
         try{cb(JSON.parse(txt));}
-        catch(e){onErr&&onErr("parse"); logDebug("api parse",url,e);}
-      } else { onErr&&onErr(r.status); }
+        catch(e){onErr&&onErr("parse"); if(shouldRecordApiIssue(url))recordDiagnosticError("api.parse",e,{url,status:r.status}); logDebug("api parse",url,e);}
+      } else { onErr&&onErr(r.status); if(r.status>=500&&shouldRecordApiIssue(url))recordDiagnosticError("api.http",`HTTP ${r.status}`,{url,status:r.status}); }
     },
-    onerror(){onErr&&onErr(-1);logDebug("api fail",url);}
+    onerror(){onErr&&onErr(-1);if(shouldRecordApiIssue(url))recordDiagnosticError("api.network","Netzwerkfehler",{url});logDebug("api fail",url);}
   });
 }
 function pageGet(url,cb,onErr){
@@ -2625,7 +2753,7 @@ function pageGet(url,cb,onErr){
       method:"GET",url,timeout:12000,
       onload(r){
         if(r.status===200) cb(r.responseText||"");
-        else { onErr&&onErr(r.status); }
+        else { onErr&&onErr(r.status); if(r.status>=500)recordDiagnosticError("page.http",`HTTP ${r.status}`,{url,status:r.status}); }
       },
       onerror(){fallback();logDebug("page fail",url);},
       ontimeout(){fallback();logDebug("page timeout",url);}
@@ -2638,6 +2766,7 @@ function fetchTextFallback(url,cb,onErr){
     if(!r.ok)throw new Error(String(r.status));
     return r.text();
   }).then(txt=>cb(txt||"")).catch(e=>{
+    recordDiagnosticError("fetch.fallback",e,{url});
     logDebug("fetch fallback fail",url,e);
     onErr&&onErr(String(e?.message||"network"));
   });
@@ -2723,6 +2852,206 @@ function notify(msg,bad=false){
   clearTimeout(notify._t);
   notify._t=setTimeout(()=>toast.removeClass("show"),2600);
 }
+function diagnosticsSave(){
+  try{GM_setValue("v7_diag",JSON.stringify(S.diagnostics));}catch{}
+}
+function diagnosticsErrorInfo(err){
+  if(err instanceof Error)return {name:err.name||"Error",message:String(err.message||""),stack:String(err.stack||"").slice(0,3000)};
+  let objectMessage="";
+  if(err&&typeof err==="object"){
+    try{objectMessage=JSON.stringify(err).slice(0,700);}catch{objectMessage=String(err);}
+  }
+  if(err&&typeof err==="object")return {
+    name:String(err.name||err.type||"Error"),
+    message:String(err.message||err.reason||objectMessage),
+    stack:String(err.stack||"").slice(0,3000)
+  };
+  return {name:"Error",message:String(err||"Unbekannter Fehler"),stack:""};
+}
+function recordDiagnosticError(source,err,extra={}){
+  const info=diagnosticsErrorInfo(err);
+  S.diagnostics.errors=[
+    {ts:Date.now(),time:new Date().toISOString(),source:String(source||"script"),...info,extra},
+    ...(Array.isArray(S.diagnostics.errors)?S.diagnostics.errors:[])
+  ].slice(0,40);
+  diagnosticsSave();
+  updateDiagnosticStatus();
+}
+function installDiagnosticsHooks(){
+  if(installDiagnosticsHooks.done)return;
+  installDiagnosticsHooks.done=true;
+  window.addEventListener("error",event=>{
+    recordDiagnosticError("window.error",event.error||event.message,{filename:event.filename||"",line:event.lineno||0,column:event.colno||0});
+  });
+  window.addEventListener("unhandledrejection",event=>{
+    recordDiagnosticError("unhandledrejection",event.reason||"Promise rejected");
+  });
+}
+function diagnosticCount(value){
+  if(Array.isArray(value))return value.length;
+  if(value&&typeof value==="object")return Object.keys(value).length;
+  return Number(value)||0;
+}
+function diagnosticModelSnapshot(){
+  const out={};
+  try{
+    const m=allianceForecastModel();
+    out.allianceForecast={quality:m.qualityText,avg:m.avg,days:m.days,remaining:m.remaining,total7:m.total7,estimatedCount:m.estimatedCount};
+  }catch(e){out.allianceForecastError=diagnosticsErrorInfo(e);}
+  try{
+    const p=playerForecastModel();
+    out.playerForecast={rank:p.level?.rank||"",next:p.next?.rank||"",current:p.current,remaining:p.remaining,average:p.average,days:p.days,quality:p.qualityText,usedToday:p.usedToday};
+  }catch(e){out.playerForecastError=diagnosticsErrorInfo(e);}
+  return out;
+}
+function diagnosticStatusRank(status){
+  return status==="error"?2:status==="warn"?1:0;
+}
+function diagnosticWorst(checks){
+  return checks.reduce((worst,check)=>diagnosticStatusRank(check.status)>diagnosticStatusRank(worst)?check.status:worst,"ok");
+}
+function diagnosticCheck(status,title,message,details={}){
+  return {status,title,message,details};
+}
+function runDiagnosticAnalysis(){
+  const checks=[];
+  const cache=S.dataCache||{};
+  checks.push(diagnosticCheck("ok","Skript aktiv",`Version ${V} läuft im Browser.`,{version:V,manager:GM_info?.scriptHandler||""}));
+  checks.push(diagnosticCheck(GAME_HOSTS.has(location.hostname)?"ok":"error","Spielseite",GAME_HOSTS.has(location.hostname)?"Unterstützte Leitstellenspiel-Domain erkannt.":"Diese Domain wird vom Skript nicht unterstützt.",{host:location.hostname,path:location.pathname}));
+  checks.push(diagnosticCheck($("#lss7").length?"ok":"error","Dashboard-Oberfläche",$("#lss7").length?"Dashboard wurde im DOM gefunden.":"Dashboard-Container wurde nicht gefunden.",{panel:$("#lss7").length}));
+
+  const allianceAge=S.lastApiTs?Date.now()-Number(S.lastApiTs):null;
+  checks.push(diagnosticCheck(S.allianceId&&S.allianceName?"ok":S.lastApiTs?"warn":"error","Verbandsdaten",S.allianceId&&S.allianceName?`Verband erkannt: ${S.allianceName}.`:S.lastApiTs?"API wurde geladen, aber Verbands-ID oder Name fehlen.":"Verbandsdaten wurden noch nicht geladen.",{id:S.allianceId,name:S.allianceName,lastApiTs:S.lastApiTs,ageMs:allianceAge}));
+  const playerKnown=!!(S.userId || (S.profile?.name&&S.profile.name!=="-") || Number(S.userCredits)>0 || Number(S.profile?.totalCredits)>0);
+  checks.push(diagnosticCheck(playerKnown?"ok":"warn","Spielerdaten",S.userId?`Spieler-ID erkannt: ${S.userId}.`:"Spieler über Profilname oder Credits erkannt; ID wird beim nächsten Profilabruf nachgezogen.",{userId:S.userId,profileName:S.profile?.name,credits:S.userCredits||S.profile?.totalCredits}));
+
+  const vehicleListCount=diagnosticCount(cache.vehicleList);
+  const stateCount=diagnosticCount(cache.vehicles);
+  checks.push(diagnosticCheck(vehicleListCount>0||stateCount>0?"ok":"warn","Fuhrparkdaten",vehicleListCount>0?`${fmt(vehicleListCount)} Fahrzeuge geladen.`:stateCount>0?`Statusverteilung vorhanden (${fmt(stateCount)} Statusgruppen); Fahrzeugliste wird bei Bedarf nachgeladen.`:"Noch keine Fuhrparkdaten im Cache.",{vehicleList:vehicleListCount,states:stateCount}));
+  checks.push(diagnosticCheck(diagnosticCount(cache.buildings)>0?"ok":"warn","Gebäudedaten",diagnosticCount(cache.buildings)>0?`${fmt(diagnosticCount(cache.buildings))} Gebäude geladen.`:"Noch keine Gebäudedaten im Cache.",{buildings:diagnosticCount(cache.buildings)}));
+  checks.push(diagnosticCheck(diagnosticCount(S.teamAdmin.users)>0?"ok":S.teamAdmin.error?"error":"warn","Mitgliederübersicht",diagnosticCount(S.teamAdmin.users)>0?`${fmt(diagnosticCount(S.teamAdmin.users))} Mitglieder im lokalen Überblick.`:(S.teamAdmin.error||"Mitgliederdaten wurden noch nicht geladen."),{users:diagnosticCount(S.teamAdmin.users),details:diagnosticCount(S.teamAdmin.details),error:S.teamAdmin.error}));
+
+  let allianceForecastStatus="ok",allianceForecastMsg="Verbandsprognose berechnet.";
+  try{
+    const m=allianceForecastModel();
+    if(!m.avg) {allianceForecastStatus="warn"; allianceForecastMsg="Verbandsprognose hat noch zu wenige Tageswerte.";}
+    else allianceForecastMsg=`Verbandsprognose aktiv: ${m.qualityText}, Ø ${fmtMoney(m.avg)}.`;
+    checks.push(diagnosticCheck(allianceForecastStatus,"Verbandsprognose",allianceForecastMsg,{quality:m.qualityText,avg:m.avg,days:m.days}));
+  }catch(e){checks.push(diagnosticCheck("error","Verbandsprognose","Berechnung ist fehlgeschlagen.",diagnosticsErrorInfo(e)));}
+
+  try{
+    const p=playerForecastModel();
+    const ok=p.current>0&&p.remaining>=0;
+    const hasPace=p.average>0;
+    checks.push(diagnosticCheck(ok&&hasPace?"ok":ok?"warn":"error","Spielerprognose",ok?(hasPace?`Spielerprognose aktiv: Ø ${fmtMoney(p.average)}.`:"Spielerprognose erkennt Rang/Restwert, aber noch keinen Tagesdurchschnitt."):"Spielerprognose hat keine verwertbaren Credits.",{current:p.current,remaining:p.remaining,average:p.average,quality:p.qualityText}));
+  }catch(e){checks.push(diagnosticCheck("error","Spielerprognose","Berechnung ist fehlgeschlagen.",diagnosticsErrorInfo(e)));}
+
+  if(S.settings.weatherMode==="off")checks.push(diagnosticCheck("ok","Wettermodul","Wetter ist deaktiviert.",{mode:S.settings.weatherMode}));
+  else checks.push(diagnosticCheck(S.weather?.error?"warn":S.weather?"ok":"warn","Wettermodul",S.weather?.error||($(".weather-mini").length?"Wetteranzeige vorbereitet.":"Wetterdaten noch nicht geladen."),{mode:S.settings.weatherMode,location:S.settings.weatherLocation,error:S.weather?.error||""}));
+  checks.push(diagnosticCheck(S.wm.error?"warn":diagnosticCount(S.wm.games)>0?"ok":"warn","Event/WM-Daten",S.wm.error||(`${fmt(diagnosticCount(S.wm.games))} WM-Spiele geladen.`),{games:diagnosticCount(S.wm.games),stadiums:diagnosticCount(S.wm.stadiums),error:S.wm.error}));
+
+  const errCount=Array.isArray(S.diagnostics.errors)?S.diagnostics.errors.length:0;
+  checks.push(diagnosticCheck(errCount?"warn":"ok","Gespeicherte Skriptfehler",errCount?`${fmt(errCount)} Fehler/Warnungen gespeichert.`:"Keine gespeicherten Skriptfehler.",{errors:errCount,last:S.diagnostics.errors?.[0]||null}));
+
+  const summary=diagnosticWorst(checks);
+  const result={ts:Date.now(),time:new Date().toISOString(),summary,checks};
+  S.diagnostics.lastAnalysis=result;
+  diagnosticsSave();
+  renderDiagnosticResults(result);
+  updateDiagnosticStatus();
+  notify(summary==="error"?"Analyse abgeschlossen: Fehler gefunden.":summary==="warn"?"Analyse abgeschlossen: Hinweise gefunden.":"Analyse abgeschlossen: Systeme laufen.");
+  return result;
+}
+function renderDiagnosticResults(result=S.diagnostics.lastAnalysis){
+  const root=$("#sb-diagnostics-results");
+  if(!root.length)return;
+  if(!result?.checks?.length){
+    root.html(`<div class="diagnostics-result warn"><i>!</i><div><b>Noch keine Analyse ausgeführt</b><span>Klicke auf „Analyse ausführen“, um die wichtigsten Systeme zu prüfen.</span></div><small>bereit</small></div>`);
+    return;
+  }
+  const icon={ok:"✓",warn:"!",error:"x"};
+  const label={ok:"OK",warn:"Hinweis",error:"Fehler"};
+  root.html(result.checks.map(check=>`<div class="diagnostics-result ${escHtml(check.status)}"><i>${escHtml(icon[check.status]||"?")}</i><div><b>${escHtml(check.title)}</b><span>${escHtml(check.message)}</span></div><small>${escHtml(label[check.status]||check.status)}</small></div>`).join(""));
+}
+function buildDiagnosticReport(userNote=""){
+  const analysis=S.diagnostics.lastAnalysis||runDiagnosticAnalysis();
+  const cache=S.dataCache||{};
+  const diagnostics={
+    generatedAt:new Date().toISOString(),
+    script:{name:"LSS Verband Statistik Pro",version:V,manager:GM_info?.scriptHandler||"",managerVersion:GM_info?.version||""},
+    page:{href:location.href,host:location.host,path:location.pathname,visible:document.visibilityState},
+    browser:{userAgent:navigator.userAgent,language:navigator.language,platform:navigator.platform,cookies:navigator.cookieEnabled},
+    userNote:String(userNote||"").slice(0,2500),
+    state:{
+      alliance:{id:S.allianceId,name:S.allianceName,rank:S.allianceRank,credits:S.allianceCredits,lastApiTs:S.lastApiTs},
+      player:{id:S.userId,name:S.profile?.name,rank:S.profile?.rank,progress:S.profile?.progressText,credits:S.profile?.totalCredits||S.userCredits,dailyEarn:S.dailyEarn},
+      weather:{enabled:S.settings.weatherMode,location:S.settings.weatherLocation,country:S.settings.weatherCountry,error:S.weather?.error||"",cacheAgeMs:S.weatherTs?Date.now()-S.weatherTs:null},
+      wm:{games:diagnosticCount(S.wm.games),stadiums:diagnosticCount(S.wm.stadiums),error:S.wm.error,lastTs:S.wm.lastTs},
+      team:{loaded:diagnosticCount(S.teamAdmin.users),details:diagnosticCount(S.teamAdmin.details),detailsByName:diagnosticCount(S.teamAdmin.detailsByName),error:S.teamAdmin.error,lastTs:S.teamAdmin.lastTs},
+      activity:{
+        date:S.allianceActivity?.date||"",
+        missions:Number(S.allianceActivity?.missions)||0,
+        patients:Number(S.allianceActivity?.patients)||0,
+        prisoners:Number(S.allianceActivity?.prisoners)||0,
+        seenCount:Array.isArray(S.allianceActivity?.seen)?S.allianceActivity.seen.length:0
+      },
+      update:S.update
+    },
+    settings:{...S.settings},
+    cache:{
+      vehicleList:diagnosticCount(cache.vehicleList),
+      vehicleStates:diagnosticCount(cache.vehicles),
+      buildings:diagnosticCount(cache.buildings),
+      schoolings:diagnosticCount(cache.schoolings),
+      aaos:diagnosticCount(cache.aaos),
+      aaoCategories:diagnosticCount(cache.aaoCategories),
+      pois:diagnosticCount(cache.pois),
+      missionTypes:cache.missionTypes?diagnosticCount(cache.missionTypes):0,
+      missions:diagnosticCount(cache.missions),
+      allianceEventTypes:diagnosticCount(cache.allianceEventTypes),
+      lastMetaTs:cache.lastMetaTs
+    },
+    analysis,
+    localData:{
+      creditHist:diagnosticCount(S.creditHist),
+      allianceDaily:S.allianceDaily,
+      playerDaily:S.playerDaily,
+      playerRanking:{rank:S.playerRanking?.rank,status:S.playerRanking?.status,rows:diagnosticCount(S.playerRanking?.rows),lastTs:S.playerRanking?.lastTs,loading:S.playerRanking?.loading},
+      playerRankHistory:S.playerRankHistory
+    },
+    computed:diagnosticModelSnapshot(),
+    recentErrors:Array.isArray(S.diagnostics.errors)?S.diagnostics.errors.slice(0,40):[]
+  };
+  return diagnostics;
+}
+function createDiagnosticReport(){
+  if(!S.diagnostics.lastAnalysis)runDiagnosticAnalysis();
+  const note=$("#sb-diagnostics-note").val()||"";
+  const report=buildDiagnosticReport(note);
+  S.diagnostics.created=(Number(S.diagnostics.created)||0)+1;
+  S.diagnostics.lastReportTs=Date.now();
+  diagnosticsSave();
+  const stamp=new Date().toISOString().replace(/[:.]/g,"-");
+  downloadTextFile(`lss-verband-statistik-support-analyse-${stamp}.json`,JSON.stringify(report,null,2),"application/json;charset=utf-8");
+  notify("Supportdatei erstellt.");
+  updateDiagnosticStatus();
+}
+function clearDiagnosticErrors(){
+  S.diagnostics.errors=[];
+  diagnosticsSave();
+  updateDiagnosticStatus();
+  notify("Fehlerliste geleert.");
+}
+function updateDiagnosticStatus(){
+  const box=$("#sb-diagnostics-status");
+  renderDiagnosticResults();
+  if(!box.length)return;
+  const count=Array.isArray(S.diagnostics.errors)?S.diagnostics.errors.length:0;
+  const last=count?new Date(S.diagnostics.errors[0].ts).toLocaleString(uiLocale()):"kein Fehler gespeichert";
+  const analysis=S.diagnostics.lastAnalysis;
+  const analysisText=analysis?` · letzte Analyse: ${analysis.summary==="error"?"Fehler":analysis.summary==="warn"?"Hinweise":"OK"} (${new Date(analysis.ts).toLocaleString(uiLocale())})`:"";
+  box.html(`<strong>Diagnose bereit</strong><span>${fmt(count)} gespeicherte Skriptfehler · letzter Eintrag: ${escHtml(last)}${escHtml(analysisText)}</span>`);
+}
 function exportDashboardData(kind){
   const stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
   let rows=[],headers=[],name=`lss-verband-${kind}-${stamp}.csv`;
@@ -2795,6 +3124,15 @@ function readOwnProfileFromDom(){
     ""
   );
   return {name,avatar};
+}
+function readOwnUserIdFromDom(){
+  const href=(
+    $("#navbar_profile_link").first().attr("href") ||
+    $("a[href*='/profile/']").filter((_,el)=>/profile/i.test(el.id||el.className||"")).first().attr("href") ||
+    ""
+  );
+  const m=String(href||"").match(/\/profile\/(\d+)/);
+  return m?Number(m[1]):null;
 }
 function readAllianceIdFromDom(){
   const links=[
@@ -3633,15 +3971,16 @@ function allianceForecastModel(){
   const current=Math.max(0,Number(S.allianceCredits)||Number(S.allianceSnapshot?.credits)||0);
   const target=Math.max(1,Number(S.settings.forecastTarget)||30000000000);
   const remaining=Math.max(0,target-current);
-  const rows=allianceDailyRows(8);
+  const rows=allianceDailyRows(14);
   const today=localDateKey();
   const completed=rows.filter(r=>r.date!==today&&r.earn>0).slice(-7);
   let samples=completed.map(r=>r.earn);
   let usedToday=false;
+  const todayRow=rows.find(r=>r.date===today);
+  const elapsed=(Date.now()-new Date(new Date().setHours(0,0,0,0)).getTime())/86400000;
+  const todayProjected=todayRow?.earn>0&&elapsed>=0.08?Math.round(todayRow.earn/Math.min(1,elapsed)):0;
   if(!samples.length){
-    const cur=rows.find(r=>r.date===today);
-    const elapsed=(Date.now()-new Date(new Date().setHours(0,0,0,0)).getTime())/86400000;
-    if(cur?.earn>0 && elapsed>=0.08){samples=[Math.round(cur.earn/Math.min(1,elapsed))];usedToday=true;}
+    if(todayProjected>0){samples=[todayProjected];usedToday=true;}
   }
   const avg=robustDailyAverage(samples);
   const days=remaining===0?0:(avg>0?Math.ceil(remaining/avg):null);
@@ -3651,17 +3990,42 @@ function allianceForecastModel(){
   else if(avg>0){status="Prognose aktiv";statusClass="good";}
   const progress=Math.max(0,Math.min(100,(current/target)*100));
   const estimatedCount=completed.filter(r=>r.estimated).length;
-  const quality=samples.length>=7?"Beste lokale Datenbasis":samples.length>=3?"Prognose wird sicherer":"Frühe Schätzung";
-  return {current,target,remaining,rows,samples,avg,days,predicted,status,statusClass,progress,estimatedCount,quality,usedToday};
+  const sampleCount=Math.min(samples.length,7);
+  const qualityScore=Math.max(0,Math.min(100,Math.round((sampleCount/7)*100)));
+  const qualityText=`${fmt(sampleCount)}/7 Tage`;
+  const qualityDetail=`${qualityText}${estimatedCount?` · ${fmt(estimatedCount)} geschätzt`:""}${usedToday?" · heute hochgerechnet":""}`;
+  const quality=samples.length>=7?"Starke lokale Datenbasis":samples.length>=3?"Solide Tendenz":"Frühe Schätzung";
+  const sampleRows=completed.length?completed:(todayProjected?[{date:today,label:"Heute",earn:todayProjected,estimated:true}]:[]);
+  const total7=completed.reduce((sum,row)=>sum+row.earn,0);
+  const bestDay=sampleRows.length?[...sampleRows].sort((a,b)=>b.earn-a.earn)[0]:null;
+  const weakDay=sampleRows.length?[...sampleRows].sort((a,b)=>a.earn-b.earn)[0]:null;
+  const recent3=samples.slice(-3);
+  const previous3=samples.slice(-6,-3);
+  const avgRecent=recent3.length?Math.round(recent3.reduce((s,x)=>s+x,0)/recent3.length):0;
+  const avgPrevious=previous3.length?Math.round(previous3.reduce((s,x)=>s+x,0)/previous3.length):0;
+  const trendAbs=avgRecent&&avgPrevious?avgRecent-avgPrevious:0;
+  const trendPct=avgRecent&&avgPrevious?Math.round((trendAbs/avgPrevious)*100):0;
+  const trendLabel=!avgRecent||!avgPrevious?"Trend sammelt Daten":trendAbs>0?`+${fmtMoney(Math.abs(trendAbs))}/Tag`:trendAbs<0?`-${fmtMoney(Math.abs(trendAbs))}/Tag`:"Stabiles Tempo";
+  const trendClass=trendAbs>0?"green":trendAbs<0?"red":"";
+  const weeklyPace=avg?avg*7:0;
+  const monthlyPace=avg?avg*30:0;
+  const horizonDaily=days=>remaining>0?Math.ceil(remaining/days):0;
+  return {current,target,remaining,rows,samples,avg,days,predicted,status,statusClass,progress,estimatedCount,quality,qualityScore,qualityText,qualityDetail,usedToday,todayEarn:todayRow?.earn||0,todayProjected,total7,bestDay,weakDay,avgRecent,avgPrevious,trendAbs,trendPct,trendLabel,trendClass,weeklyPace,monthlyPace,horizonDaily};
 }
 function formatForecastDate(d){
   return d?d.toLocaleDateString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"}):"-";
 }
+function forecastDaysText(days){
+  return days===null?"Noch offen":days===0?"Erreicht":`${fmt(days)} Tage`;
+}
+function forecastHorizonHtml(m){
+  return [7,14,30].map(days=>`<div class="forecast-horizon-card"><span>Ziel in ${days} Tagen</span><b>${fmtMoney(m.horizonDaily(days))}/Tag</b></div>`).join("");
+}
 function forecastOverviewHtml(m){
-  const eta=m.days===null?"Noch offen":m.days===0?"Erreicht":`${fmt(m.days)} Tage`;
+  const eta=forecastDaysText(m.days);
   const predicted=m.predicted?formatForecastDate(m.predicted):"Sobald genügend Daten vorliegen";
-  return `<div class="forecast-mini">
-    <div class="forecast-beta"><b>BETA</b><span>Ab 3 bis 7 vollständigen Tagen wird die Prognose deutlich sicherer. Leichte Abweichungen bleiben dennoch möglich.</span></div>
+  return `<div class="forecast-mini pro">
+    <div class="forecast-beta"><b>LIVE</b><span>${escHtml(m.quality)} · ${escHtml(m.qualityText)} Datenbasis · ${m.usedToday?"heutiges Tempo hochgerechnet":"vollständige Tage bevorzugt"}</span></div>
     <div class="forecast-mini-card">
       <div class="forecast-mini-hero">
         <span class="forecast-mini-label">Voraussichtlich erreicht in</span>
@@ -3670,31 +4034,50 @@ function forecastOverviewHtml(m){
       </div>
       <div class="forecast-mini-data">
         <div class="forecast-mini-stat"><span>Aktueller Stand</span><b>${fmtMoney(m.current)}</b></div>
-        <div class="forecast-mini-stat"><span>Meilenstein</span><b>${fmtMoney(m.target)}</b></div>
         <div class="forecast-mini-stat"><span>Ø Tagesverdienst</span><b class="green">${m.avg?fmtMoney(m.avg):"Wird ermittelt"}</b></div>
+        <div class="forecast-mini-stat"><span>7 Tage Summe</span><b class="blue">${m.total7?fmtMoney(m.total7):"Sammelt Daten"}</b></div>
         <div class="forecast-mini-stat"><span>Noch benötigt</span><b class="amber">${fmtMoney(m.remaining)}</b></div>
+        <div class="forecast-mini-stat"><span>Tempo/Woche</span><b>${m.weeklyPace?fmtMoney(m.weeklyPace):"-"}</b></div>
+        <div class="forecast-mini-stat"><span>Trend</span><b class="${m.trendClass}">${escHtml(m.trendLabel)}</b></div>
       </div>
     </div>
     <div class="forecast-mini-progress"><span style="width:${m.progress.toFixed(2)}%"></span></div>
-    <div class="forecast-mini-foot"><span>${m.progress.toFixed(2).replace(".",",")}% des Ziels erreicht</span><span>${escHtml(m.quality)}</span></div>
+    <div class="forecast-mini-foot"><span>${m.progress.toFixed(2).replace(".",",")}% des Ziels erreicht</span><span>Datenbasis ${escHtml(m.qualityText)}</span></div>
   </div>`;
 }
 function forecastFullHtml(m){
   const eta=m.days===null?"Nicht berechenbar":m.days===0?"Bereits erreicht":`${fmt(m.days)} Tage`;
   const predicted=m.predicted?formatForecastDate(m.predicted):"Noch offen";
   const note=`${m.quality}${m.estimatedCount?` · ${m.estimatedCount} geschätzte Offline-Tage`:""}${m.usedToday?" · heutiges Tempo hochgerechnet":""}`;
-  return `<div class="forecast-wrap">
-    <div class="forecast-beta"><b>BETA-TEST</b><span>Die Hochrechnung basiert ausschließlich auf lokal gespeicherten Verbandsständen. Ab 3 bis 7 vollständigen Tagen wird sie deutlich belastbarer; leichte Abweichungen durch Offline-Zeiten, Events und wechselnde Aktivität bleiben möglich.</span></div>
+  return `<div class="forecast-wrap forecast-pro">
+    <div class="forecast-beta"><b>LIVE-LAGE</b><span>Die Hochrechnung basiert auf den lokal gespeicherten Verbandsständen. Vollständige Tage zählen stärker als heutige Zwischenstände; Events, Offline-Zeiten und Aktivitätsspitzen können das Ergebnis verschieben.</span></div>
     <div class="forecast-head"><div><div class="forecast-title">Verbandsprognose</div><div class="forecast-sub">Der Meilenstein lässt sich oben oder in den Einstellungen ändern. Resttage und Erreichungsdatum werden automatisch berechnet.<br>${escHtml(note)}</div></div><span class="forecast-status ${m.statusClass}">${escHtml(m.status)}</span></div>
     <div class="forecast-kpis">
-      <div class="forecast-kpi"><span class="forecast-k">Aktueller Stand</span><span class="forecast-v blue">${fmtMoney(m.current)}</span></div>
-      <div class="forecast-kpi"><span class="forecast-k">Meilenstein</span><span class="forecast-v">${fmtMoney(m.target)}</span></div>
-      <div class="forecast-kpi"><span class="forecast-k">Noch benötigt</span><span class="forecast-v amber">${fmtMoney(m.remaining)}</span></div>
-      <div class="forecast-kpi"><span class="forecast-k">Ø pro Tag</span><span class="forecast-v green">${m.avg?fmtMoney(m.avg):"-"}</span></div>
-      <div class="forecast-kpi"><span class="forecast-k">Prognose</span><span class="forecast-v green">${escHtml(eta)}</span></div>
-      <div class="forecast-kpi"><span class="forecast-k">Voraussichtliches Datum</span><span class="forecast-v">${escHtml(predicted)}</span></div>
+      <div class="forecast-kpi"><span class="forecast-k">Aktueller Stand</span><span class="forecast-v blue">${fmtMoney(m.current)}</span><small>Gesamtcredits des Verbands</small></div>
+      <div class="forecast-kpi"><span class="forecast-k">Meilenstein</span><span class="forecast-v">${fmtMoney(m.target)}</span><small>frei einstellbares Ziel</small></div>
+      <div class="forecast-kpi"><span class="forecast-k">Noch benötigt</span><span class="forecast-v amber">${fmtMoney(m.remaining)}</span><small>${(100-m.progress).toFixed(2).replace(".",",")}% offen</small></div>
+      <div class="forecast-kpi"><span class="forecast-k">Ø pro Tag</span><span class="forecast-v green">${m.avg?fmtMoney(m.avg):"-"}</span><small>robuster Mittelwert</small></div>
+      <div class="forecast-kpi"><span class="forecast-k">Prognose</span><span class="forecast-v green">${escHtml(eta)}</span><small>${escHtml(predicted)}</small></div>
+      <div class="forecast-kpi"><span class="forecast-k">7 Tage Summe</span><span class="forecast-v blue">${m.total7?fmtMoney(m.total7):"-"}</span><small>letzte vollständige Tage</small></div>
+      <div class="forecast-kpi"><span class="forecast-k">Trendtempo</span><span class="forecast-v ${m.trendClass}">${escHtml(m.trendLabel)}</span><small>${m.trendPct?`${m.trendPct>0?"+":""}${fmt(m.trendPct)}% gegenüber vorher`: "noch keine Vergleichsbasis"}</small></div>
+      <div class="forecast-kpi"><span class="forecast-k">Datenbasis</span><span class="forecast-v">${escHtml(m.qualityText)}</span><small>${escHtml(m.qualityDetail)}</small></div>
     </div>
     <div><div class="forecast-progress"><div class="forecast-progress-fill" style="width:${m.progress.toFixed(2)}%"></div></div><div class="forecast-progress-meta"><span>${m.progress.toFixed(2).replace(".",",")}% erreicht</span><span>${fmtMoney(m.remaining)} verbleibend</span></div></div>
+    <div class="forecast-details">
+      <div class="forecast-panel">
+        <div class="forecast-panel-title">Zieltempo<span>benötigter Tagesverdienst</span></div>
+        <div class="forecast-horizon">${forecastHorizonHtml(m)}</div>
+      </div>
+      <div class="forecast-panel">
+        <div class="forecast-panel-title">Datenlage<span>lokal gemessen</span></div>
+        <div class="forecast-insights">
+          <div class="forecast-insight"><span>Bester Tag</span><b>${m.bestDay?`${escHtml(m.bestDay.label)} · ${fmtMoney(m.bestDay.earn)}`:"-"}</b></div>
+          <div class="forecast-insight"><span>Schwächster Tag</span><b>${m.weakDay?`${escHtml(m.weakDay.label)} · ${fmtMoney(m.weakDay.earn)}`:"-"}</b></div>
+          <div class="forecast-insight"><span>Heutiger Stand</span><b>${m.todayEarn?fmtMoney(m.todayEarn):"-"}${m.todayProjected?` / ~${fmtMoney(m.todayProjected)}`:""}</b></div>
+          <div class="forecast-quality" title="${escHtml(m.qualityDetail)}"><span style="width:${m.qualityScore}%"></span></div>
+        </div>
+      </div>
+    </div>
     <div class="forecast-chart-box"><div class="forecast-chart-head"><span>Credit-Verlauf und Hochrechnung</span><span>Ist / Prognose / Ziel</span></div><canvas id="forecast-chart-full" class="forecast-canvas"></canvas></div>
   </div>`;
 }
@@ -3719,12 +4102,21 @@ function drawForecastChart(id,m){
   ctx.strokeStyle="rgba(134,239,172,.75)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(p.l,y(m.target));ctx.lineTo(W-p.r,y(m.target));ctx.stroke();
   ctx.font="9px Inter,sans-serif";ctx.fillStyle="rgba(216,225,236,.65)";ctx.textAlign="left";ctx.fillText("Ist",p.l,H-6);ctx.fillStyle="#fbbf24";ctx.textAlign="center";ctx.fillText("Prognose",W*.78,H-6);ctx.fillStyle="#86efac";ctx.textAlign="right";ctx.fillText("Ziel",W-p.r,H-6);
 }
+function updateOverviewForecastSummary(m){
+  if(!$("#overview-forecast-eta").length)return;
+  const eta=forecastDaysText(m.days);
+  $("#overview-forecast-eta").text(eta);
+  $("#overview-forecast-avg").text(m.avg?fmtMoney(m.avg):"Sammelt Daten");
+  $("#overview-today-earn").text(fmtMoney(allianceEarnToday()));
+  $("#overview-quality").text(m.qualityText);
+}
 function renderForecast(){
   const m=allianceForecastModel();
   $("#forecast-board").toggle(S.settings.forecastEnabled!==false);
   $("#forecast-overview-view").html(forecastOverviewHtml(m));
   $("#forecast-full-view").html(forecastFullHtml(m));
   $("#sb-forecast-target,#forecast-target-main").val(S.settings.forecastTarget);
+  updateOverviewForecastSummary(m);
   setTimeout(()=>drawForecastChart("forecast-chart-full",m),40);
 }
 function applyForecastSettings(target){
@@ -3920,7 +4312,7 @@ function fetchDailyEarnFromOverview(){
       if(tds.length < 4) return;
       const dateTxt = (tds[3].textContent||"").trim();
       const earnTxt = (tds[2].textContent||"").trim();
-      const earnVal = parseDeNum(earnTxt);
+      const earnVal = parseCreditsValue(earnTxt);
       const dm=dateTxt.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
       if(dm&&earnVal!==null)daily.push({date:`${dm[3]}-${String(dm[2]).padStart(2,"0")}-${String(dm[1]).padStart(2,"0")}`,earn:Math.max(0,earnVal)});
       if(dateTxt !== today) return;
@@ -3942,24 +4334,39 @@ function fetchDailyEarnFromOverview(){
 }
 
 function playerForecastModel(){
-  const current=Math.max(0,Number(S.profile.totalCredits)||Number(S.userCredits)||0);
+  const profileCredits=parseCreditsValue(S.profile.totalCredits);
+  const creditCurrent=Math.max(0,(profileCredits!==null?profileCredits:Number(S.profile.totalCredits))||Number(S.userCredits)||0);
   let index=0;
-  LEVELS.forEach((level,i)=>{if(current>=level.need)index=i;});
+  LEVELS.forEach((level,i)=>{if(creditCurrent>=level.need)index=i;});
+  const rankIndex=LEVELS.findIndex(level=>normalizeTxt(level.rank)===normalizeTxt(S.profile.rank));
+  if(rankIndex>=0)index=rankIndex;
   const level=LEVELS[index]||LEVELS[0];
   const next=LEVELS[index+1]||null;
   const start=Number(level.need)||0;
-  const target=Number(next?.need)||current;
-  const remaining=next?Math.max(0,target-current):0;
+  const target=Number(next?.need)||creditCurrent;
+  const remainingFromText=parseCreditsValue(S.profile.needText);
+  const current=next&&remainingFromText!==null?Math.max(0,target-remainingFromText):creditCurrent;
+  const remaining=next?(remainingFromText!==null?Math.max(0,remainingFromText):Math.max(0,target-current)):0;
   const span=Math.max(1,target-start);
   const progress=next?Math.max(0,Math.min(100,(current-start)/span*100)):100;
   const today=localDateKey();
   const completed=(S.playerDaily||[]).filter(row=>row.date!==today&&Number(row.earn)>0).slice(-7);
   let samples=completed.map(row=>Number(row.earn));
-  if(!samples.length&&S.dailyEarn>0)samples=[Number(S.dailyEarn)];
+  const todayEarn=Math.max(0,Number(S.dailyEarn)||0);
+  const usedToday=todayEarn>0&&samples.length<3;
+  if(usedToday)samples=[...samples,todayEarn].slice(-7);
   const average=robustDailyAverage(samples);
   const days=next&&average>0?Math.ceil(remaining/average):null;
   const eta=days!==null?new Date(Date.now()+days*86400000):null;
-  return {current,level,next,target,remaining,progress,average,days,eta,samples:samples.length};
+  const dailyRows=playerDailyRows(7).filter(row=>Number(row.earn)>0);
+  const total7=dailyRows.reduce((sum,row)=>sum+Number(row.earn||0),0);
+  const bestDay=dailyRows.length?[...dailyRows].sort((a,b)=>b.earn-a.earn)[0]:null;
+  const weakDay=dailyRows.length?[...dailyRows].sort((a,b)=>a.earn-b.earn)[0]:null;
+  const sampleCount=samples.length;
+  const qualityScore=Math.max(8,Math.min(100,Math.round((Math.min(sampleCount,7)/7)*100)));
+  const qualityText=`${fmt(Math.min(sampleCount,7))}/7 Tage`;
+  const weeklyPace=average?average*7:0;
+  return {current,level,next,target,remaining,progress,average,days,eta,samples:sampleCount,dailyRows,total7,bestDay,weakDay,qualityScore,qualityText,weeklyPace,usedToday};
 }
 
 function playerDailyRows(limit=7){
@@ -4015,11 +4422,16 @@ function recordPlayerRank(rank){
 function playerRankDelta(){
   normalizePlayerRankHistory();
   const h=S.playerRankHistory||{};
-  if(!h.startRank||!h.lastRank)return {delta:0,cls:"neutral",label:"Tageshistorie startet",short:"Heute: -"};
+  if(!h.startRank||!h.lastRank)return {delta:0,cls:"neutral",icon:"▬",label:"Tageshistorie startet",short:"-",compact:"-"};
   const delta=Number(h.startRank)-Number(h.lastRank);
-  if(delta>0)return {delta,cls:"up",label:`${fmt(delta)} Plätze heute aufgestiegen`,short:`▲ ${fmt(delta)}`};
-  if(delta<0)return {delta,cls:"down",label:`${fmt(Math.abs(delta))} Plätze heute abgestiegen`,short:`▼ ${fmt(Math.abs(delta))}`};
-  return {delta:0,cls:"neutral",label:"Heute unverändert",short:"▬ 0"};
+  if(delta>0)return {delta,cls:"up",icon:"▲",label:`${fmt(delta)} Plätze heute aufgestiegen`,short:`+${fmt(delta)} Plätze`,compact:`+${fmt(delta)}`};
+  if(delta<0)return {delta,cls:"down",icon:"▼",label:`${fmt(Math.abs(delta))} Plätze heute abgestiegen`,short:`-${fmt(Math.abs(delta))} Plätze`,compact:`-${fmt(Math.abs(delta))}`};
+  return {delta:0,cls:"neutral",icon:"▬",label:"Heute unverändert",short:"0 Plätze",compact:"0"};
+}
+function rankTrendHtml(delta,mode="long"){
+  const info=delta||playerRankDelta();
+  const text=mode==="compact"?info.compact:(mode==="short"?info.short:info.label);
+  return `<span class="rank-trend-icon" aria-hidden="true" title="${escHtml(info.label)}">${escHtml(info.icon||"▬")}</span><span class="rank-trend-label">${escHtml(text)}</span>`;
 }
 function playerProfileLink(row){
   const id=Number(row?.id)||0;
@@ -4043,7 +4455,9 @@ function renderPlayerForecast(){
   const model=playerForecastModel();
   const rank=S.playerRanking?.rank;
   const delta=playerRankDelta();
-  $("#prof-placement").html(`<span class="prof-placement-kicker">Spielerplatzierung</span><strong>${rank?`#${fmt(rank)}`:"Wird ermittelt"}</strong><small class="prof-placement-history ${delta.cls}">${escHtml(delta.label)}</small>`);
+  $("#prof-placement")
+    .attr("title",`Spielerprognose und Platzierungsumfeld öffnen · ${delta.label}`)
+    .html(`<span class="prof-placement-kicker">Spielerplatzierung</span><span class="prof-placement-main"><strong>${rank?`#${fmt(rank)}`:"Wird ermittelt"}</strong><small class="prof-placement-history ${delta.cls}">${rankTrendHtml(delta,"compact")}</small></span><span class="prof-placement-caption">${escHtml(delta.label)}</span>`);
   if(!roots.length)return;
   const eta=model.eta?model.eta.toLocaleDateString(uiLocale(),{day:"2-digit",month:"2-digit",year:"numeric"}):"Noch keine Daten";
   const rows=(S.playerRanking?.rows||[]).map(row=>{
@@ -4051,18 +4465,33 @@ function renderPlayerForecast(){
     const nameHtml=href?`<a href="${href}" target="_blank" rel="noopener">${escHtml(row.name)}</a>`:`<b>${escHtml(row.name)}</b>`;
     return `<div class="player-rank-row${row.me?" me":""}"><span>#${fmt(row.rank)}</span>${nameHtml}<span>${fmtMoney(row.credits)}</span></div>`;
   }).join("");
-  const html=`<div class="player-forecast">
+  const progressMeta=model.next?`${model.progress.toFixed(2).replace(".",",")}% im aktuellen Dienstgrad`:"Höchster Rang erreicht";
+  const html=`<div class="player-forecast pro">
     <div class="player-forecast-head"><div><div class="player-forecast-title">Spielerprognose</div><div class="player-forecast-sub">Prognose bis zur nächsten Beförderung auf Basis deiner lokal erfassten Tagesverdienste. Ab 3 bis 7 vollständigen Tagen wird die Schätzung belastbarer.</div></div></div>
+    <div class="player-forecast-hero">
+      <div class="player-forecast-hero-main">
+        <span class="player-forecast-eyebrow">Nächste Beförderung</span>
+        <strong class="player-forecast-hero-rank">${escHtml(model.next?.rank||"Höchster Rang")}</strong>
+        <span class="player-forecast-hero-meta">${model.next?`${fmtMoney(model.remaining)} fehlen noch · ${progressMeta}`:"Alle bekannten Beförderungen sind erreicht."}</span>
+      </div>
+      <div class="player-forecast-hero-grid">
+        <span class="player-forecast-hero-stat"><span>Prognose</span><b>${model.days!==null?`${fmt(model.days)} Tage`:"Noch offen"}</b></span>
+        <span class="player-forecast-hero-stat"><span>Ø pro Tag</span><b>${model.average?fmtMoney(model.average):"Sammelt Daten"}</b></span>
+        <span class="player-forecast-hero-stat"><span>Datenbasis</span><b>${escHtml(model.qualityText)}</b></span>
+      </div>
+    </div>
     <div class="player-forecast-grid">
       <div class="player-forecast-kpi"><span>Aktueller Dienstgrad</span><b>${escHtml(model.level.rank)}</b></div>
       <div class="player-forecast-kpi"><span>Nächste Beförderung</span><b>${escHtml(model.next?.rank||"Höchster Rang")}</b></div>
-      <div class="player-forecast-kpi"><span>Noch benötigt</span><b>${model.next?fmtMoney(model.remaining):"Erreicht"}</b></div>
-      <div class="player-forecast-kpi"><span>Spielerplatzierung</span><b>${rank?`#${fmt(rank)}`:escHtml(S.playerRanking?.status||"Wird geladen")}</b></div>
-      <div class="player-forecast-kpi"><span>Platzänderung heute</span><b class="rank-delta ${delta.cls}">${escHtml(delta.short)}</b></div>
-      <div class="player-forecast-kpi"><span>Ø pro Tag</span><b>${model.average?fmtMoney(model.average):"Sammle Daten"}</b></div>
-      <div class="player-forecast-kpi"><span>Prognose</span><b>${model.days!==null?`${fmt(model.days)} Tage`:"Noch offen"}</b></div>
+      <div class="player-forecast-kpi progress"><span>Noch benötigt</span><b>${model.next?fmtMoney(model.remaining):"Erreicht"}</b></div>
+      <div class="player-forecast-kpi rank"><span>Spielerplatzierung</span><b>${rank?`#${fmt(rank)}`:escHtml(S.playerRanking?.status||"Wird geladen")}</b></div>
+      <div class="player-forecast-kpi rank"><span>Platzänderung heute</span><b class="rank-delta ${delta.cls}">${rankTrendHtml(delta,"short")}</b></div>
+      <div class="player-forecast-kpi progress"><span>Ø pro Tag</span><b>${model.average?fmtMoney(model.average):"Sammle Daten"}</b></div>
+      <div class="player-forecast-kpi progress"><span>Tempo/Woche</span><b>${model.weeklyPace?fmtMoney(model.weeklyPace):"-"}</b></div>
       <div class="player-forecast-kpi"><span>Voraussichtlich</span><b>${escHtml(eta)}</b></div>
-      <div class="player-forecast-kpi"><span>Datenbasis</span><b>${fmt(model.samples)} Tage</b></div>
+      <div class="player-forecast-kpi data"><span>7 Tage Summe</span><b>${model.total7?fmtMoney(model.total7):"-"}</b></div>
+      <div class="player-forecast-kpi data"><span>Bester Tag</span><b>${model.bestDay?`${escHtml(model.bestDay.label)} · ${fmtMoney(model.bestDay.earn)}`:"-"}</b></div>
+      <div class="player-forecast-kpi data"><span>Datenbasis</span><b>${escHtml(model.qualityText)}</b></div>
     </div>
     <div class="player-forecast-progress"><div class="player-forecast-fill" style="width:${model.progress.toFixed(2)}%"></div></div>
     ${playerDailyBoardHtml()}
@@ -4158,7 +4587,7 @@ async function fetchPlayerRanking(force=false){
 function fetchUserinfo(){
   apiGet(API.userinfo,d=>{
     const oldId=S.userId;
-    S.userId=Number(d.id)||S.userId||null;
+    S.userId=Number(d.id||d.user_id||d.userId)||readOwnUserIdFromDom()||S.userId||null;
     const domCredits=readOwnCreditsFromNavbar();
     const domCoins=readOwnCoinsFromNavbar();
     S.userCredits=(domCredits!==null?domCredits:(d.credits||0));
@@ -4296,7 +4725,7 @@ function fetchProfileCard(){
     const pctText=(doc.querySelector(".progress-bar-rank-percentage")?.textContent||"").replace(/\s+/g," ").trim();
     const txt=(bar?.textContent||doc.body?.textContent||"").replace(/\s+/g," ").trim();
     const mTxtPct=txt.match(/(\d{1,3}(?:[.,]\d+)?)\s*%/);
-    const mAbs=pctText.match(/([\d\.\,]+)\s*\\\s*([\d\.\,]+)/);
+    const mAbs=`${pctText} ${txt}`.match(/([\d.,]+)\s*(?:\/|\\)\s*([\d.,]+)/);
     const curAbs=mAbs?parseDeNum(mAbs[1]):null;
     const maxAbs=mAbs?parseDeNum(mAbs[2]):null;
     const calcAbs=(curAbs!==null && maxAbs && maxAbs>0)?(curAbs/maxAbs*100):null;
@@ -4517,24 +4946,23 @@ function renderOverview(d){
   const domAllianceId=readAllianceIdFromDom();
   const apiAllianceId=Number(d.id)||null;
   const finalAllianceId=apiAllianceId || domAllianceId || null;
-  const id=finalAllianceId||"#",name=d.name||"Unbekannt";
+  const name=d.name||"Unbekannt";
   S.allianceId=finalAllianceId;
   S.allianceName=String(name||"").trim();
   S.allianceRank=d.rank||null;
   S.allianceCredits=d.credits_total||0;
-  const link=`<a href="${BASE}/alliances/${id}" target="_blank">${name}</a>`;
-  setH("#sv-alliname",link);
+  const allianceHref=finalAllianceId?`${BASE}/alliances/${encodeURIComponent(finalAllianceId)}`:`${BASE}/alliances`;
+  const link=`<a href="${allianceHref}" target="_blank" rel="noopener">${escHtml(name)}</a>`;
+  if($("#sv-alliname").length)setH("#sv-alliname",link);
   setV("#sv-total",   fmtMoney(d.credits_total||0));
   setV("#sv-kasse",   fmtMoney(d.credits_current||0));
   setV("#sv-members", d.user_count||0);
   setV("#sv-rank",    d.rank||"-");
   setV("#sv-alliance-daily",fmtMoney(allianceEarnToday()));
+  setH("#overview-command-title",`${link}<span class="overview-title-suffix">im Überblick</span>`);
+  $("#overview-command-sub").text(`Platz ${d.rank||"-"} · ${fmt(d.user_count||0)} Mitglieder · ${fmtMoney(d.credits_total||0)} Gesamtcredits · ${fmtMoney(d.credits_current||0)} in der Verbandskasse`);
   renderAllianceDailyBoard();
   renderForecast();
-
-  const mc=d.user_count||0,maxM=100;
-  const pct=Math.min(100,Math.round(mc/maxM*100));
-  $("#sv-members-bar").css({width:pct+"%",background:pct>80?"var(--amber)":"var(--blue)"});
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -5140,12 +5568,24 @@ function renderTeam(users){
     const details={...(S.teamAdmin.detailsByName?.[normalizeTxt(u.name||"")]||{}),...(S.teamAdmin.details[String(u.id)]||{})};
     return teamActivityInfo(u,details).cls==="online";
   }).length;
+  cont.append(`<div class="team-command">
+    <div class="team-command-copy">
+      <span class="team-command-eyebrow">Mitgliederlage</span>
+      <span class="team-command-title">${fmt(users.length)} Mitglieder im Verband</span>
+      <span class="team-command-sub">Rollen, Aktivität, Dienstgrade, Credits und Profilzugriffe werden zu einer kompakten Mitgliederübersicht verdichtet.</span>
+    </div>
+    <div class="team-command-stats">
+      <span><b>${fmt(onlineCount)}</b><small>online</small></span>
+      <span><b>${fmt(leadership)}</b><small>Leitung</small></span>
+      <span><b>${fmt(special)}</b><small>Sonderrollen</small></span>
+    </div>
+  </div>`);
   cont.append(`<div class="team-summary">
-    <div class="team-summary-card"><span>${tr("Mitglieder gesamt")}</span><b>${fmt(users.length)}</b></div>
+    <div class="team-summary-card total"><span>${tr("Mitglieder gesamt")}</span><b>${fmt(users.length)}</b></div>
     <div class="team-summary-card online"><span>Aktuell online</span><b>${fmt(onlineCount)}</b></div>
-    <div class="team-summary-card"><span>${tr("Leitungsteam")}</span><b>${fmt(leadership)}</b></div>
-    <div class="team-summary-card"><span>${tr("Sonderrollen")}</span><b>${fmt(special)}</b></div>
-    <div class="team-summary-card"><span>${tr("Mitglieder ohne Leitungsrolle")}</span><b>${fmt(regular)}</b></div>
+    <div class="team-summary-card lead"><span>${tr("Leitungsteam")}</span><b>${fmt(leadership)}</b></div>
+    <div class="team-summary-card special"><span>${tr("Sonderrollen")}</span><b>${fmt(special)}</b></div>
+    <div class="team-summary-card regular"><span>${tr("Mitglieder ohne Leitungsrolle")}</span><b>${fmt(regular)}</b></div>
   </div>`);
   cont.append(`<div class="team-toolbar">
     <input id="team-search" class="lss7-select" type="search" placeholder="${tr("Mitglied suchen...")}">
@@ -5430,7 +5870,7 @@ function buildUI(){
           <div class="prof-bar"><div id="prof-fill" class="prof-fill" style="width:${S.profile.progress}%"></div></div>
           <span id="prof-reward" class="prof-reward"></span>
         </div>
-        <button id="prof-placement" class="prof-placement" type="button" title="Spielerprognose und Platzierungsumfeld öffnen"><span class="prof-placement-kicker">Spielerplatzierung</span><strong>Wird ermittelt</strong><small>Topliste</small></button>
+        <button id="prof-placement" class="prof-placement" type="button" title="Spielerprognose und Platzierungsumfeld öffnen"><span class="prof-placement-kicker">Spielerplatzierung</span><span class="prof-placement-main"><strong>Wird ermittelt</strong><small class="prof-placement-history neutral"><span class="rank-trend-icon" aria-hidden="true">▬</span><span class="rank-trend-label">-</span></small></span><span class="prof-placement-caption">Topliste</span></button>
       </div>
       <div class="prof-subnav"><button class="prof-view-btn active" data-prof-view="summary" type="button">Profil</button><button class="prof-view-btn" data-prof-view="forecast" type="button">Spielerprognose</button></div>
       <div id="prof-forecast-panel" class="prof-forecast-panel"><div id="player-profile-forecast-view" class="player-forecast-view"></div></div>
@@ -5469,7 +5909,7 @@ function buildUI(){
   // â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const TABS=[
     {id:"tp-overview",  icon:"", label:"Übersicht"},
-    {id:"tp-forecast",  icon:"", label:"Verbands Prognose [BETA]"},
+    {id:"tp-forecast",  icon:"", label:"Verbandsprognose"},
     {id:"tp-vehicles",  icon:"", label:"Fuhrpark & Standorte"},
     {id:"tp-schoolings",icon:"", label:"Lehrgänge"},
     {id:"tp-aao",       icon:"", label:"AAO"},
@@ -5492,27 +5932,35 @@ function buildUI(){
   const tOver=$(`<div id="tp-overview" class="lpanel active"></div>`);
   tOver.append(`
     <div class="sg sg2">
-      <div class="sc w2">
-        <span class="sl">Verband</span>
-        <span class="sv c-bl" id="sv-alliname"><span class="lspin"></span></span>
+      <div class="overview-command">
+        <div class="overview-command-copy">
+          <span class="overview-eyebrow">Verbandslage</span>
+          <span class="overview-title" id="overview-command-title">Lagebild wird geladen</span>
+          <span class="overview-sub" id="overview-command-sub">Credits, Platzierung, Tagesleistung und Zielprognose werden aus den aktuellen Verbandsdaten verdichtet.</span>
+        </div>
+        <div class="overview-command-metrics">
+          <span class="overview-pill"><span>Zielprognose</span><b id="overview-forecast-eta">-</b></span>
+          <span class="overview-pill"><span>Ø Verband/Tag</span><b id="overview-forecast-avg">-</b></span>
+          <span class="overview-pill"><span>Heute</span><b id="overview-today-earn">${fmtMoney(allianceEarnToday())}</b></span>
+          <span class="overview-pill"><span>Datenbasis</span><b id="overview-quality">-</b></span>
+        </div>
       </div>
-      <div class="sc">
+      <div class="sc overview-card total">
         <span class="sl">Credits gesamt</span>
         <span class="sv c-gr" id="sv-total">-</span>
       </div>
-      <div class="sc">
+      <div class="sc overview-card cash">
         <span class="sl">Verbandskasse</span>
         <span class="sv c-gr" id="sv-kasse">-</span>
       </div>
-      <div class="sc">
+      <div class="sc overview-card rank">
         <span class="sl">Platzierung</span>
         <span class="sv c-am" id="sv-rank">-</span>
         <span id="sv-rank-next">Platzierung wird geladen...</span>
       </div>
-      <div class="sc">
+      <div class="sc overview-card members">
         <span class="sl">Mitglieder</span>
         <span class="sv" id="sv-members">-</span>
-        <div class="prg"><div class="prg-fill" id="sv-members-bar" style="width:0%;background:var(--blue)"></div></div>
       </div>
       <div class="sc w2 alliance-day-card" id="alliance-activity-card" title="Lokaler Live-Zähler: Erfasst gemeinsam freigegebene Verbandseinsätze, solange das Spiel geöffnet ist.">
         <div class="alliance-day-head">
@@ -5539,7 +5987,7 @@ function buildUI(){
       <div class="sc w2" id="forecast-board">
         <div class="rank-mini-head">
           <span class="rank-mini-title">Verbandsprognose</span>
-          <span class="rank-mini-note forecast-beta-badge">BETA</span>
+          <span class="rank-mini-note forecast-beta-badge">LIVE</span>
         </div>
         <div id="forecast-overview-view"></div>
       </div>
@@ -5725,6 +6173,13 @@ function buildUI(){
   grpExport.append(`<button class="lbtn" data-export="history" type="button"><span class="lbtn-i">CSV</span><span class="lbtn-t">Verlauf exportieren</span></button>`);
   setWrap.append(grpExport);
 
+  const grpDiag=$(`<div class="set-group set-wide settings-diagnostics"><div class="set-head">Analyse & Fehlerbericht</div></div>`);
+  grpDiag.append(`<div class="set-note">Wenn ein Nutzer einen Fehler meldet, kann er zuerst eine Analyse laufen lassen. Das Skript prüft die wichtigsten Systeme, zeigt direkt Feedback und kann danach eine Supportdatei für dich erstellen.</div>`);
+  grpDiag.append(`<textarea id="sb-diagnostics-note" class="lss7-select diagnostics-note" rows="3" placeholder="Optional: Was ist passiert? Welche Ansicht war geöffnet?"></textarea>`);
+  grpDiag.append(`<div class="diagnostics-actions"><button class="lbtn prime" id="sb-diagnostics-run" type="button">Analyse ausführen</button><button class="lbtn" id="sb-diagnostics-export" type="button">Supportdatei erstellen</button><button class="lbtn" id="sb-diagnostics-clear" type="button">Fehlerliste leeren</button></div>`);
+  grpDiag.append(`<div class="update-status" id="sb-diagnostics-status"><strong>Diagnose bereit</strong><span>Fehlerstatus wird geladen...</span></div>`);
+  grpDiag.append(`<div class="diagnostics-results" id="sb-diagnostics-results"></div>`);
+
   const grpUpdate=$(`<div class="set-group set-wide settings-updates"><div class="set-head">Updates</div></div>`);
   grpUpdate.append(`<div class="update-status" id="sb-update-status"><strong>Automatische Updates</strong><span>Tampermonkey übernimmt Updates über die hinterlegte Update-URL. Beim Start wird zusätzlich geprüft, ob die installierte Version aktuell ist.</span></div>`);
   grpUpdate.append(`<div class="update-actions"><button class="lbtn prime" id="sb-update-check" type="button">Userscripte auf Updates prüfen</button><a class="lbtn" id="sb-update-install" href="${UPDATE_URL}" target="_blank" rel="noopener" style="display:none">Update manuell installieren</a></div>`);
@@ -5766,13 +6221,13 @@ function buildUI(){
   </label>`);
   setWrap.append(grpOpt);
 
-  const grpForecast=$(`<div class="set-group settings-forecast"><div class="set-head">Verbandsprognose [BETA]</div></div>`);
+  const grpForecast=$(`<div class="set-group settings-forecast"><div class="set-head">Verbandsprognose</div></div>`);
   grpForecast.append(mkToggle("tog-forecast","Prognose in Übersicht anzeigen","forecastEnabled"));
   grpForecast.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Meilenstein in Credits</span>
     <input id="sb-forecast-target" class="lss7-select" type="number" min="1" step="1000000" style="max-width:190px" value="${Math.round(Number(S.settings.forecastTarget)||30000000000)}">
   </label>`);
-  grpForecast.append(`<div class="set-note"><b>BETA-TEST:</b> Nach Eingabe des Meilensteins werden Resttage und voraussichtliches Erreichungsdatum automatisch berechnet. Ab 3 bis 7 vollständigen Tagen wird die Prognose deutlich sicherer. Leichte Abweichungen durch Events, Offline-Zeiten und wechselnde Aktivität bleiben dennoch möglich.</div>`);
+  grpForecast.append(`<div class="set-note"><b>Hinweis:</b> Nach Eingabe des Meilensteins werden Resttage und voraussichtliches Erreichungsdatum automatisch berechnet. Ab 3 bis 7 vollständigen Tagen wird die Prognose deutlich sicherer. Leichte Abweichungen durch Events, Offline-Zeiten und wechselnde Aktivität bleiben dennoch möglich.</div>`);
 
   const grpWx=$(`<div class="set-group settings-weather"><div class="set-head">Wetter & Warnungen</div></div>`);
   grpWx.append(`<label class="tog-row" style="justify-content:space-between;">
@@ -5849,16 +6304,17 @@ function buildUI(){
   </div>`);
 
   const grpPn=$(`<div class="set-group set-wide settings-patch-notes"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v9.3.0</b><br>Mitglieder & Verwaltung wurde zur reinen Mitgliederübersicht zurückgebaut. Die Spielerplatzierung merkt sich jetzt den Tagesstart und zeigt Auf- oder Abstiege seit 0:00 Uhr an.</div>`);
+  grpPn.append(`<div class="set-note"><b>v9.3.1</b><br>Spielerprofil, Spielerplatzierung, Verbandsprognose und Übersicht wurden optisch und fachlich überarbeitet. Die Prognose zeigt jetzt Datenbasis, Trendtempo, Zieltempo und eine professionellere Lageübersicht. Zusätzlich gibt es unter Kontakt ein Analyse- und Supportdatei-Werkzeug.</div>`);
   setWrap.append(grpPn);
   setWrap.append(grpContact);
+  setWrap.append(grpDiag);
   setWrap.append(grpInfo);
 
   tSet.append(setWrap);
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v9.3.0",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v9.3.1",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -5903,6 +6359,18 @@ function buildUI(){
   panel.on("click","[data-export]",e=>{
     e.stopPropagation();e.preventDefault();
     exportDashboardData(String($(e.currentTarget).data("export")||""));
+  });
+  panel.on("click","#sb-diagnostics-run",e=>{
+    e.stopPropagation();e.preventDefault();
+    runDiagnosticAnalysis();
+  });
+  panel.on("click","#sb-diagnostics-export",e=>{
+    e.stopPropagation();e.preventDefault();
+    createDiagnosticReport();
+  });
+  panel.on("click","#sb-diagnostics-clear",e=>{
+    e.stopPropagation();e.preventDefault();
+    clearDiagnosticErrors();
   });
   panel.on("click","#fleet-refresh-analysis",e=>{
     e.stopPropagation();e.preventDefault();
@@ -6355,19 +6823,22 @@ function mkAccordion(icon,title,body){
 function patchHTML(){
   const groups=[
     {
-      title:"v9.3.0 — Mitgliederübersicht & Spielerplatzierung",
+      title:"v9.3.1 — Profil, Übersicht & Verbandsprognose",
       items:[
         "Der Bereich Mitglieder & Verwaltung wurde zur reinen Mitgliederübersicht zurückgebaut.",
         "Rechtevergabe, Rollenänderungen, Rauswerfen, Chat-Bann, Mehrfachauswahl und Chatbefehle wurden vollständig aus dem Dashboard entfernt.",
         "Mitgliederkarten behalten Suche, Rollenfilter, Online-/Inaktivitätsstatus, Dienstgrad, Credits, Spielerrang sowie Profil- und Nachrichtenlink.",
         "Die Spielerplatzierung speichert jetzt den Tagesstart lokal und beginnt um 0:00 Uhr automatisch eine neue Historie.",
-        "Im Spielerprofil wird angezeigt, ob du seit Tagesstart Plätze aufgestiegen oder abgestiegen bist, inklusive grünem Aufwärtshinweis und rotem Abwärtshinweis.",
-        "Die Spielerprognose zeigt die Platzänderung des aktuellen Tages zusätzlich als eigene Kennzahl.",
+        "Im Spielerprofil wird angezeigt, ob du seit Tagesstart Plätze aufgestiegen oder abgestiegen bist, inklusive grünem Aufwärtspfeil und rotem Abwärtspfeil.",
+        "Die Spielerprognose zeigt die Platzänderung des aktuellen Tages zusätzlich als eigene Kennzahl mit farbigem Pfeil-Badge.",
         "Namen im Platzierungsumfeld der Spielerprognose sind jetzt anklickbar und öffnen direkt das jeweilige Profil.",
         "Verbände im Platzierungsumfeld der Übersicht sind jetzt anklickbar und öffnen direkt die jeweilige Verbandsseite.",
         "Die Spielerplatzierungsbox im Profil öffnet die Spielerprognose jetzt direkt und zuverlässiger.",
+        "Eine alte doppelte .prof-placement-CSS-Regel wurde entfernt, damit die Profilkarte nicht mehr als kleines Badge gerendert wird.",
+        "Die Verbandsprognose wurde zur professionellen Lageansicht ausgebaut: Datenbasis, 7-Tage-Summe, Trendtempo, Zieltempo für 7/14/30 Tage, bester Tag, schwächster Tag und heutige Hochrechnung.",
+        "Die Übersicht hat ein neues Verbandslage-Panel mit Zielprognose, Durchschnitt pro Tag, Tagesverdienst und Datenbasis erhalten.",
         "Der BETA-Hinweis wurde aus der Spielerprognose entfernt.",
-        "Version und Patch-Notes wurden auf v9.3.0 aktualisiert."
+        "Version und Patch-Notes wurden auf v9.3.1 aktualisiert."
       ]
     },
     {
@@ -6496,7 +6967,7 @@ function patchHTML(){
         "Der Kopfzeilen-Button befindet sich ausschließlich in den Einstellungen und wird nicht mehr versehentlich im Verlauf eingeblendet.",
         "Updates stehen jetzt direkt unter dem Kopfzeilen-Button; Event und WM wurden unter der Verbandsprognose einsortiert.",
         "Kontakt und Informationen bilden den Abschluss der Einstellungen. Die persönlichen Worte des Entwicklers sind nun in die vollbreite Infobox integriert.",
-        "Der BETA-Hinweis wurde bei der Spielerprognose entfernt; die Verbandsprognose bleibt weiterhin als BETA gekennzeichnet.",
+        "Der BETA-Hinweis wurde bei der Spielerprognose entfernt; die Verbandsprognose bleibt weiterhin datenbasiert vorsichtig formuliert.",
         "Dashboard- und Spiel-Header verwenden ein vollständig neu gestaltetes, längliches VS-PRO-Emblem mit animiertem Funksignal.",
         "Version und Patch-Notes wurden auf v9.1.1 aktualisiert."
       ]
@@ -6607,7 +7078,7 @@ function infoHTML(){
     ["Panel-Typ","Layout-Box Standard, Floating optional"],
     ["Alliance-Interval","60s"],
     ["7-Tage-Verdienst","lokal ab erstem Refresh"],
-    ["Verbandsprognose","BETA · lokale Tageswerte und Offline-Differenzen"],
+    ["Verbandsprognose","lokale Tageswerte · Trendtempo · Zieltempo"],
     ["Updates","Tampermonkey automatisch · manueller Check verfügbar"],
     ["Spielzeit","lokal, 7 Tage"],
     ["Fahrzeugstatus","90s"],
@@ -6726,11 +7197,38 @@ GM_addStyle(`
 #lss7.theme-light .team-last-online.recent,#lss7.theme-summer .team-last-online.recent{color:#334155!important;background:rgba(100,116,139,.11);border-color:rgba(100,116,139,.28)}#lss7.theme-light .team-last-online.online,#lss7.theme-summer .team-last-online.online{color:#166534!important}#lss7.theme-light .team-last-online.week,#lss7.theme-summer .team-last-online.week{color:#1d4ed8!important}#lss7.theme-light .team-last-online.two-weeks,#lss7.theme-summer .team-last-online.two-weeks{color:#92400e!important}#lss7.theme-light .team-last-online.month,#lss7.theme-summer .team-last-online.month{color:#991b1b!important}
 .team-card-tools{display:flex;align-items:center;gap:5px;justify-self:end;}
 .team-mail{color:var(--cyanh)!important;border-color:rgba(34,211,238,.28)!important;background:rgba(34,211,238,.08)!important;}
+.team-command{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;margin:12px 12px 0;padding:14px 15px;border:1px solid rgba(59,130,246,.25);border-radius:10px;background:linear-gradient(135deg,rgba(59,130,246,.13),rgba(34,211,238,.045));overflow:hidden;}
+.team-command::after{content:'';position:absolute;right:-42px;top:-66px;width:178px;height:178px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.16),transparent 66%);pointer-events:none;}
+.team-command-copy,.team-command-stats{position:relative;z-index:1;}
+.team-command-eyebrow{display:block;color:var(--blueh);font-size:8px;font-weight:950;letter-spacing:.9px;text-transform:uppercase;}
+.team-command-title{display:block;margin-top:4px;color:var(--t1);font:950 17px/1.15 var(--head);}
+.team-command-sub{display:block;margin-top:5px;color:var(--t3);font-size:10px;line-height:1.45;max-width:820px;}
+.team-command-stats{display:grid;grid-template-columns:repeat(3,minmax(78px,1fr));gap:7px;min-width:285px;}
+.team-command-stats span{padding:8px 9px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.028);min-width:0;}
+.team-command-stats b{display:block;color:var(--t1);font:950 13px/1 var(--mono);}
+.team-command-stats small{display:block;margin-top:4px;color:var(--t4);font-size:7.5px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;}
+.team-summary{gap:9px!important;padding:12px!important;}
+.team-summary-card{position:relative;overflow:hidden;border-radius:9px!important;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012))!important;box-shadow:0 8px 22px rgba(2,12,27,.10);}
+.team-summary-card::before{content:'';position:absolute;left:0;right:0;top:0;height:2px;background:var(--team-accent,var(--blue));opacity:.58;}
+.team-summary-card.total{--team-accent:var(--blue)}.team-summary-card.online{--team-accent:var(--green)}.team-summary-card.lead{--team-accent:var(--amber)}.team-summary-card.special{--team-accent:var(--cyan)}.team-summary-card.regular{--team-accent:var(--t3)}
+.team-category{margin:0 12px 11px!important;border-radius:10px!important;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.008))!important;box-shadow:0 8px 24px rgba(2,12,27,.08);}
+.team-category-head{padding:10px 11px!important;background:linear-gradient(90deg,rgba(255,255,255,.035),rgba(255,255,255,.012))!important;}
+.team-category-title{font-size:11px!important;}
+.team-category-count{min-width:25px;text-align:center;padding:3px 7px;border:1px solid var(--b1);border-radius:999px;background:rgba(255,255,255,.035);color:var(--t2)!important;}
+.team-grid{gap:10px!important;padding:10px!important;}
+.team-card{grid-template-columns:44px minmax(0,1fr) auto!important;gap:10px!important;padding:11px!important;border-radius:10px!important;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.012))!important;box-shadow:0 7px 18px rgba(2,12,27,.08);}
+.team-card:hover{border-color:rgba(59,130,246,.32)!important;box-shadow:0 12px 26px rgba(2,12,27,.16),0 0 18px rgba(59,130,246,.08);}
+.team-avatar{width:44px!important;height:44px!important;border-radius:10px!important;background:linear-gradient(145deg,rgba(59,130,246,.22),rgba(34,197,94,.15))!important;box-shadow:0 0 18px rgba(34,211,238,.07) inset;}
+.team-name{font-size:12px!important;}
+.team-open{width:30px!important;height:30px!important;border-radius:8px!important;}
+@media(max-width:780px){.team-command{grid-template-columns:1fr}.team-command-stats{min-width:0;grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:520px){.team-command-stats{grid-template-columns:1fr}.team-summary{grid-template-columns:1fr!important}}
 .nav-style-showcase{display:grid;grid-template-columns:minmax(210px,.72fr) minmax(0,1.28fr);gap:12px;align-items:center;margin:9px 0 10px;}
 .nav-style-preview-shell{padding:11px;border:1px solid var(--b1);border-radius:8px;background:#121923;}
 .nav-style-preview{min-height:42px;display:flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid rgba(148,163,184,.18);border-radius:7px;background:linear-gradient(180deg,#202a38,#141c27);color:#f8fafc;}
 .nav-style-preview .brand-emblem{width:52px;height:29px;padding:0 6px}.nav-style-preview .brand-letter{font-size:12px}.nav-style-preview .brand-signal{width:17px;height:15px}.nav-style-preview-copy{min-width:0;display:flex;flex-direction:column;gap:2px}.nav-style-preview-copy b{font-size:10px}.nav-style-preview-copy span{color:#86efac;font-size:7.5px}.nav-style-preview.preview-logo .nav-style-preview-copy,.nav-style-preview.preview-name .nav-style-preview-copy span,.nav-style-preview.preview-no-event .nav-style-preview-copy span{display:none}.nav-style-preview.preview-name .brand-emblem{display:none}
-.prof-placement{display:flex!important;max-width:none!important;padding:9px 12px 9px 48px!important;border-radius:8px!important;font-size:inherit!important;white-space:normal!important;overflow:visible!important;}
+.prof-placement{display:flex!important;max-width:none!important;min-height:78px!important;padding:12px 14px 12px 54px!important;border-radius:11px!important;font-size:inherit!important;white-space:normal!important;overflow:hidden!important;}
+.prof-placement-main{display:flex!important;align-items:center!important;gap:9px!important;min-width:0!important;}
 .wm-row.finished .wm-status,.wm-mini-row.finished .wm-mini-s{color:#4ade80!important}.wm-row.planned .wm-status,.wm-mini-row.planned .wm-mini-s{color:#fbbf24!important}.wm-status{font-weight:900}.wm-row.finished{border-left:3px solid rgba(34,197,94,.62)}.wm-row.planned{border-left:3px solid rgba(245,158,11,.62)}
 #lss7.theme-summer .wm-row.finished .wm-status{color:#146b3b!important;background:#e1f6e9;border-color:#58a978}#lss7.theme-summer .wm-row.planned .wm-status{color:#754600!important;background:#fff1bd;border-color:#c58a19}
 @media(max-width:900px){.fleet-status-layout{grid-template-columns:1fr}}
@@ -6785,7 +7283,7 @@ function renderNavStylePreview(){
 
 function upgradeUi910(){
   $("#lss-profile-events").remove();
-  if(!$("#prof-placement").length)$(".prof-top").append(`<span id="prof-placement" class="prof-placement">Platzierung wird ermittelt</span>`);
+  if(!$("#prof-placement").length)$(".prof-top").append(`<button id="prof-placement" class="prof-placement" type="button" title="Spielerprognose und Platzierungsumfeld öffnen"><span class="prof-placement-kicker">Spielerplatzierung</span><span class="prof-placement-main"><strong>Wird ermittelt</strong><small class="prof-placement-history neutral"><span class="rank-trend-icon" aria-hidden="true">▬</span><span class="rank-trend-label">-</span></small></span><span class="prof-placement-caption">Topliste</span></button>`);
   if(!$("#fleet-status-kpis").length)$("#lss7-vbars").before(`<div id="fleet-status-kpis" class="fleet-status-kpis"></div>`);
   if(!$("#fleet-command").length)$("#tp-vehicles").prepend(`<div id="fleet-command" class="fleet-command">
     <div class="fleet-command-copy"><span class="fleet-command-eyebrow">Einsatzmittel & Infrastruktur</span><span class="fleet-command-title">Fuhrpark- und Standortlage</span><span class="fleet-command-sub">Fahrzeugbereitschaft, Personal, Ausbauten, Spezialisierungen und Standortbetrieb in einer gemeinsamen Lageübersicht.</span></div>
@@ -6993,7 +7491,9 @@ function checkUpdate({manual=false}={}){
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 $(document).ready(()=>{
   load();
+  installDiagnosticsHooks();
   buildUI();
+  updateDiagnosticStatus();
   upgradeUi910();
   initSummerScene();
   buildTrigger();
@@ -7061,4 +7561,3 @@ window.addEventListener("beforeunload",()=>{summerSceneCtl?.dispose();save();});
 window.addEventListener("pagehide",save);
 
 })();
-
