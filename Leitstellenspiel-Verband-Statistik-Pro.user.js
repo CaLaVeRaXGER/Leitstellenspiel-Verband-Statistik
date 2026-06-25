@@ -1193,8 +1193,19 @@ GM_addStyle(`
 .diagnostics-result small{color:var(--t4);font:850 8px/1 var(--mono);text-transform:uppercase;}
 .settings-contact .set-note{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;}
 .settings-contact .set-note>div{margin-top:0!important;}.settings-contact .lbtn{min-width:170px;justify-content:center;}
+.settings-category{grid-column:1/-1;border:1px solid var(--b1);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.012);box-shadow:0 8px 24px rgba(0,0,0,.07);}
+.settings-category-head{padding:12px 14px;border-bottom:1px solid var(--b1);background:linear-gradient(90deg,rgba(59,130,246,.09),rgba(34,211,238,.025));}
+.settings-category-head b{display:block;color:var(--t1);font-size:12px;font-weight:950;}
+.settings-category-head span{display:block;margin-top:3px;color:var(--t3);font-size:9px;line-height:1.4;}
+.settings-category-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:10px;}
+.settings-category-grid>.set-group{grid-column:auto!important;margin:0!important;box-shadow:none!important;}
+.settings-category-grid>.set-group:only-child{grid-column:1/-1!important;}
+.settings-category-grid>.settings-credit-popups,.settings-category-grid>.settings-actions,.settings-category-grid>.settings-export,.settings-category-grid>.settings-diagnostics,.settings-category-grid>.settings-info,.settings-category-grid>.settings-contact,.settings-category-grid>.settings-patch-notes,.settings-category-grid>.settings-updates,.settings-category-grid>.nav-style-setting{grid-column:1/-1!important;}
+#lss7.theme-light .settings-category,#lss7.theme-summer .settings-category{background:rgba(255,255,255,.52);}
+#lss7.theme-lcars .settings-category{border-radius:18px 7px 7px 18px;background:#090b10;border-color:rgba(232,169,88,.20);box-shadow:inset 5px 0 rgba(232,169,88,.72);}
+#lss7.theme-lcars .settings-category-head{background:#10131a;border-color:rgba(232,169,88,.20);}
 @media(max-width:920px){.settings-feature-grid,.settings-info-grid{grid-template-columns:1fr}.settings-contact .set-note,.diagnostics-actions{grid-template-columns:1fr}.settings-contact .lbtn{width:100%}}
-@media(max-width:760px){#lss7.layout .set-wrap{grid-template-columns:1fr}.set-wide,.settings-intro{grid-column:1;}}
+@media(max-width:760px){#lss7.layout .set-wrap{grid-template-columns:1fr}.set-wide,.settings-intro{grid-column:1}.settings-category-grid{grid-template-columns:1fr}.settings-category-grid>.set-group{grid-column:1!important;}}
 .lbtn{
   display:flex;align-items:center;gap:8px;padding:9px 12px;
   font-size:12px;font-weight:600;font-family:var(--font);
@@ -1471,22 +1482,19 @@ GM_addStyle(`
 .wm-knockout:not(.open) .wm-knockout-toggle::before{transform:rotate(-90deg);}
 .wm-knockout-body{display:none;border-top:1px solid var(--b1);}
 .wm-knockout.open .wm-knockout-body{display:block;}
-.wm-knockout-grid{padding:14px 12px 10px;overflow-x:auto;background:linear-gradient(180deg,rgba(168,85,247,.025),transparent);}
-.wm-bracket{display:grid;grid-template-columns:repeat(5,minmax(190px,1fr));gap:34px;min-width:1080px;align-items:stretch;}
-.wm-ko-stage{position:relative;display:flex;flex-direction:column;min-width:190px;}
+.wm-knockout-grid{padding:16px 14px 18px;overflow-x:auto;overflow-y:visible;background:linear-gradient(180deg,rgba(168,85,247,.025),transparent);scrollbar-gutter:stable;}
+.wm-knockout-grid::-webkit-scrollbar{width:8px;height:8px}.wm-knockout-grid::-webkit-scrollbar-thumb{background:var(--b2);border-radius:999px}.wm-knockout-grid::-webkit-scrollbar-track{background:rgba(255,255,255,.025);}
+.wm-bracket{display:grid;grid-template-columns:repeat(5,224px);gap:34px;min-width:1256px;align-items:start;padding:2px 4px 10px;}
+.wm-ko-stage{position:relative;display:flex;flex-direction:column;min-width:0;}
+.wm-ko-stage:not(:last-child)::after{content:"›";position:absolute;z-index:2;top:4px;right:-25px;display:grid;place-items:center;width:16px;height:16px;border:1px solid var(--b2);border-radius:50%;color:var(--purple);background:var(--panel);font:950 15px/1 var(--font);}
 .wm-ko-stage-title{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:10px;padding:6px 8px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);color:var(--t2);font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.4px;}
 .wm-ko-stage-title span{color:var(--t4);font:800 8px/1 var(--mono);}
-.wm-ko-matches{display:flex;flex:1;flex-direction:column;justify-content:space-around;gap:8px;min-height:900px;}
-.wm-ko-pair{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:12px;}
-.wm-ko-stage.r32 .wm-ko-pair{gap:8px;}
-.wm-ko-stage.r16 .wm-ko-pair{gap:42px;}
-.wm-ko-stage.qf .wm-ko-pair{gap:126px;}
-.wm-ko-stage.sf .wm-ko-pair{gap:300px;}
-.wm-ko-pair::before{content:"";position:absolute;right:-18px;top:25%;bottom:25%;width:1px;background:color-mix(in srgb,var(--purple) 52%,var(--b2));}
-.wm-ko-pair::after{content:"";position:absolute;right:-34px;top:50%;width:16px;height:1px;background:color-mix(in srgb,var(--purple) 52%,var(--b2));}
+.wm-ko-matches{display:flex;flex-direction:column;gap:8px;}
+.wm-ko-pair{position:relative;display:flex;flex-direction:column;gap:6px;margin-bottom:6px;padding:6px;border:1px solid color-mix(in srgb,var(--purple) 18%,var(--b1));border-radius:10px;background:rgba(168,85,247,.025);}
+.wm-ko-pair:last-child{margin-bottom:0;}
+.wm-ko-pair::after{content:"";position:absolute;top:50%;right:-35px;width:34px;height:1px;background:linear-gradient(90deg,color-mix(in srgb,var(--purple) 52%,var(--b2)),transparent);}
 .wm-ko-match{position:relative;padding:8px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.025);overflow:visible;}
 .wm-ko-match::before{content:"";position:absolute;inset:0 auto 0 0;width:2px;background:var(--ko-accent,var(--blue));}
-.wm-ko-pair .wm-ko-match::after{content:"";position:absolute;right:-18px;top:50%;width:18px;height:1px;background:color-mix(in srgb,var(--purple) 52%,var(--b2));}
 .wm-ko-match.live{--ko-accent:var(--green);border-color:rgba(34,197,94,.32);}
 .wm-ko-match.finished{--ko-accent:var(--amber);border-color:rgba(245,158,11,.28);}
 .wm-ko-meta{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:6px;color:var(--t4);font-size:7px;font-weight:850;}
@@ -1497,7 +1505,7 @@ GM_addStyle(`
 .wm-ko-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .wm-ko-score{min-width:18px;text-align:right;color:var(--t1);font:950 10px/1 var(--mono);}
 .wm-ko-status{margin-top:5px;padding-top:5px;border-top:1px solid var(--b0);color:var(--ko-accent,var(--blueh));font-size:7px;font-weight:900;text-align:center;text-transform:uppercase;}
-.wm-ko-final-stage .wm-ko-matches{align-items:stretch;justify-content:center;}
+.wm-ko-final-stage .wm-ko-matches{align-items:stretch;}
 .wm-ko-final-stage .wm-ko-match{box-shadow:0 0 0 1px rgba(168,85,247,.12),0 12px 30px rgba(0,0,0,.14);}
 .wm-ko-third{margin:4px 12px 12px;padding:10px;border:1px solid var(--b1);border-radius:9px;background:rgba(255,255,255,.018);}
 .wm-ko-third-title{margin-bottom:7px;color:var(--amberh);font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.5px;}
@@ -2340,7 +2348,8 @@ const S = {
   teamAdmin:{details:{},detailsByName:{},users:{},loading:false,lastTs:0,error:""},
   allianceActivity:{date:"",missions:0,patients:0,prisoners:0,seen:[]},
   allianceActivityLive:{},
-  dataCache:{vehicles:{},buildings:[],schoolings:[],aaos:[],aaoCategories:[],pois:[],missionTypes:null,missions:[],allianceEventTypes:[],lastMetaTs:0},
+  currentMissions:{},
+  dataCache:{vehicles:{},buildings:[],schoolings:[],aaos:[],aaoCategories:[],pois:[],missionTypes:null,missions:[],missionMetaById:{},missionMetaByName:{},allianceEventTypes:[],lastMetaTs:0},
   update:{previousVersion:"",justUpdated:false,availableVersion:"",checking:false,lastCheck:0,error:""},
   diagnostics:{errors:[],created:0,lastReportTs:0,lastAnalysis:null},
   settings:{
@@ -3297,16 +3306,22 @@ function playCreditSound(force=false){
     };
     const profile=profiles[S.settings.creditPopupSoundType]||profiles.kaching;
     const master=ctx.createGain();
+    const compressor=ctx.createDynamicsCompressor();
+    compressor.threshold.setValueAtTime(-18,ctx.currentTime);
+    compressor.knee.setValueAtTime(18,ctx.currentTime);
+    compressor.ratio.setValueAtTime(6,ctx.currentTime);
+    compressor.attack.setValueAtTime(.003,ctx.currentTime);
+    compressor.release.setValueAtTime(.20,ctx.currentTime);
     master.gain.setValueAtTime(.0001,ctx.currentTime);
-    master.gain.exponentialRampToValueAtTime(Math.max(.0002,profile.master*volume),ctx.currentTime+.015);
+    master.gain.exponentialRampToValueAtTime(Math.max(.0002,Math.min(.9,profile.master*3.8*volume)),ctx.currentTime+.015);
     master.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+profile.duration);
-    master.connect(ctx.destination);
+    master.connect(compressor);compressor.connect(ctx.destination);
     profile.notes.forEach(note=>{
       const osc=ctx.createOscillator(),gain=ctx.createGain();
       const start=ctx.currentTime+note.t;
       osc.type=note.type;osc.frequency.setValueAtTime(note.f,start);
       gain.gain.setValueAtTime(.0001,start);
-      gain.gain.exponentialRampToValueAtTime(Math.max(.0002,note.gain||.12),start+.008);
+      gain.gain.exponentialRampToValueAtTime(Math.max(.0002,Math.min(.85,(note.gain||.12)*2.2)),start+.008);
       gain.gain.exponentialRampToValueAtTime(.0001,start+note.d);
       osc.connect(gain);gain.connect(master);osc.start(start);osc.stop(start+note.d+.02);
     });
@@ -4404,11 +4419,148 @@ function ensureAllianceActivityDay(){
 }
 function renderAllianceActivity(){
   if(!S.allianceActivity)return;
-  setV("#sv-activity-missions",fmt(S.allianceActivity.missions||0));
-  setV("#sv-activity-patients",fmt(S.allianceActivity.patients||0));
-  setV("#sv-activity-prisoners",fmt(S.allianceActivity.prisoners||0));
+}
+let missionEarningsRenderTimer=null;
+let missionEarningsSignature="";
+function rebuildMissionMetaIndex(){
+  const byId={};
+  const byName={};
+  (Array.isArray(S.dataCache.missions)?S.dataCache.missions:[]).forEach(m=>{
+    const id=String(m?.id??"");
+    const name=normalizeTxt(m?.name);
+    if(id)byId[id]=m;
+    if(name&&!byName[name])byName[name]=m;
+  });
+  S.dataCache.missionMetaById=byId;
+  S.dataCache.missionMetaByName=byName;
+}
+function missionMetaById(typeId,caption=""){
+  const id=String(typeId??"");
+  return (id&&S.dataCache.missionMetaById?.[id])||
+    (caption&&S.dataCache.missionMetaByName?.[normalizeTxt(caption)])||null;
+}
+function scheduleMissionEarningsRender(immediate=false){
+  clearTimeout(missionEarningsRenderTimer);
+  if(immediate)return renderMissionEarnings();
+  missionEarningsRenderTimer=setTimeout(renderMissionEarnings,180);
+}
+function rememberCurrentMission(data={},render=true){
+  const id=String(data.id||data.mission_id||"");
+  if(!id)return;
+  const old=S.currentMissions[id]||{};
+  const next={
+    ...old,...data,id,
+    typeId:String(data.typeId??data.mission_type_id??data.mission_type??old.typeId??""),
+    caption:String(data.caption??data.name??old.caption??"Einsatz"),
+    allianceId:Number(data.allianceId??data.alliance_id??old.allianceId)||0,
+    patients:Math.max(Number(old.patients)||0,Number(data.patients??data.patients_count)||0),
+    prisoners:Math.max(Number(old.prisoners)||0,Number(data.prisoners??data.prisoners_count)||0),
+    patientIds:old.patientIds||{},
+    prisonerIds:old.prisonerIds||{},
+    averageCredits:Math.max(0,Number(data.averageCredits??data.average_credits??data.credits??old.averageCredits)||0)
+  };
+  const changed=!old.id||["typeId","caption","allianceId","patients","prisoners","averageCredits","sourceDom"].some(key=>old[key]!==next[key]);
+  if(changed)S.currentMissions[id]={...next,ts:Date.now()};
+  if(render&&changed)scheduleMissionEarningsRender();
+}
+function updateCurrentMissionPerson(type,data={}){
+  const id=String(data.missionId||data.mission_id||"");
+  if(!id)return;
+  const row=S.currentMissions[id]||{id,caption:"Einsatz",patients:0,prisoners:0,patientIds:{},prisonerIds:{},ts:Date.now()};
+  const previousPatients=Number(row.patients)||0;
+  const previousPrisoners=Number(row.prisoners)||0;
+  const previousPersonCount=type==="patient"?Object.keys(row.patientIds||{}).length:Object.keys(row.prisonerIds||{}).length;
+  const personId=String(data.id||"");
+  if(type==="patient"){
+    row.patientIds=row.patientIds||{};
+    if(personId)row.patientIds[personId]=1;
+    row.patients=Math.max(Number(row.patients)||0,Number(data.count)||0,Object.keys(row.patientIds).length);
+  }else{
+    row.prisonerIds=row.prisonerIds||{};
+    if(personId)row.prisonerIds[personId]=1;
+    row.prisoners=Math.max(Number(row.prisoners)||0,Number(data.count)||0,Object.keys(row.prisonerIds).length);
+  }
+  const currentPersonCount=type==="patient"?Object.keys(row.patientIds||{}).length:Object.keys(row.prisonerIds||{}).length;
+  const changed=previousPatients!==(Number(row.patients)||0)||
+    previousPrisoners!==(Number(row.prisoners)||0)||
+    previousPersonCount!==currentPersonCount||
+    !S.currentMissions[id];
+  S.currentMissions[id]=row;
+  if(changed)scheduleMissionEarningsRender();
+}
+function removeCurrentMission(id){
+  const key=String(id||"");
+  if(!S.currentMissions[key])return;
+  delete S.currentMissions[key];
+  scheduleMissionEarningsRender();
+}
+function scanCurrentMissionsFromDom(){
+  const nodes=Array.from(document.querySelectorAll(".missionSideBarEntry[id^='mission_'],.missionSideBarEntry[data-mission-id]"));
+  const missionArea=document.querySelector("#missions,#mission_list,#mission_panel,.missions-panel,.missionSideBar");
+  if(!nodes.length&&!missionArea)return;
+  const seen=new Set();
+  let changed=false;
+  nodes.forEach(node=>{
+    const id=String(node.getAttribute("data-mission-id")||(node.id.match(/mission_(\d+)/)?.[1])||"");
+    if(!id)return;
+    seen.add(id);
+    const caption=(
+      node.querySelector(".panel-heading a,.mission-title,.missionSideBarEntryTitle")?.textContent||
+      node.querySelector(".panel-heading")?.textContent||
+      "Einsatz"
+    ).replace(/\s+/g," ").trim();
+    const typeId=node.getAttribute("data-mission-type-id")||node.getAttribute("data-mission-type")||node.dataset?.missionTypeId||"";
+    const allianceId=Number(node.getAttribute("data-alliance-id")||node.dataset?.allianceId)||(/verband|alliance/i.test(node.className)?1:0);
+    const old=S.currentMissions[id];
+    rememberCurrentMission({id,caption,typeId,allianceId,sourceDom:true},false);
+    if(old!==S.currentMissions[id])changed=true;
+  });
+  Object.entries(S.currentMissions).forEach(([id,row])=>{
+    if(row?.sourceDom&&!seen.has(id)){delete S.currentMissions[id];changed=true;}
+  });
+  if(changed)scheduleMissionEarningsRender();
+}
+function missionEarningsModel(){
+  const rows=Object.values(S.currentMissions||{}).map(m=>{
+    const meta=missionMetaById(m.typeId,m.caption)||{};
+    const base=Math.max(0,Number(m.averageCredits)||Number(meta.average_credits)||0);
+    const currentPatients=Math.max(0,Number(m.patients)||0);
+    const possiblePatients=Math.max(currentPatients,Number(meta?.additional?.possible_patient)||0);
+    const transportChance=Math.max(0,Math.min(100,Number(meta?.chances?.patient_transport)||0));
+    const patientCount=currentPatients||possiblePatients;
+    const treatment=patientCount*250;
+    const transport=Math.round(patientCount*(transportChance/100)*500);
+    return {
+      id:m.id,name:m.caption||meta.name||"Einsatz",alliance:!!m.allianceId,
+      base,patients:patientCount,currentPatients,possiblePatients,transportChance,
+      treatment,transport,total:base+treatment+transport
+    };
+  }).filter(row=>row.base>0||row.patients>0);
+  return {
+    rows,
+    missions:rows.length,
+    alliance:rows.filter(r=>r.alliance).length,
+    patients:rows.reduce((s,r)=>s+r.patients,0),
+    base:rows.reduce((s,r)=>s+r.base,0),
+    treatment:rows.reduce((s,r)=>s+r.treatment,0),
+    transport:rows.reduce((s,r)=>s+r.transport,0),
+    total:rows.reduce((s,r)=>s+r.total,0)
+  };
+}
+function renderMissionEarnings(){
+  const totalEl=$("#mission-earn-total");
+  if(!totalEl.length)return;
+  const model=missionEarningsModel();
+  const signature=[model.missions,model.alliance,model.patients,model.base,model.treatment,model.transport,model.total].join("|");
+  const totalText=fmtMoney(model.total);
+  const noteText=model.missions?`${fmt(model.missions)} offene Einsätze berücksichtigt`:"Noch keine offenen Einsätze erkannt";
+  if(signature===missionEarningsSignature&&totalEl.text()===totalText&&$("#mission-earn-note").text()===noteText)return;
+  missionEarningsSignature=signature;
+  totalEl.text(totalText);
+  $("#mission-earn-note").text(noteText);
 }
 function rememberAllianceMission(data={}){
+  rememberCurrentMission({...data,sourceDom:false});
   const id=String(data.id||data.mission_id||"");
   const allianceId=Number(data.allianceId??data.alliance_id);
   if(!id||!Number.isFinite(allianceId)||allianceId<=0)return;
@@ -4418,6 +4570,7 @@ function rememberAllianceMission(data={}){
   S.allianceActivityLive[id]=old;
 }
 function updateAllianceMissionPerson(type,data={}){
+  updateCurrentMissionPerson(type,data);
   const id=String(data.missionId||data.mission_id||"");
   const row=S.allianceActivityLive[id];
   if(!row)return;
@@ -4432,6 +4585,7 @@ function updateAllianceMissionPerson(type,data={}){
   }
 }
 function finishAllianceMission(id){
+  removeCurrentMission(id);
   ensureAllianceActivityDay();
   const key=String(id||"");
   const row=S.allianceActivityLive[key];
@@ -4461,7 +4615,11 @@ function installAllianceActivityHooks(){
       const next=function(...args){try{before(...args)}catch(e){}return fn.apply(this,args)};
       Object.defineProperty(next,"__lss7ActivityWrapped",{value:true});window[name]=next;wrapped.add(name);return true};
     const bind=()=>{
-      hook("missionMarkerAdd",m=>send("lss7-mission-add",{id:m?.id,allianceId:m?.alliance_id,patients:m?.patients_count,prisoners:m?.prisoners_count}));
+      hook("missionMarkerAdd",m=>send("lss7-mission-add",{
+        id:m?.id,allianceId:m?.alliance_id,typeId:m?.mission_type_id??m?.mission_type?.id??m?.mission_type,
+        caption:m?.caption??m?.name??m?.mission_type?.caption,averageCredits:m?.average_credits??m?.credits,
+        patients:m?.patients_count,prisoners:m?.prisoners_count
+      }));
       hook("patientMarkerAdd",p=>send("lss7-patient-add",{id:p?.id,missionId:p?.mission_id,count:1}));
       hook("patientMarkerAddCombined",p=>send("lss7-patient-add",{missionId:p?.mission_id,count:p?.count}));
       hook("prisonerMarkerAdd",p=>send("lss7-prisoner-add",{id:p?.id,missionId:p?.mission_id,count:1}));
@@ -4743,17 +4901,28 @@ function forecastOverviewHtml(m){
 function forecastFullHtml(m){
   const eta=m.days===null?"Nicht berechenbar":m.days===0?"Bereits erreicht":`${fmt(m.days)} Tage`;
   const predicted=m.predicted?formatForecastDate(m.predicted):"Noch offen";
+  const etaState=m.days===0?"reached":m.predicted?"active":"waiting";
   const note=`${m.quality}${m.estimatedCount?` · ${m.estimatedCount} geschätzte Offline-Tage`:""}${m.usedToday?" · heutiges Tempo hochgerechnet":""}`;
   return `<div class="forecast-wrap forecast-pro">
     <div class="forecast-beta"><b>LIVE-LAGE</b><span>Die Hochrechnung basiert auf den lokal gespeicherten Verbandsständen. Vollständige Tage zählen stärker als heutige Zwischenstände; Events, Offline-Zeiten und Aktivitätsspitzen können das Ergebnis verschieben.</span></div>
     <div class="forecast-head"><div><div class="forecast-title">Verbandsprognose</div><div class="forecast-sub">Der Meilenstein lässt sich oben oder in den Einstellungen ändern. Resttage und Erreichungsdatum werden automatisch berechnet.<br>${escHtml(note)}</div></div><span class="forecast-status ${m.statusClass}">${escHtml(m.status)}</span></div>
+    <div class="forecast-target-hero ${etaState}">
+      <div class="forecast-target-date">
+        <span>Voraussichtliches Erreichungsdatum</span>
+        <strong>${escHtml(predicted)}</strong>
+        <b>${escHtml(eta)}</b>
+      </div>
+      <div class="forecast-target-summary">
+        <span><small>Aktueller Stand</small><b>${fmtMoney(m.current)}</b></span>
+        <span><small>Meilenstein</small><b>${fmtMoney(m.target)}</b></span>
+        <span><small>Noch benötigt</small><b>${fmtMoney(m.remaining)}</b></span>
+        <span><small>Ø pro Tag</small><b>${m.avg?fmtMoney(m.avg):"Wird ermittelt"}</b></span>
+      </div>
+    </div>
     <div class="forecast-kpis">
-      <div class="forecast-kpi"><span class="forecast-k">Aktueller Stand</span><span class="forecast-v blue">${fmtMoney(m.current)}</span><small>Gesamtcredits des Verbands</small></div>
-      <div class="forecast-kpi"><span class="forecast-k">Meilenstein</span><span class="forecast-v">${fmtMoney(m.target)}</span><small>frei einstellbares Ziel</small></div>
-      <div class="forecast-kpi"><span class="forecast-k">Noch benötigt</span><span class="forecast-v amber">${fmtMoney(m.remaining)}</span><small>${(100-m.progress).toFixed(2).replace(".",",")}% offen</small></div>
-      <div class="forecast-kpi"><span class="forecast-k">Ø pro Tag</span><span class="forecast-v green">${m.avg?fmtMoney(m.avg):"-"}</span><small>robuster Mittelwert</small></div>
-      <div class="forecast-kpi"><span class="forecast-k">Prognose</span><span class="forecast-v green">${escHtml(eta)}</span><small>${escHtml(predicted)}</small></div>
       <div class="forecast-kpi"><span class="forecast-k">7 Tage Summe</span><span class="forecast-v blue">${m.total7?fmtMoney(m.total7):"-"}</span><small>letzte vollständige Tage</small></div>
+      <div class="forecast-kpi"><span class="forecast-k">Tempo/Woche</span><span class="forecast-v green">${m.weeklyPace?fmtMoney(m.weeklyPace):"-"}</span><small>bei aktuellem Durchschnitt</small></div>
+      <div class="forecast-kpi"><span class="forecast-k">Tempo/30 Tage</span><span class="forecast-v blue">${m.monthlyPace?fmtMoney(m.monthlyPace):"-"}</span><small>theoretische Monatsleistung</small></div>
       <div class="forecast-kpi"><span class="forecast-k">Trendtempo</span><span class="forecast-v ${m.trendClass}">${escHtml(m.trendLabel)}</span><small>${m.trendPct?`${m.trendPct>0?"+":""}${fmt(m.trendPct)}% gegenüber vorher`: "noch keine Vergleichsbasis"}</small></div>
       <div class="forecast-kpi"><span class="forecast-k">Datenbasis</span><span class="forecast-v">${escHtml(m.qualityText)}</span><small>${escHtml(m.qualityDetail)}</small></div>
     </div>
@@ -4800,10 +4969,13 @@ function drawForecastChart(id,m){
 function updateOverviewForecastSummary(m){
   if(!$("#overview-forecast-eta").length)return;
   const eta=forecastDaysText(m.days);
+  const date=m.predicted?formatForecastDate(m.predicted):m.days===0?"Bereits erreicht":"Noch nicht berechenbar";
   $("#overview-forecast-eta").text(eta);
+  $("#overview-forecast-date").text(date);
+  $("#overview-forecast-progress").text(`${m.progress.toFixed(1).replace(".",",")}%`);
   $("#overview-forecast-avg").text(m.avg?fmtMoney(m.avg):"Sammelt Daten");
   $("#overview-today-earn").text(fmtMoney(allianceEarnToday()));
-  $("#overview-quality").text(m.qualityText);
+  $("#overview-quality").text(`${m.qualityText} Datenbasis`);
 }
 function renderForecast(){
   const m=allianceForecastModel();
@@ -5084,6 +5256,41 @@ function playerDailyBoardHtml(){
     return `<div class="player-daily-row"><span class="player-daily-day">${escHtml(row.label)}</span><span class="player-daily-bar"><i style="width:${pct}%"></i></span><span class="player-daily-val">${fmtMoney(row.earn)}</span></div>`;
   }).join("")}</div>`;
 }
+function playerRecordsHtml(model){
+  const rows=playerDailyRows(14).filter(row=>row.earn>0);
+  const bestDay=rows.length?[...rows].sort((a,b)=>b.earn-a.earn)[0]:null;
+  const total=rows.reduce((sum,row)=>sum+row.earn,0);
+  const avg=rows.length?Math.round(total/rows.length):0;
+  let streak=0;
+  const dates=new Set(rows.map(row=>row.date));
+  const cursor=new Date();
+  for(let i=0;i<14;i++){
+    const key=localDateKey(cursor);
+    if(!dates.has(key))break;
+    streak++;
+    cursor.setDate(cursor.getDate()-1);
+  }
+  const rank=Number(S.playerRanking?.rank)||0;
+  const bestRankValues=[rank,Number(S.playerRankHistory?.bestRank)||0].filter(Boolean);
+  const bestRank=bestRankValues.length?Math.min(...bestRankValues):0;
+  const reached=LEVELS.filter(level=>model.current>=Number(level.need||0));
+  const recentMilestones=LEVELS.map((level,index)=>({level,index,reached:model.current>=Number(level.need||0)}))
+    .filter(item=>item.reached||item.index===reached.length)
+    .slice(Math.max(0,reached.length-3),reached.length+1);
+  return `<section class="player-records">
+    <div class="player-records-head"><div><b>Persönliche Rekorde & Meilensteine</b><span>Aus deinen lokal gespeicherten Werten</span></div><em>${fmt(reached.length)}/${fmt(LEVELS.length)} Ränge erreicht</em></div>
+    <div class="player-record-grid">
+      <div class="player-record-card best"><span>Bester Tag</span><b>${bestDay?fmtMoney(bestDay.earn):"-"}</b><small>${bestDay?escHtml(bestDay.label):"Noch keine Tageswerte"}</small></div>
+      <div class="player-record-card"><span>Ø der letzten Tage</span><b>${avg?fmtMoney(avg):"-"}</b><small>${fmt(rows.length)} gespeicherte Tage</small></div>
+      <div class="player-record-card streak"><span>Aktive Verdienstserie</span><b>${fmt(streak)} ${streak===1?"Tag":"Tage"}</b><small>Tage mit erfasstem Verdienst</small></div>
+      <div class="player-record-card rank"><span>Beste Platzierung heute</span><b>${bestRank?`#${fmt(bestRank)}`:"-"}</b><small>${rank?`Aktuell #${fmt(rank)}`:"Topliste wird geladen"}</small></div>
+    </div>
+    <div class="player-milestones">${recentMilestones.map(item=>{
+      const next=!item.reached;
+      return `<div class="player-milestone${item.reached?" reached":" next"}"><span class="player-milestone-dot">${item.reached?"✓":"→"}</span><div><b>${escHtml(item.level.rank)}</b><small>${fmtMoney(item.level.need)}${next&&model.remaining?` · noch ${fmtMoney(model.remaining)}`:""}</small></div></div>`;
+    }).join("")}</div>
+  </section>`;
+}
 
 function normalizePlayerRankHistory(){
   const today=localDateKey();
@@ -5154,7 +5361,13 @@ function renderPlayerForecast(){
     .attr("title",`Spielerprognose und Platzierungsumfeld öffnen · ${delta.label}`)
     .html(`<span class="prof-placement-kicker">Spielerplatzierung</span><span class="prof-placement-main"><strong>${rank?`#${fmt(rank)}`:"Wird ermittelt"}</strong><small class="prof-placement-history ${delta.cls}">${rankTrendHtml(delta,"compact")}</small></span><span class="prof-placement-caption">${escHtml(delta.label)}</span>`);
   if(!roots.length)return;
-  const eta=model.eta?model.eta.toLocaleDateString(uiLocale(),{day:"2-digit",month:"2-digit",year:"numeric"}):"Noch keine Daten";
+  const eta=model.next
+    ?(model.eta?model.eta.toLocaleDateString(uiLocale(),{weekday:"long",day:"2-digit",month:"long",year:"numeric"}):"Noch nicht berechenbar")
+    :"Höchster Rang erreicht";
+  const etaShort=model.next
+    ?(model.days!==null?`${fmt(model.days)} ${model.days===1?"Tag":"Tage"}`:"Tempo wird ermittelt")
+    :"Ziel erreicht";
+  const etaState=model.next?(model.eta?"active":"waiting"):"reached";
   const rows=(S.playerRanking?.rows||[]).map(row=>{
     const href=playerProfileLink(row);
     const nameHtml=href?`<a href="${href}" target="_blank" rel="noopener">${escHtml(row.name)}</a>`:`<b>${escHtml(row.name)}</b>`;
@@ -5169,11 +5382,22 @@ function renderPlayerForecast(){
         <strong class="player-forecast-hero-rank">${escHtml(model.next?.rank||"Höchster Rang")}</strong>
         <span class="player-forecast-hero-meta">${model.next?`${fmtMoney(model.remaining)} fehlen noch · ${progressMeta}`:"Alle bekannten Beförderungen sind erreicht."}</span>
       </div>
+      <div class="player-forecast-eta ${etaState}">
+        <span class="player-forecast-eta-label">Voraussichtliches Erreichungsdatum</span>
+        <strong>${escHtml(eta)}</strong>
+        <span class="player-forecast-eta-days">${escHtml(etaShort)}</span>
+        <small>Berechnet aus deinem durchschnittlichen persönlichen Tagesverdienst</small>
+      </div>
       <div class="player-forecast-hero-grid">
-        <span class="player-forecast-hero-stat"><span>Prognose</span><b>${model.days!==null?`${fmt(model.days)} Tage`:"Noch offen"}</b></span>
         <span class="player-forecast-hero-stat"><span>Ø pro Tag</span><b>${model.average?fmtMoney(model.average):"Sammelt Daten"}</b></span>
+        <span class="player-forecast-hero-stat"><span>Tempo/Woche</span><b>${model.weeklyPace?fmtMoney(model.weeklyPace):"-"}</b></span>
         <span class="player-forecast-hero-stat"><span>Datenbasis</span><b>${escHtml(model.qualityText)}</b></span>
       </div>
+    </div>
+    <div class="player-forecast-progress-block">
+      <div class="player-forecast-progress-meta"><span>Fortschritt zu ${escHtml(model.next?.rank||"deinem Ziel")}</span><b>${model.progress.toFixed(2).replace(".",",")}%</b></div>
+      <div class="player-forecast-progress"><div class="player-forecast-fill" style="width:${model.progress.toFixed(2)}%"></div></div>
+      <div class="player-forecast-progress-meta foot"><span>${model.next?fmtMoney(model.current):"Abgeschlossen"}</span><span>${model.next?`${fmtMoney(model.remaining)} fehlen noch`:"Alle bekannten Ränge erreicht"}</span></div>
     </div>
     <div class="player-forecast-grid">
       <div class="player-forecast-kpi"><span>Aktueller Dienstgrad</span><b>${escHtml(model.level.rank)}</b></div>
@@ -5181,14 +5405,13 @@ function renderPlayerForecast(){
       <div class="player-forecast-kpi progress"><span>Noch benötigt</span><b>${model.next?fmtMoney(model.remaining):"Erreicht"}</b></div>
       <div class="player-forecast-kpi rank"><span>Spielerplatzierung</span><b>${rank?`#${fmt(rank)}`:escHtml(S.playerRanking?.status||"Wird geladen")}</b></div>
       <div class="player-forecast-kpi rank"><span>Platzänderung heute</span><b class="rank-delta ${delta.cls}">${rankTrendHtml(delta,"short")}</b></div>
-      <div class="player-forecast-kpi progress"><span>Ø pro Tag</span><b>${model.average?fmtMoney(model.average):"Sammle Daten"}</b></div>
-      <div class="player-forecast-kpi progress"><span>Tempo/Woche</span><b>${model.weeklyPace?fmtMoney(model.weeklyPace):"-"}</b></div>
-      <div class="player-forecast-kpi"><span>Voraussichtlich</span><b>${escHtml(eta)}</b></div>
+      <div class="player-forecast-kpi progress"><span>Aktueller Creditstand</span><b>${fmtMoney(model.current)}</b></div>
+      <div class="player-forecast-kpi progress"><span>Zielwert Beförderung</span><b>${model.next?fmtMoney(model.target):"Erreicht"}</b></div>
       <div class="player-forecast-kpi data"><span>7 Tage Summe</span><b>${model.total7?fmtMoney(model.total7):"-"}</b></div>
       <div class="player-forecast-kpi data"><span>Bester Tag</span><b>${model.bestDay?`${escHtml(model.bestDay.label)} · ${fmtMoney(model.bestDay.earn)}`:"-"}</b></div>
       <div class="player-forecast-kpi data"><span>Datenbasis</span><b>${escHtml(model.qualityText)}</b></div>
     </div>
-    <div class="player-forecast-progress"><div class="player-forecast-fill" style="width:${model.progress.toFixed(2)}%"></div></div>
+    ${playerRecordsHtml(model)}
     ${playerDailyBoardHtml()}
     <div class="set-note">Offline-Zeiten, Events und schwankende Tagesverdienste können zu Abweichungen führen. Die Werte werden nur in diesem Browser gespeichert.</div>
     <div class="player-rank-context">${rows||`<div class="lss7-empty">${escHtml(S.playerRanking?.status||"Spielerplatzierung wird geladen...")}</div>`}</div>
@@ -5608,7 +5831,7 @@ function fetchAnalysisMeta(){
   apiGet(API.aaoCategories,data=>{S.dataCache.aaoCategories=apiArray(data,"aao_categories","categories");renderAAOs(S.dataCache.aaos||[]);},()=>{});
   apiGetPaged(API.pois,list=>{S.dataCache.pois=list;renderFleetInsights();},()=>renderFleetInsights(),{keys:["pois"]});
   apiGet(API.missionTypes,data=>{S.dataCache.missionTypes=data||null;renderFleetInsights();},()=>renderFleetInsights());
-  jsonGet(API.missionsJson,data=>{S.dataCache.missions=apiArray(data,"missions","result");renderFleetInsights();},()=>renderFleetInsights());
+  jsonGet(API.missionsJson,data=>{S.dataCache.missions=apiArray(data,"missions","result");rebuildMissionMetaIndex();renderFleetInsights();scheduleMissionEarningsRender(true);},()=>{renderFleetInsights();scheduleMissionEarningsRender(true);});
   jsonGet(API.allianceEventTypes,data=>{S.dataCache.allianceEventTypes=apiArray(data,"alliance_event_types","events","result");renderFleetInsights();},()=>renderFleetInsights());
   S.dataCache.lastMetaTs=Date.now();
 }
@@ -6659,19 +6882,23 @@ function buildUI(){
           <span class="overview-sub" id="overview-command-sub">Credits, Platzierung, Tagesleistung und Zielprognose werden aus den aktuellen Verbandsdaten verdichtet.</span>
         </div>
         <div class="overview-command-metrics">
-          <span class="overview-pill"><span>Zielprognose</span><b id="overview-forecast-eta">-</b></span>
+          <span class="overview-pill forecast-date"><span>Voraussichtliches Zieldatum</span><b id="overview-forecast-date">-</b><small id="overview-forecast-eta">-</small></span>
+          <span class="overview-pill"><span>Zielfortschritt</span><b id="overview-forecast-progress">-</b></span>
           <span class="overview-pill"><span>Ø Verband/Tag</span><b id="overview-forecast-avg">-</b></span>
           <span class="overview-pill"><span>Heute</span><b id="overview-today-earn">${fmtMoney(allianceEarnToday())}</b></span>
           <span class="overview-pill"><span>Datenbasis</span><b id="overview-quality">-</b></span>
         </div>
       </div>
+      <div class="overview-section-title"><span>Verbandskennzahlen</span><small>Aktueller Stand</small></div>
       <div class="sc overview-card total">
         <span class="sl">Credits gesamt</span>
         <span class="sv c-gr" id="sv-total">-</span>
+        <span class="overview-card-note">Gesamtleistung des Verbands</span>
       </div>
       <div class="sc overview-card cash">
         <span class="sl">Verbandskasse</span>
         <span class="sv c-gr" id="sv-kasse">-</span>
+        <span class="overview-card-note">Aktuell verfügbare Verbandscredits</span>
       </div>
       <div class="sc overview-card rank">
         <span class="sl">Platzierung</span>
@@ -6681,20 +6908,25 @@ function buildUI(){
       <div class="sc overview-card members">
         <span class="sl">Mitglieder</span>
         <span class="sv" id="sv-members">-</span>
+        <span class="overview-card-note">Spieler im Verband</span>
       </div>
-      <div class="sc w2 alliance-day-card" id="alliance-activity-card" title="Lokaler Live-Zähler: Erfasst gemeinsam freigegebene Verbandseinsätze, solange das Spiel geöffnet ist.">
+      <div class="overview-section-title"><span>Aktivität & Potenzial</span><small>Heute und offene Einsätze</small></div>
+      <div class="sc w2 alliance-day-card" id="alliance-activity-card">
         <div class="alliance-day-head">
           <span class="sl">Tageslage Verband</span>
-          <span class="alliance-activity-note"><i></i> Live-Erfassung aktiv</span>
+          <span class="alliance-activity-note"><i></i> Live-Berechnung aktiv</span>
         </div>
         <div class="alliance-day-grid">
           <span class="alliance-day-metric earnings"><small>Verbandsverdienst heute</small><b id="sv-alliance-daily">${fmtMoney(allianceEarnToday())}</b></span>
-          <span class="alliance-day-metric"><small>Einsätze abgeschlossen</small><b id="sv-activity-missions">${fmt(S.allianceActivity.missions||0)}</b></span>
-          <span class="alliance-day-metric"><small>Patienten transportiert</small><b id="sv-activity-patients">${fmt(S.allianceActivity.patients||0)}</b></span>
-          <span class="alliance-day-metric"><small>Gefangene transportiert</small><b id="sv-activity-prisoners">${fmt(S.allianceActivity.prisoners||0)}</b></span>
+          <span class="alliance-day-metric potential">
+            <small>Möglicher Verdienst aus offenen Einsätzen</small>
+            <b id="mission-earn-total">0 Credits</b>
+            <em id="mission-earn-note">Noch keine offenen Einsätze erkannt</em>
+          </span>
         </div>
-        <span class="alliance-day-foot">Einsätze, Patienten und Gefangene werden lokal gezählt, solange das Spiel geöffnet ist.</span>
+        <span class="alliance-day-foot">Der mögliche Verdienst enthält durchschnittliche Einsatzvergütungen sowie geschätzte Behandlungs- und Transporterlöse. Tatsächliche Werte können abweichen.</span>
       </div>
+      <div class="overview-section-title"><span>Entwicklung & Prognose</span><small>Historie, Zieltempo und Rangumfeld</small></div>
       <div class="sc w2" id="alliance-earn-board">
         <div class="rank-mini-head">
           <span class="rank-mini-title">Verbandsverdienst 7 Tage</span>
@@ -7078,11 +7310,20 @@ function buildUI(){
   </div>`);
 
   const grpPn=$(`<div class="set-group set-wide settings-patch-notes"><div class="set-head">Patch-Notes</div></div>`);
-  grpPn.append(`<div class="set-note"><b>v9.3.1</b><br>Spielerprofil, Spielerplatzierung, Verbandsprognose und Übersicht wurden optisch und fachlich überarbeitet. Die Prognose zeigt jetzt Datenbasis, Trendtempo, Zieltempo und eine professionellere Lageübersicht. Zusätzlich gibt es unter Kontakt ein Analyse- und Supportdatei-Werkzeug.</div>`);
-  setWrap.append(grpPn);
-  setWrap.append(grpContact);
-  setWrap.append(grpDiag);
-  setWrap.append(grpInfo);
+  grpPn.append(`<div class="set-note"><b>Aktuelle Version v${V}</b><br>Alle Änderungen stehen zusätzlich gesammelt in den ausführlichen Patch-Notes unterhalb des Dashboards.</div>`);
+  const settingsCategory=(title,subtitle,items)=>{
+    const section=$(`<section class="settings-category set-wide"><div class="settings-category-head"><b>${title}</b><span>${subtitle}</span></div><div class="settings-category-grid"></div></section>`);
+    section.find(".settings-category-grid").append(...items);
+    return section;
+  };
+  setWrap.empty().append(
+    `<div class="settings-intro"><b>Einstellungen übersichtlich nach Bereichen</b><span>Jeder Abschnitt erklärt, welche Funktionen zusammengehören. Änderungen werden sofort übernommen und ausschließlich lokal in deinem Browser gespeichert.</span></div>`,
+    settingsCategory("1 · Oberfläche & Bedienung","Theme, Menüposition, Header-Button, Sprache, sichtbare Kennzahlen und Tastenkürzel.",[grpNav,grpOpt]),
+    settingsCategory("2 · Benachrichtigungen & Sounds","Credit-Popups, Lautstärke, Wetterwarnungen sowie WM- und Eventhinweise.",[grpCredits,grpWx,grpEvent]),
+    settingsCategory("3 · Auswertungen & Prognosen","Zielwerte und Berechnungen für die Verbandsentwicklung.",[grpForecast]),
+    settingsCategory("4 · Daten, Wartung & Diagnose","Daten aktualisieren, exportieren, Updates prüfen und Fehlerberichte erstellen.",[grpAct,grpExport,grpUpdate,grpDiag]),
+    settingsCategory("5 · Hilfe & Projektinformationen","Versionshinweise, Kontaktmöglichkeiten und Hintergrund zum Projekt.",[grpPn,grpContact,grpInfo])
+  );
 
   tSet.append(setWrap);
   body.append(tSet);
@@ -7656,6 +7897,82 @@ function mkAccordion(icon,title,body){
 function patchHTML(){
   const groups=[
     {
+      title:"v9.8.1 — Kompaktere Übersicht",
+      items:[
+        "Der Einsatz-Auslastungsmonitor wurde auf Wunsch vollständig aus der Übersicht entfernt.",
+        "Der mögliche Verdienst aus offenen Einsätzen bleibt unverändert erhalten.",
+        "Nicht mehr benötigte Berechnungslogik, Selektoren und Styles wurden ebenfalls entfernt.",
+        "Version und Patch-Notes wurden auf v9.8.1 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.8.0 — Rekorde, Meilensteine & Einsatzlage",
+      items:[
+        "Die Spielerprognose zeigt jetzt persönliche Rekorde für den besten Tag, den Durchschnitt, die aktive Verdienstserie und die beste Tagesplatzierung.",
+        "Eine kompakte Meilensteinleiste zeigt erreichte Dienstgrade und die unmittelbar nächste Beförderung.",
+        "Die Übersicht besitzt einen Live-Auslastungsmonitor für offene eigene und Verbandseinsätze sowie erkannte Patienten.",
+        "Die Einsatzlage wird verständlich als ruhig, normal, hoch oder sehr hoch eingeordnet.",
+        "Die vollständige Verbandsprognose zeigt das konkrete voraussichtliche Erreichungsdatum jetzt in einer großen Fokuskarte.",
+        "Resttage, aktueller Stand, Zielwert, fehlende Credits und Tagesdurchschnitt stehen direkt beim Erreichungsdatum.",
+        "Wochen- und 30-Tage-Tempo ergänzen die Prognose, ohne zentrale Werte doppelt anzuzeigen.",
+        "Version und Patch-Notes wurden auf v9.8.0 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.7.0 — Neue Übersicht & Spielerprognose",
+      items:[
+        "Die Übersichtsseite ist jetzt klar in Verbandskennzahlen, Aktivität und Entwicklung gegliedert.",
+        "Das voraussichtliche Zieldatum der Verbandsprognose wird bereits im großen Lagekopf angezeigt.",
+        "Kennzahlen besitzen verständliche Untertitel und eine deutlichere visuelle Gewichtung.",
+        "Die Spielerprognose besitzt eine eigene hervorgehobene Fokuskarte für das voraussichtliche Erreichungsdatum.",
+        "Resttage, Datenqualität, nächster Dienstgrad und fehlende Credits sind jetzt auf einen Blick erfassbar.",
+        "Der Beförderungsfortschritt zeigt Prozentwert, aktuellen Creditstand und verbleibenden Betrag in einem eigenen Bereich.",
+        "Doppelte Prognosewerte wurden entfernt und durch aktuelle beziehungsweise zielbezogene Credits ersetzt.",
+        "Der höchste bekannte Rang und noch nicht berechenbare Prognosen werden verständlicher dargestellt.",
+        "Version und Patch-Notes wurden auf v9.7.0 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.6.2 — Kompakte Tageslage & Fehlerkorrekturen",
+      items:[
+        "Die Zähler für abgeschlossene Einsätze, Patienten- und Gefangenentransporte wurden aus der Tageslage entfernt.",
+        "Der mögliche Verdienst aller offenen Einsätze steht jetzt direkt neben dem heutigen Verbandsverdienst.",
+        "Die separate Verdienstbox wurde entfernt, damit die Übersicht kompakter und frei von Dopplungen bleibt.",
+        "Die Verdienstanzeige aktualisiert sich auch nach einem Neuaufbau der Oberfläche zuverlässig.",
+        "Unveränderte Patienten- und Gefangenendaten lösen keine unnötigen Neuberechnungen mehr aus.",
+        "Ein kurzfristig fehlender Einsatzbereich löscht die erkannten offenen Einsätze nicht mehr versehentlich.",
+        "Version und Patch-Notes wurden auf v9.6.2 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.6.1 — Flüssigeres Menü & stabiler K.-o.-Plan",
+      items:[
+        "Die Übersicht zeigt beim Einsatzpotenzial nur noch den möglichen Gesamtverdienst als klaren, kompakten Wert.",
+        "Die Einsatzliste wird nicht mehr alle fünf Sekunden vollständig neu berechnet; Änderungen werden gebündelt und nur bei Bedarf dargestellt.",
+        "Einsatz-Metadaten werden einmalig indexiert, wodurch die Verdienstberechnung deutlich schneller arbeitet.",
+        "Der K.-o.-Plan verwendet keine festen Riesenhöhen oder künstlichen Abstände mehr und kann dadurch nicht mehr am unteren Rand abgeschnitten werden.",
+        "Die Turnierrunden sind jetzt kompakt in professionellen Spalten mit sauberen Paargruppen und eindeutiger Rundennavigation angeordnet.",
+        "Version und Patch-Notes wurden auf v9.6.1 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.6.0 — Einsatzpotenzial, neue Einstellungen & Stabilität",
+      items:[
+        "Die Übersicht zeigt jetzt alle aktuell erkannten eigenen und Verbandseinsätze mit möglichem Gesamtverdienst.",
+        "Grundvergütungen werden aus den öffentlichen Leitstellenspiel-Einsatzdaten beziehungsweise den Live-Einsatzfeldern übernommen.",
+        "Patientenbehandlung und erwartete Transporte werden getrennt berechnet und transparent als Schätzung ausgewiesen.",
+        "Die stärksten aktuell offenen Einsätze werden nach möglichem Verdienst sortiert angezeigt.",
+        "Die Einstellungen wurden vollständig in fünf verständliche Bereiche gegliedert: Oberfläche, Benachrichtigungen, Auswertungen, Datenpflege und Hilfe.",
+        "Die Credit-Popup-Einstellungen befinden sich jetzt sinnvoll im Bereich Benachrichtigungen & Sounds.",
+        "Jeder Einstellungsbereich besitzt eine kurze Erklärung, welche Optionen zusammengehören und was sie beeinflussen.",
+        "Der K.-o.-Turnierbaum besitzt nun einen eigenen horizontalen und vertikalen Scrollbereich und wird nicht mehr am Dashboard-Rand abgeschnitten.",
+        "Rundenabstände und Verbindungslinien wurden für alle 32 K.-o.-Spiele neu berechnet und besser lesbar gestaltet.",
+        "Die Credit-Sounds wurden deutlich verstärkt und laufen nun über einen Kompressor, damit auch Laptop-Lautsprecher klarer und kräftiger wiedergeben.",
+        "Die Lautstärkeregelung bleibt erhalten; 100 Prozent nutzt jetzt einen deutlich höheren, aber begrenzten Ausgangspegel.",
+        "Version und Patch-Notes wurden auf v9.6.0 aktualisiert."
+      ]
+    },
+    {
       title:"v9.5.3 — Einstellbare Popup-Größe",
       items:[
         "Das Credit-Popup kann jetzt in den Größen Klein, Mittel oder Groß angezeigt werden.",
@@ -8034,6 +8351,33 @@ function patchHTML(){
       ]
     }
   ];
+  groups.splice(0,groups.length,{
+    title:"v9.5.3 — Großes Dashboard-, WM- und Prognose-Update",
+    items:[
+      "Der WM-2026-Liveticker wurde professionell in der Mitte des Headers platziert und zeigt heutige beziehungsweise kommende Spiele nebeneinander mit Flaggen, Uhrzeit, Live-Ergebnis und Spielstatus.",
+      "Beendete WM-Spiele bleiben für sechs Stunden mit Endergebnis sichtbar; anschließend wechselt der Header automatisch zurück zu den kommenden Spielen.",
+      "Live-Spielstände werden regelmäßig aktualisiert und neue Tore können als sichtbarer Hinweis gemeldet werden.",
+      "Das Event-Menü wurde zu einem umfangreichen WM Match Center mit Spielplan, Ergebnissen, Stadien, TV-Informationen, Gruppenübersichten und Tipps ausgebaut.",
+      "Die K.-o.-Phase enthält Runde der 32, Achtelfinale, Viertelfinale, Halbfinale, Finale und Spiel um Platz 3 und kann vollständig ein- und ausgeklappt werden.",
+      "Der K.-o.-Plan wurde kompakter und stabiler aufgebaut; feste Riesenhöhen, fehlerhafte Abstände und abgeschnittene Turnierbereiche wurden entfernt.",
+      "Dark, Light, Summer 2026, Summer Dark 2026 und LCARS wurden mit klareren Kontrasten, hochwertigeren Flächen, einheitlicher Typografie und professionelleren Karten überarbeitet.",
+      "Credit-Eingänge können als animierte Buchungs-Popups mit Betrag, Tagesverdienst, Uhrzeit und Ablaufanzeige eingeblendet werden.",
+      "Position, Animation, Anzeigedauer, Mindestbetrag und Popup-Größe Klein, Mittel oder Groß sind individuell einstellbar.",
+      "Mehrere synthetische Benachrichtigungsklänge, Klangvorschau und ein Lautstärkeregler wurden ergänzt; die Wiedergabe wurde für Laptop-Lautsprecher deutlich verstärkt.",
+      "Die Einstellungen wurden in verständliche Bereiche für Oberfläche, Benachrichtigungen, Prognosen, Datenpflege und Hilfe gegliedert.",
+      "Die Übersicht wurde in Verbandskennzahlen, Aktivität, Potenzial sowie Entwicklung und Prognose gegliedert und dadurch deutlich lesbarer gestaltet.",
+      "Der mögliche Gesamtverdienst aller aktuell offenen Einsätze wird kompakt neben dem heutigen Verbandsverdienst angezeigt.",
+      "Die Verdienstschätzung berücksichtigt durchschnittliche Einsatzcredits sowie mögliche Patientenbehandlungen und erwartete Transporte.",
+      "Teure Einsatzberechnungen wurden gebündelt, Metadaten werden indexiert und die Einsatzliste wird nur noch bei tatsächlichen Änderungen neu dargestellt.",
+      "Die Verbandsprognose zeigt das konkrete voraussichtliche Erreichungsdatum, Resttage, Zielfortschritt, aktuellen Stand, Zielwert, fehlende Credits und den Tagesdurchschnitt deutlich hervorgehoben.",
+      "Wochen- und 30-Tage-Tempo, Trend, Datenqualität, Zieltempo und eine grafische Hochrechnung ergänzen die Verbandsprognose.",
+      "Die Spielerprognose besitzt eine große Fokuskarte für das voraussichtliche Beförderungsdatum sowie Resttage, Datenbasis und Fortschritt zum nächsten Dienstgrad.",
+      "Persönliche Rekorde zeigen den besten Tag, den Durchschnitt der gespeicherten Tage, die aktive Verdienstserie und die beste Tagesplatzierung.",
+      "Eine Meilensteinleiste zeigt erreichte Dienstgrade und die unmittelbar nächste Beförderung mit benötigten Credits.",
+      "Die Oberfläche wurde auf unnötige Dopplungen, verwaiste Anzeigen und Performanceprobleme geprüft und an mehreren Stellen stabilisiert.",
+      "Alle in diesem Entwicklungsstand enthaltenen Änderungen werden gemeinsam als Version v9.5.3 geführt."
+    ]
+  });
   return groups.map((g,i)=>`<details class="patch-ver"${i===0?" open":""}>
     <summary>${escHtml(g.title)}</summary>
     <div class="patch-ver-body">
@@ -8092,15 +8436,72 @@ GM_addStyle(`
 .alliance-day-card::after{content:'';position:absolute;inset:auto -34px -64px auto;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(34,197,94,.11),transparent 68%);pointer-events:none;}
 .alliance-day-head{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
 .alliance-day-head .sl{margin:0;}
-.alliance-day-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(210px,1.35fr) repeat(3,minmax(120px,1fr));gap:7px;}
+.alliance-day-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 .alliance-day-metric{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0;min-height:54px;padding:9px 10px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);}
 .alliance-day-metric.earnings{border-color:rgba(34,197,94,.22);background:linear-gradient(125deg,rgba(34,197,94,.10),rgba(14,165,233,.035));}
+.alliance-day-metric.potential{border-color:rgba(59,130,246,.28);background:linear-gradient(125deg,rgba(59,130,246,.105),rgba(168,85,247,.04));}
 .alliance-day-metric small{color:var(--t3);font-size:7.5px;font-weight:850;text-transform:uppercase;letter-spacing:.35px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .alliance-day-metric b{color:var(--greenh);font:900 15px/1.1 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.alliance-day-metric.earnings b{font-size:17px;}
+.alliance-day-metric.earnings b,.alliance-day-metric.potential b{font-size:17px;}
+.alliance-day-metric.potential b{color:var(--blueh);}
+.alliance-day-metric.potential em{color:var(--t4);font-size:7.5px;font-style:normal;line-height:1.25;}
 .alliance-day-foot{position:relative;z-index:1;display:block;margin-top:6px;color:var(--t4);font-size:7.5px;line-height:1.35;}
 .alliance-activity-note{display:flex;align-items:center;gap:5px;color:var(--greenh);font-size:7.5px;font-weight:800;line-height:1.25;white-space:nowrap;}
 .alliance-activity-note i{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green);animation:lpulse 2.4s ease-in-out infinite;}
+.overview-section-title{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:5px 1px -1px;padding:7px 2px 6px;border-bottom:1px solid var(--b1);}
+.overview-section-title span{color:var(--t1);font-size:9.5px;font-weight:950;letter-spacing:.55px;text-transform:uppercase;}
+.overview-section-title small{color:var(--t4);font-size:7.5px;font-weight:800;}
+.overview-card-note{display:block;margin-top:5px;color:var(--t4);font-size:7.5px;line-height:1.3;}
+.overview-pill.forecast-date{grid-row:span 2;display:flex;flex-direction:column;justify-content:center;min-width:190px;border-color:rgba(34,197,94,.32);background:linear-gradient(135deg,rgba(34,197,94,.14),rgba(14,165,233,.06));}
+.overview-pill.forecast-date b{color:var(--greenh);font-size:13px;white-space:normal;line-height:1.25;}
+.overview-pill.forecast-date small{display:block;margin-top:4px;color:var(--t2);font:900 9px/1.2 var(--mono);}
+.player-forecast-hero{grid-template-columns:minmax(220px,.8fr) minmax(300px,1.25fr) minmax(210px,.75fr)!important;}
+.player-forecast-eta{position:relative;display:flex;flex-direction:column;justify-content:center;min-width:0;padding:15px 17px;border:1px solid rgba(34,197,94,.42);border-radius:10px;background:linear-gradient(135deg,rgba(34,197,94,.16),rgba(14,165,233,.07));box-shadow:0 12px 28px rgba(0,0,0,.12),inset 0 1px rgba(255,255,255,.04);overflow:hidden;}
+.player-forecast-eta::after{content:"";position:absolute;right:-38px;top:-58px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(74,222,128,.20),transparent 67%);pointer-events:none;}
+.player-forecast-eta-label{position:relative;z-index:1;color:var(--greenh);font-size:8px;font-weight:950;letter-spacing:.75px;text-transform:uppercase;}
+.player-forecast-eta strong{position:relative;z-index:1;display:block;margin-top:7px;color:var(--t1);font:950 20px/1.18 var(--head);text-wrap:balance;}
+.player-forecast-eta-days{position:relative;z-index:1;display:inline-flex;align-self:flex-start;margin-top:8px;padding:4px 8px;border:1px solid rgba(34,197,94,.35);border-radius:999px;color:var(--greenh);background:rgba(34,197,94,.10);font:950 9px/1 var(--mono);}
+.player-forecast-eta small{position:relative;z-index:1;display:block;margin-top:8px;color:var(--t3);font-size:8px;line-height:1.35;}
+.player-forecast-eta.waiting{border-color:rgba(245,158,11,.38);background:linear-gradient(135deg,rgba(245,158,11,.13),rgba(59,130,246,.05));}
+.player-forecast-eta.waiting .player-forecast-eta-label,.player-forecast-eta.waiting .player-forecast-eta-days{color:var(--amberh);}
+.player-forecast-eta.waiting .player-forecast-eta-days{border-color:rgba(245,158,11,.32);background:rgba(245,158,11,.09);}
+.player-forecast-eta.reached{border-color:rgba(168,85,247,.38);background:linear-gradient(135deg,rgba(168,85,247,.14),rgba(34,211,238,.05));}
+.player-forecast-progress-block{padding:11px 12px;border:1px solid var(--b1);border-radius:9px;background:rgba(255,255,255,.018);}
+.player-forecast-progress-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;color:var(--t3);font-size:8.5px;font-weight:850;}
+.player-forecast-progress-meta b{color:var(--greenh);font:950 11px/1 var(--mono);}
+.player-forecast-progress-meta.foot{margin:6px 0 0;color:var(--t4);font-size:7.5px;font-weight:750;}
+.forecast-target-hero{display:grid;grid-template-columns:minmax(280px,.9fr) minmax(0,1.4fr);gap:10px;padding:10px;border:1px solid rgba(34,197,94,.32);border-radius:11px;background:linear-gradient(135deg,rgba(34,197,94,.10),rgba(14,165,233,.045));}
+.forecast-target-date{position:relative;display:flex;flex-direction:column;justify-content:center;min-height:110px;padding:15px 17px;border:1px solid rgba(34,197,94,.34);border-radius:9px;background:rgba(34,197,94,.07);overflow:hidden;}
+.forecast-target-date::after{content:"";position:absolute;right:-34px;top:-48px;width:135px;height:135px;border-radius:50%;background:radial-gradient(circle,rgba(74,222,128,.18),transparent 68%);}
+.forecast-target-date span{position:relative;z-index:1;color:var(--greenh);font-size:8px;font-weight:950;letter-spacing:.75px;text-transform:uppercase;}
+.forecast-target-date strong{position:relative;z-index:1;display:block;margin-top:7px;color:var(--t1);font:950 21px/1.18 var(--head);text-wrap:balance;}
+.forecast-target-date b{position:relative;z-index:1;display:inline-flex;align-self:flex-start;margin-top:9px;padding:4px 8px;border-radius:999px;border:1px solid rgba(34,197,94,.35);color:var(--greenh);background:rgba(34,197,94,.09);font:950 9px/1 var(--mono);}
+.forecast-target-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+.forecast-target-summary>span{display:flex;flex-direction:column;justify-content:center;min-width:0;padding:10px 11px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.022);}
+.forecast-target-summary small{color:var(--t4);font-size:7.5px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;}
+.forecast-target-summary b{display:block;margin-top:5px;color:var(--t1);font:950 12px/1.1 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.forecast-target-hero.waiting{border-color:rgba(245,158,11,.28);background:linear-gradient(135deg,rgba(245,158,11,.09),rgba(59,130,246,.035));}
+.forecast-target-hero.waiting .forecast-target-date{border-color:rgba(245,158,11,.30);background:rgba(245,158,11,.06);}
+.forecast-target-hero.waiting .forecast-target-date span,.forecast-target-hero.waiting .forecast-target-date b{color:var(--amberh);}
+.forecast-target-hero.reached{border-color:rgba(168,85,247,.32);background:linear-gradient(135deg,rgba(168,85,247,.10),rgba(34,211,238,.04));}
+.player-records{padding:11px;border:1px solid var(--b1);border-radius:9px;background:linear-gradient(145deg,rgba(168,85,247,.055),rgba(59,130,246,.025));}
+.player-records-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px;}
+.player-records-head>div{min-width:0}.player-records-head b{display:block;color:var(--t1);font-size:10px}.player-records-head span{display:block;margin-top:2px;color:var(--t4);font-size:7.5px}
+.player-records-head em{flex:0 0 auto;padding:4px 7px;border:1px solid rgba(168,85,247,.30);border-radius:999px;color:var(--purpleh);background:rgba(168,85,247,.08);font-size:7.5px;font-style:normal;font-weight:900;}
+.player-record-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;}
+.player-record-card{position:relative;min-width:0;padding:9px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.02);overflow:hidden;}
+.player-record-card::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--record-accent,var(--blue));opacity:.55;}
+.player-record-card.best{--record-accent:var(--green)}.player-record-card.streak{--record-accent:var(--purple)}.player-record-card.rank{--record-accent:var(--amber)}
+.player-record-card span{display:block;color:var(--t4);font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;}
+.player-record-card b{display:block;margin-top:5px;color:var(--t1);font:950 12px/1.1 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.player-record-card small{display:block;margin-top:4px;color:var(--t3);font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.player-milestones{display:flex;align-items:stretch;gap:7px;margin-top:9px;overflow-x:auto;padding-bottom:2px;}
+.player-milestone{display:flex;align-items:center;gap:7px;min-width:190px;padding:8px 9px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.015);}
+.player-milestone.reached{border-color:rgba(34,197,94,.25);background:rgba(34,197,94,.055);}
+.player-milestone.next{border-color:rgba(245,158,11,.30);background:rgba(245,158,11,.06);}
+.player-milestone-dot{display:grid;place-items:center;flex:0 0 22px;width:22px;height:22px;border-radius:50%;color:var(--greenh);background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.30);font-weight:950;}
+.player-milestone.next .player-milestone-dot{color:var(--amberh);background:rgba(245,158,11,.11);border-color:rgba(245,158,11,.30);}
+.player-milestone div{min-width:0}.player-milestone b{display:block;color:var(--t1);font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-milestone small{display:block;margin-top:3px;color:var(--t4);font:800 7px/1.2 var(--mono);white-space:nowrap;}
 #lss7.theme-light .alliance-day-metric,#lss7.theme-summer .alliance-day-metric{background:rgba(255,255,255,.66);}
 .author-message{position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(59,130,246,.06),rgba(34,197,94,.025));}
 .author-message::after{content:'VS';position:absolute;right:18px;bottom:-18px;color:var(--t1);font:950 76px/1 var(--head);opacity:.025;pointer-events:none;}
@@ -8109,8 +8510,9 @@ GM_addStyle(`
 .author-message-content p{margin:0 0 10px;}
 .author-message-content h4{margin:16px 0 7px;padding-top:11px;border-top:1px solid var(--b1);color:var(--blueh);font:850 11px/1.2 var(--head);}
 .author-message-thanks{margin-top:14px!important;color:var(--greenh);font-weight:850;}
-@media(max-width:760px){.alliance-day-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.alliance-day-metric.earnings{grid-column:1/-1}.alliance-day-head{align-items:flex-start;flex-direction:column}.author-message-content{font-size:9px}}
-@media(max-width:460px){.alliance-day-grid{grid-template-columns:1fr}.alliance-day-metric.earnings{grid-column:auto}}
+@media(max-width:1050px){.player-forecast-hero{grid-template-columns:1fr 1.25fr!important}.player-forecast-hero-grid{grid-column:1/-1;grid-template-columns:repeat(3,minmax(0,1fr))}.player-record-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.alliance-day-head{align-items:flex-start;flex-direction:column}.author-message-content{font-size:9px}.player-forecast-hero{grid-template-columns:1fr!important}.player-forecast-hero-grid{grid-column:auto}.overview-pill.forecast-date{grid-row:auto;min-width:0}.forecast-target-hero{grid-template-columns:1fr}}
+@media(max-width:560px){.alliance-day-grid{grid-template-columns:1fr}.overview-section-title{align-items:flex-start;flex-direction:column;gap:3px}.player-forecast-eta strong,.forecast-target-date strong{font-size:17px}.player-record-grid,.forecast-target-summary{grid-template-columns:1fr}.player-records-head{align-items:flex-start;flex-direction:column}}
 .ltab[data-tab="tp-event"]{position:relative;isolation:isolate;color:#ffe8a3!important;border-color:rgba(245,158,11,.36)!important;background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(239,68,68,.08))!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),0 0 0 rgba(245,158,11,0);animation:lss7-event-tab 2.6s ease-in-out infinite;}
 .ltab[data-tab="tp-event"]::after{content:'LIVE';margin-left:6px;padding:2px 4px;border-radius:4px;background:#e11d48;color:#fff;font:900 6px/1 var(--mono);letter-spacing:.5px;box-shadow:0 0 8px rgba(225,29,72,.45);}
 .ltab[data-tab="tp-event"]:hover,.ltab[data-tab="tp-event"].active{color:#fff7d6!important;border-color:rgba(245,158,11,.68)!important;background:linear-gradient(135deg,rgba(245,158,11,.30),rgba(225,29,72,.16))!important;}
@@ -8778,6 +9180,8 @@ $(document).ready(()=>{
   updatePlaytimeUi();
   updateCoinsUi();
   renderAllianceActivity();
+  renderMissionEarnings();
+  scanCurrentMissionsFromDom();
   renderClock();
   announceInstalledUpdate();
 
@@ -8823,6 +9227,7 @@ $(document).ready(()=>{
   setInterval(fetchDailyEarnFromOverview, ITV.dailyEarn);
   setInterval(fetchWeather,       ITV.weather);
   setInterval(scanGameEvents,     30000);
+  setInterval(scanCurrentMissionsFromDom,30000);
   setInterval(updateFooter,       ITV.footer);
 
   // Daily-Earnings quick-stat sync
@@ -8831,7 +9236,7 @@ $(document).ready(()=>{
   checkUpdate();
 });
 
-window.addEventListener("beforeunload",()=>{clearTimeout(wmRefreshTimer);clearTimeout(creditObserverTimer);clearInterval(creditPollTimer);creditObserver?.disconnect();summerSceneCtl?.dispose();save();});
+window.addEventListener("beforeunload",()=>{clearTimeout(wmRefreshTimer);clearTimeout(creditObserverTimer);clearTimeout(missionEarningsRenderTimer);clearInterval(creditPollTimer);creditObserver?.disconnect();summerSceneCtl?.dispose();save();});
 window.addEventListener("pagehide",save);
 
 })();
