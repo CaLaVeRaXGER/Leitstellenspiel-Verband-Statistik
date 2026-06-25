@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.3.1
+// @version      9.4.1
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/*
@@ -41,7 +41,7 @@ if(/^\/(?:alliances\/\d+|verband(?:\/|$))/i.test(location.pathname))return;
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "9.3.1";
+const V   = "9.4.1";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
@@ -154,6 +154,7 @@ const I18N = {
 
 const WM_START = new Date("2026-06-11T00:00:00+02:00").getTime();
 const WM_END = new Date("2026-07-20T00:00:00+02:00").getTime();
+const WM_RESULT_VISIBLE_MS = 6 * 60 * 60 * 1000;
 const WM_STADIUM_OFFSETS = {
   1:-6,2:-6,3:-6,
   4:-5,5:-5,6:-5,
@@ -172,6 +173,18 @@ const WM_TEAM_DE = {
   "Saudi Arabia":"Saudi-Arabien","Scotland":"Schottland","Senegal":"Senegal","South Africa":"Südafrika",
   "South Korea":"Südkorea","Spain":"Spanien","Sweden":"Schweden","Switzerland":"Schweiz","Tunisia":"Tunesien",
   "Turkey":"Türkei","United States":"USA","Uruguay":"Uruguay","Uzbekistan":"Usbekistan"
+};
+const WM_TEAM_FLAGS = {
+  "Algeria":"🇩🇿","Argentina":"🇦🇷","Australia":"🇦🇺","Austria":"🇦🇹","Belgium":"🇧🇪",
+  "Bosnia and Herzegovina":"🇧🇦","Brazil":"🇧🇷","Canada":"🇨🇦","Cape Verde":"🇨🇻",
+  "Colombia":"🇨🇴","Croatia":"🇭🇷","Curaçao":"🇨🇼","Czech Republic":"🇨🇿",
+  "Democratic Republic of the Congo":"🇨🇩","Ecuador":"🇪🇨","Egypt":"🇪🇬","England":"\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}",
+  "France":"🇫🇷","Germany":"🇩🇪","Ghana":"🇬🇭","Haiti":"🇭🇹","Iran":"🇮🇷","Iraq":"🇮🇶",
+  "Ivory Coast":"🇨🇮","Japan":"🇯🇵","Jordan":"🇯🇴","Mexico":"🇲🇽","Morocco":"🇲🇦",
+  "Netherlands":"🇳🇱","New Zealand":"🇳🇿","Norway":"🇳🇴","Panama":"🇵🇦","Paraguay":"🇵🇾",
+  "Portugal":"🇵🇹","Qatar":"🇶🇦","Saudi Arabia":"🇸🇦","Scotland":"\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}","Senegal":"🇸🇳",
+  "South Africa":"🇿🇦","South Korea":"🇰🇷","Spain":"🇪🇸","Sweden":"🇸🇪","Switzerland":"🇨🇭",
+  "Tunisia":"🇹🇳","Turkey":"🇹🇷","United States":"🇺🇸","Uruguay":"🇺🇾","Uzbekistan":"🇺🇿"
 };
 
 const LEVELS = [
@@ -403,7 +416,7 @@ GM_addStyle(`
   content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse at 80% 30%,rgba(59,130,246,.09) 0%,transparent 60%);
 }
-.hd-row   { display:flex; align-items:center; gap:10px; }
+.hd-row   { display:flex; align-items:center; gap:10px;position:relative; }
 .hd-mark{
   position:relative;width:40px;height:40px;border-radius:11px;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;overflow:hidden;
@@ -419,7 +432,10 @@ GM_addStyle(`
 .hd-title { font-size:14px;font-weight:700;color:var(--t1);line-height:1.2; }
 .hd-sub   { font-size:10px;color:var(--t3);margin-top:1px; }
 .hd-meta  { margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0;flex-shrink:1; }
-.hd-events{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap;min-width:0;}
+.hd-events{
+  display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:nowrap;min-width:0;
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;
+}
 .hd-event-badge{
   appearance:none;display:inline-flex;align-items:center;gap:5px;min-height:24px;padding:3px 8px;
   border-radius:7px;border:1px solid var(--b2);color:var(--t1);background:rgba(255,255,255,.045);
@@ -434,6 +450,66 @@ GM_addStyle(`
 .hd-event-badge.event-coin{color:#fecaca;background:rgba(220,38,38,.14);border-color:rgba(248,113,113,.38);}
 .hd-event-badge.event-live{color:#bae6fd;background:rgba(2,132,199,.14);border-color:rgba(56,189,248,.36);}
 @keyframes event-dot{0%,100%{opacity:1}50%{opacity:.42}}
+.wm-header-match{
+  --wm-card:#111c2c;--wm-border:rgba(96,165,250,.30);--wm-accent:#60a5fa;--wm-score-bg:#172b46;
+  appearance:none;position:relative;display:grid;grid-template-columns:minmax(118px,1fr) auto;align-items:center;gap:9px;
+  min-width:190px;max-width:230px;min-height:44px;padding:6px 8px 6px 11px;
+  border:1px solid var(--wm-border);border-radius:9px;overflow:hidden;
+  background:linear-gradient(145deg,var(--wm-card),rgba(7,14,25,.96));color:var(--t1);text-align:left;cursor:pointer;
+  box-shadow:0 7px 18px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.05);
+  transition:background .15s ease,border-color .15s ease,transform .15s ease,box-shadow .15s ease;
+}
+.wm-header-match::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--wm-accent);box-shadow:0 0 12px var(--wm-accent);}
+.wm-header-match:hover{transform:translateY(-2px);border-color:var(--wm-accent);box-shadow:0 10px 24px rgba(0,0,0,.25),0 0 16px color-mix(in srgb,var(--wm-accent) 18%,transparent);}
+.wm-header-match.live{--wm-card:#0b2a21;--wm-border:rgba(52,211,153,.48);--wm-accent:#34d399;--wm-score-bg:#0b3a2c;}
+.wm-header-match.finished{--wm-card:#22200f;--wm-border:rgba(250,204,21,.42);--wm-accent:#facc15;--wm-score-bg:#40360b;}
+.wm-header-copy{display:flex;flex-direction:column;min-width:0;gap:3px;}
+.wm-header-teams{display:flex;align-items:center;gap:5px;min-width:0;color:#f8fbff;font-size:10px;font-weight:950;line-height:1.15;}
+.wm-header-team{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.wm-header-flag{flex:0 0 auto;font-size:14px;line-height:1;filter:saturate(1.08);text-shadow:0 1px 2px rgba(0,0,0,.2);}
+.wm-header-vs{flex:0 0 auto;color:var(--wm-accent);font:950 7px/1 var(--mono);letter-spacing:.35px;}
+.wm-header-state{display:flex;align-items:center;gap:4px;color:#b9c6d7;font:800 7.5px/1.15 var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wm-header-state::before{content:"";flex:0 0 5px;width:5px;height:5px;border-radius:50%;background:var(--wm-accent);box-shadow:0 0 7px var(--wm-accent);}
+.wm-header-match.live .wm-header-state::before{animation:event-dot 1.25s ease-in-out infinite;}
+.wm-header-score{min-width:43px;padding:7px 6px;border-radius:7px;text-align:center;color:#fff;background:var(--wm-score-bg);border:1px solid var(--wm-border);font:950 13px/1 var(--mono);box-shadow:inset 0 1px rgba(255,255,255,.06);}
+.wm-header-match.planned .wm-header-score{font-size:10px;color:#dbeafe;}
+.wm-goal-toast{border-color:rgba(250,204,21,.72)!important;background:linear-gradient(135deg,rgba(133,77,14,.98),rgba(153,27,27,.96))!important;color:#fff7cc!important;font-size:12px!important;box-shadow:0 18px 50px rgba(0,0,0,.42),0 0 24px rgba(250,204,21,.25)!important;}
+#lss7.theme-light .wm-header-match{
+  --wm-card:#f8fbff;--wm-border:rgba(37,99,235,.28);--wm-accent:#2563eb;--wm-score-bg:#e7efff;
+  background:linear-gradient(145deg,#fff,#eef4fb);box-shadow:0 7px 18px rgba(30,64,175,.10),inset 0 1px #fff;
+}
+#lss7.theme-light .wm-header-match.live{--wm-card:#eafbf2;--wm-border:rgba(5,150,105,.36);--wm-accent:#059669;--wm-score-bg:#d5f5e4;}
+#lss7.theme-light .wm-header-match.finished{--wm-card:#fff9dc;--wm-border:rgba(180,83,9,.30);--wm-accent:#b45309;--wm-score-bg:#ffefad;}
+#lss7.theme-light .wm-header-teams{color:#172033;}
+#lss7.theme-light .wm-header-state{color:#526174;}
+#lss7.theme-light .wm-header-score{color:#172033;}
+#lss7.theme-summer .wm-header-match{
+  --wm-card:#fffdf5;--wm-border:rgba(15,111,168,.30);--wm-accent:#0f6fa8;--wm-score-bg:#e5f4fb;
+  background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(232,247,250,.96));box-shadow:0 7px 18px rgba(15,111,168,.12),inset 0 1px #fff;
+}
+#lss7.theme-summer .wm-header-match.live{--wm-card:#ecfaef;--wm-border:rgba(47,158,91,.40);--wm-accent:#2f9e5b;--wm-score-bg:#dff5e5;}
+#lss7.theme-summer .wm-header-match.finished{--wm-card:#fff9dd;--wm-border:rgba(197,138,25,.38);--wm-accent:#c58a19;--wm-score-bg:#ffedaf;}
+#lss7.theme-summer .wm-header-teams{color:#173b51;}
+#lss7.theme-summer .wm-header-state{color:#4b6d7f;}
+#lss7.theme-summer .wm-header-score{color:#173b51;}
+#lss7.theme-summer-dark .wm-header-match{--wm-card:#101e38;--wm-border:rgba(125,169,255,.34);--wm-accent:#7da9ff;--wm-score-bg:#172c50;}
+#lss7.theme-summer-dark .wm-header-match.live{--wm-card:#0c2b28;--wm-border:rgba(94,234,176,.42);--wm-accent:#5eeab0;--wm-score-bg:#104337;}
+#lss7.theme-summer-dark .wm-header-match.finished{--wm-card:#30270c;--wm-border:rgba(251,207,90,.42);--wm-accent:#fbcf5a;--wm-score-bg:#4b3c0b;}
+#lss7.theme-lcars .wm-header-match{
+  --wm-card:#090909;--wm-border:rgba(246,180,93,.48);--wm-accent:#f6b45d;--wm-score-bg:#21160c;
+  border-radius:15px 6px 6px 15px;background:#080808;box-shadow:inset 5px 0 var(--wm-accent),0 8px 18px rgba(0,0,0,.28);
+}
+#lss7.theme-lcars .wm-header-match::before{display:none;}
+#lss7.theme-lcars .wm-header-match.live{--wm-border:rgba(124,224,173,.48);--wm-accent:#7ce0ad;--wm-score-bg:#0b2d20;}
+#lss7.theme-lcars .wm-header-match.finished{--wm-border:rgba(255,213,107,.48);--wm-accent:#ffd56b;--wm-score-bg:#352707;}
+#lss7.theme-lcars .wm-header-teams{color:#fff7e8;text-transform:uppercase;letter-spacing:.2px;}
+#lss7.theme-lcars .wm-header-state{color:#cbbda7;}
+@media(max-width:720px){
+  .wm-header-match{min-width:175px;max-width:195px;}
+}
+@media(max-width:980px){
+  .hd-events{position:static;transform:none;margin-right:auto;overflow-x:auto;justify-content:flex-start;}
+}
 
 /* Badges */
 .bd {font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
@@ -1234,6 +1310,43 @@ GM_addStyle(`
 .game-events-mini .game-event-desc{display:none;}
 .game-events-mini .game-event-time{font-size:11px;}
 .wm-list{display:flex;flex-direction:column;gap:5px;}
+.wm-command{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;
+  margin-bottom:10px;padding:14px 15px;border:1px solid rgba(59,130,246,.25);border-radius:10px;
+  background:linear-gradient(135deg,rgba(59,130,246,.13),rgba(34,197,94,.045));overflow:hidden;
+}
+.wm-command-kicker{display:block;color:var(--blueh);font-size:8px;font-weight:950;letter-spacing:.9px;text-transform:uppercase;}
+.wm-command-title{display:block;margin-top:4px;color:var(--t1);font:950 17px/1.15 var(--head);}
+.wm-command-sub{display:block;margin-top:5px;color:var(--t3);font-size:9.5px;line-height:1.45;}
+.wm-command-stats{display:grid;grid-template-columns:repeat(3,minmax(72px,1fr));gap:6px;min-width:245px;}
+.wm-command-stat{padding:8px 9px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.028);}
+.wm-command-stat b{display:block;color:var(--t1);font:950 13px/1 var(--mono);}
+.wm-command-stat span{display:block;margin-top:4px;color:var(--t4);font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;}
+.wm-focus{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px;}
+.wm-focus-card{position:relative;min-width:0;padding:11px;border:1px solid var(--b1);border-radius:10px;background:linear-gradient(160deg,rgba(255,255,255,.045),rgba(255,255,255,.012));overflow:hidden;}
+.wm-focus-card::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--focus,var(--blue));}
+.wm-focus-card.live{--focus:var(--green);border-color:rgba(34,197,94,.34);background:linear-gradient(150deg,rgba(34,197,94,.12),rgba(34,197,94,.025));}
+.wm-focus-card.finished{--focus:var(--amber);border-color:rgba(245,158,11,.32);}
+.wm-focus-top{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--t3);font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.35px;}
+.wm-focus-status{display:inline-flex;align-items:center;gap:5px;color:var(--focus,var(--blueh));}
+.wm-focus-status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;}
+.wm-focus-card.live .wm-focus-status::before{animation:event-dot 1.25s ease-in-out infinite;}
+.wm-focus-teams{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:7px;align-items:center;margin-top:10px;}
+.wm-focus-team{min-width:0;text-align:center;color:var(--t1);font-size:11px;font-weight:950;line-height:1.25;}
+.wm-focus-flag{display:block;margin-bottom:4px;font-size:22px;line-height:1;}
+.wm-focus-score{min-width:52px;padding:8px 7px;border:1px solid var(--b1);border-radius:8px;text-align:center;color:var(--t1);background:rgba(0,0,0,.14);font:950 17px/1 var(--mono);}
+.wm-focus-meta{display:flex;justify-content:center;gap:5px;flex-wrap:wrap;margin-top:9px;color:var(--t3);font-size:8px;}
+.wm-focus-meta span{padding:3px 6px;border:1px solid var(--b1);border-radius:999px;background:rgba(255,255,255,.025);}
+.wm-filterbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 10px;}
+.wm-filter{padding:7px 10px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);color:var(--t3);font-size:8.5px;font-weight:900;cursor:pointer;}
+.wm-filter:hover{color:var(--t1);border-color:var(--b2);}
+.wm-filter.active{color:#fff;background:var(--blue);border-color:var(--blue);}
+.wm-day{border:1px solid var(--b1);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.012);}
+.wm-day+.wm-day{margin-top:8px;}
+.wm-day-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-bottom:1px solid var(--b1);background:rgba(255,255,255,.035);}
+.wm-day-head b{color:var(--t1);font-size:10px;}
+.wm-day-head span{color:var(--t4);font-size:8px;font-weight:850;}
+.wm-day .wm-list{padding:7px;}
 .wm-row{
   display:grid;grid-template-columns:78px minmax(0,1fr) minmax(176px,210px);gap:8px;align-items:center;
   padding:7px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);
@@ -1247,6 +1360,7 @@ GM_addStyle(`
 .wm-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:9px;color:var(--t3);margin-top:4px;line-height:1.3;}
 .wm-meta-item{display:inline-flex;align-items:center;min-width:0;padding:2px 5px;border:1px solid var(--b1);border-radius:5px;background:rgba(255,255,255,.025);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .wm-meta-item:first-child{max-width:58%;}
+.wm-fact{display:inline-flex;align-items:center;gap:4px;padding:2px 5px;border:1px solid var(--b1);border-radius:5px;background:rgba(255,255,255,.025);white-space:nowrap;}
 .wm-match-events{display:flex;flex-direction:column;gap:5px;margin-top:7px;padding-top:7px;border-top:1px solid var(--b1);}
 .wm-event-line{display:grid;grid-template-columns:18px 72px minmax(0,1fr);gap:5px;align-items:start;font-size:9px;line-height:1.35;}
 .wm-event-icon{font-size:11px;text-align:center;}
@@ -1344,6 +1458,51 @@ GM_addStyle(`
 .wm-legend{padding:3px 7px;border-radius:999px;border:1px solid var(--b1);font-size:8px;font-weight:900;color:var(--t3);background:rgba(255,255,255,.025);}
 .wm-legend.qualify{color:var(--greenh);border-color:rgba(34,197,94,.32);background:var(--green3);}
 .wm-legend.third{color:var(--amberh);border-color:rgba(245,158,11,.32);background:var(--amber3);}
+.wm-knockout{margin-bottom:10px;border:1px solid var(--b1);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.018);}
+.wm-knockout-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;background:linear-gradient(90deg,rgba(168,85,247,.11),rgba(59,130,246,.06));}
+.wm-knockout-title{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.wm-knockout-title b{color:var(--t1);font-size:12px;}
+.wm-knockout-title span{color:var(--t3);font-size:9px;}
+.wm-knockout-tools{display:flex;align-items:center;gap:7px;flex:0 0 auto;}
+.wm-knockout-badge{padding:5px 8px;border:1px solid rgba(168,85,247,.35);border-radius:999px;color:#d8b4fe;background:rgba(168,85,247,.12);font-size:8px;font-weight:950;text-transform:uppercase;}
+.wm-knockout-toggle{min-height:28px;padding:5px 9px;border:1px solid var(--b2);border-radius:7px;background:rgba(255,255,255,.04);color:var(--t2);font-size:8px;font-weight:950;cursor:pointer;}
+.wm-knockout-toggle:hover{color:var(--t1);border-color:var(--purple);}
+.wm-knockout-toggle::before{content:"▾";display:inline-block;margin-right:5px;transition:transform .18s ease;}
+.wm-knockout:not(.open) .wm-knockout-toggle::before{transform:rotate(-90deg);}
+.wm-knockout-body{display:none;border-top:1px solid var(--b1);}
+.wm-knockout.open .wm-knockout-body{display:block;}
+.wm-knockout-grid{padding:14px 12px 10px;overflow-x:auto;background:linear-gradient(180deg,rgba(168,85,247,.025),transparent);}
+.wm-bracket{display:grid;grid-template-columns:repeat(5,minmax(190px,1fr));gap:34px;min-width:1080px;align-items:stretch;}
+.wm-ko-stage{position:relative;display:flex;flex-direction:column;min-width:190px;}
+.wm-ko-stage-title{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:10px;padding:6px 8px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);color:var(--t2);font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.4px;}
+.wm-ko-stage-title span{color:var(--t4);font:800 8px/1 var(--mono);}
+.wm-ko-matches{display:flex;flex:1;flex-direction:column;justify-content:space-around;gap:8px;min-height:900px;}
+.wm-ko-pair{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:12px;}
+.wm-ko-stage.r32 .wm-ko-pair{gap:8px;}
+.wm-ko-stage.r16 .wm-ko-pair{gap:42px;}
+.wm-ko-stage.qf .wm-ko-pair{gap:126px;}
+.wm-ko-stage.sf .wm-ko-pair{gap:300px;}
+.wm-ko-pair::before{content:"";position:absolute;right:-18px;top:25%;bottom:25%;width:1px;background:color-mix(in srgb,var(--purple) 52%,var(--b2));}
+.wm-ko-pair::after{content:"";position:absolute;right:-34px;top:50%;width:16px;height:1px;background:color-mix(in srgb,var(--purple) 52%,var(--b2));}
+.wm-ko-match{position:relative;padding:8px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.025);overflow:visible;}
+.wm-ko-match::before{content:"";position:absolute;inset:0 auto 0 0;width:2px;background:var(--ko-accent,var(--blue));}
+.wm-ko-pair .wm-ko-match::after{content:"";position:absolute;right:-18px;top:50%;width:18px;height:1px;background:color-mix(in srgb,var(--purple) 52%,var(--b2));}
+.wm-ko-match.live{--ko-accent:var(--green);border-color:rgba(34,197,94,.32);}
+.wm-ko-match.finished{--ko-accent:var(--amber);border-color:rgba(245,158,11,.28);}
+.wm-ko-meta{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:6px;color:var(--t4);font-size:7px;font-weight:850;}
+.wm-ko-team{display:grid;grid-template-columns:17px minmax(0,1fr) auto;gap:5px;align-items:center;min-height:23px;color:var(--t1);font-size:9px;font-weight:900;}
+.wm-ko-team+.wm-ko-team{border-top:1px solid var(--b0);}
+.wm-ko-team.pending{color:var(--t3);font-weight:750;font-style:italic;}
+.wm-ko-flag{font-size:13px;text-align:center;}
+.wm-ko-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.wm-ko-score{min-width:18px;text-align:right;color:var(--t1);font:950 10px/1 var(--mono);}
+.wm-ko-status{margin-top:5px;padding-top:5px;border-top:1px solid var(--b0);color:var(--ko-accent,var(--blueh));font-size:7px;font-weight:900;text-align:center;text-transform:uppercase;}
+.wm-ko-final-stage .wm-ko-matches{align-items:stretch;justify-content:center;}
+.wm-ko-final-stage .wm-ko-match{box-shadow:0 0 0 1px rgba(168,85,247,.12),0 12px 30px rgba(0,0,0,.14);}
+.wm-ko-third{margin:4px 12px 12px;padding:10px;border:1px solid var(--b1);border-radius:9px;background:rgba(255,255,255,.018);}
+.wm-ko-third-title{margin-bottom:7px;color:var(--amberh);font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.5px;}
+.wm-ko-third .wm-ko-match{max-width:360px;}
+.wm-ko-note{padding:0 12px 10px;color:var(--t4);font-size:8px;line-height:1.4;}
 @media(max-width:620px){
   .wm-row{grid-template-columns:66px minmax(0,1fr);}
   .wm-result-tip{grid-column:1/-1;display:flex;justify-content:flex-end;border-top:1px solid var(--b1);padding-top:6px;}
@@ -1594,6 +1753,11 @@ GM_addStyle(`
 #lss7.theme-summer .wm-meta-item{color:#365c70;background:rgba(255,255,255,.76);border-color:rgba(22,80,104,.15);}
 #lss7.theme-summer .wm-groups,
 #lss7.theme-summer .wm-group-card{background:#fff!important;border-color:rgba(22,80,104,.18);}
+#lss7.theme-summer .wm-knockout,#lss7.theme-summer .wm-ko-match{background:#fff;border-color:rgba(22,80,104,.18);}
+#lss7.theme-summer .wm-knockout-head{background:linear-gradient(90deg,rgba(123,71,177,.10),rgba(22,135,200,.08));}
+#lss7.theme-summer .wm-knockout-badge{color:#633497;background:#f2e7fb;border-color:#b88bd5;}
+#lss7.theme-summer .wm-ko-team,#lss7.theme-summer .wm-ko-score{color:#173b51;}
+#lss7.theme-summer .wm-ko-team.pending,#lss7.theme-summer .wm-ko-meta,#lss7.theme-summer .wm-ko-note{color:#4c6d7e;}
 #lss7.theme-summer .wm-groups-head,
 #lss7.theme-summer .wm-group-name{background:linear-gradient(90deg,rgba(22,135,200,.10),rgba(47,158,91,.07));}
 #lss7.theme-summer .wm-groups-toggle{color:#fff;background:#0f6fa8;border-color:#095886;}
@@ -1642,6 +1806,10 @@ GM_addStyle(`
 #lss7.theme-summer .set-note b{color:#754600;}
 #lss7.theme-summer .game-event-row,
 #lss7.theme-summer .wm-row{background:rgba(255,255,255,.62);}
+#lss7.theme-summer .wm-command,#lss7.theme-summer .wm-focus-card,#lss7.theme-summer .wm-day{background:rgba(255,255,255,.72);border-color:rgba(22,80,104,.17);}
+#lss7.theme-summer .wm-day-head{background:linear-gradient(90deg,rgba(22,135,200,.10),rgba(47,158,91,.06));}
+#lss7.theme-summer .wm-filter{color:#365c70;background:#fff;border-color:rgba(22,80,104,.18);}
+#lss7.theme-summer .wm-filter.active{color:#fff;background:#0f6fa8;border-color:#0f6fa8;}
 #lss7.theme-summer .game-events-title{color:#704600;}
 #lss7.theme-summer .game-events-live{color:#146b3b;background:#e1f6e9;border-color:#58a978;}
 #lss7.theme-summer .game-event-title,
@@ -1716,6 +1884,8 @@ GM_addStyle(`
 #lss7.theme-summer-dark .prof-event-label,#lss7.theme-summer-dark .prof-event-strip.active .prof-event-label{color:#fff3c7;}
 #lss7.theme-summer-dark .prof-event-time{color:#8af1bf;background:rgba(31,110,75,.26);border:1px solid rgba(85,214,154,.34);border-radius:6px;padding:3px 6px;}
 #lss7.theme-summer-dark .wm-group-card,#lss7.theme-summer-dark .wm-table{background:#0d1930!important;color:#dce7fb!important;}
+#lss7.theme-summer-dark .wm-command,#lss7.theme-summer-dark .wm-focus-card,#lss7.theme-summer-dark .wm-day{background:#0d1930;border-color:rgba(177,205,255,.13);}
+#lss7.theme-summer-dark .wm-knockout,#lss7.theme-summer-dark .wm-ko-match{background:#0d1930;border-color:rgba(177,205,255,.13);}
 #lss7.theme-summer-dark .wm-table th{background:#152746!important;color:#b9cdf0!important;}
 #lss7.theme-summer-dark .wm-table td{background:transparent!important;color:#dce7fb!important;border-color:rgba(177,205,255,.09)!important;}
 #lss7.theme-summer-dark .wm-table .wm-club{color:#f4f7ff!important;}
@@ -1772,6 +1942,15 @@ GM_addStyle(`
 #lss7.theme-lcars .lss7-select{background:#0b0b0b!important;color:#fff3d0!important;border-color:#5a3a1a!important;border-radius:999px;}
 #lss7.theme-lcars .vb-fill,#lss7.theme-lcars .pt-fill,#lss7.theme-lcars .prof-fill,#lss7.theme-lcars .forecast-progress-fill{background:linear-gradient(90deg,#ff9d45,#ffba5c,#b89aff)!important;}
 #lss7.theme-lcars .wm-row,#lss7.theme-lcars .game-event-row,#lss7.theme-lcars .sch-row,#lss7.theme-lcars .arr-row,#lss7.theme-lcars .hist-row,#lss7.theme-lcars .rank-mini-row,#lss7.theme-lcars .team-card{background:#070707;border-color:#21170f;border-radius:16px 7px 7px 16px;}
+#lss7.theme-lcars .wm-command,#lss7.theme-lcars .wm-focus-card,#lss7.theme-lcars .wm-day{background:#070707;border-color:#5a3a1a;border-radius:16px 7px 7px 16px;}
+#lss7.theme-lcars .wm-knockout,#lss7.theme-lcars .wm-ko-match{background:#070707;border-color:#5a3a1a;border-radius:16px 7px 7px 16px;}
+#lss7.theme-lcars .wm-knockout-head{background:#0d0906;}
+#lss7.theme-lcars .wm-knockout-badge{color:#050506;background:#b89aff;border-color:#b89aff;}
+#lss7.theme-lcars .wm-day-head{background:#0d0906;border-color:#2a1c0e;}
+#lss7.theme-lcars .wm-filter{border-radius:14px 5px 5px 14px;background:#090909;border-color:#5a3a1a;color:#fff3d0;}
+#lss7.theme-lcars .wm-filter.active{background:#f6b45d;border-color:#f6b45d;color:#050506;}
+@media(max-width:900px){.wm-focus{grid-template-columns:1fr 1fr}.wm-command{grid-template-columns:1fr}.wm-command-stats{min-width:0;}}
+@media(max-width:620px){.wm-focus{grid-template-columns:1fr}.wm-command-stats{grid-template-columns:repeat(3,minmax(0,1fr));}}
 #lss7.theme-lcars .sch-row:hover,#lss7.theme-lcars .arr-row:hover,#lss7.theme-lcars .team-card:hover{background:#120d09;}
 #lss7.theme-lcars #lss7-ft{background:#030303;border-top:7px solid #b89aff;color:#c9a36b;}
 #lss7.theme-lcars .ft-version{background:#ffba5c;color:#030303;border:0;border-radius:999px;font-weight:950;}
@@ -2152,7 +2331,7 @@ const S = {
   allianceId:null, allianceName:"", allianceRank:null, allianceCredits:0,
   weather:null, weatherTs:0, weatherLoc:"",
   gameEvents:[],
-  wm:{games:[],stadiums:{},error:null,lastTs:null},
+  wm:{games:[],stadiums:{},error:null,lastTs:null,loading:false,scoreSnapshot:{},snapshotReady:false,finishedAt:{},view:"focus",knockoutOpen:true},
   wmTips:{},
   wmTipEdit:{},
   profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:"",roles:[],totalCredits:0},
@@ -2165,7 +2344,7 @@ const S = {
   update:{previousVersion:"",justUpdated:false,availableVersion:"",checking:false,lastCheck:0,error:""},
   diagnostics:{errors:[],created:0,lastReportTs:0,lastAnalysis:null},
   settings:{
-    notifications:true,
+    notifications:false,
     coins:true,
     compact:false,
     panelPlacement:"default",
@@ -2181,6 +2360,7 @@ const S = {
     weatherSound:false,
     weatherTone:"beep",
     eventMode:"overview", // off | overview
+    wmGoalSound:true,
     playtimeEnabled:true,
     forecastEnabled:true,
     forecastTarget:30000000000,
@@ -2266,6 +2446,8 @@ function load(){
   normalizePlayerRankHistory();
   if(newDay && saved && storedPlaytime>0)recordPlaytimeDay(saved,storedPlaytime);
   try{S.wmTips=JSON.parse(GM_getValue("v7_wm_tips","{}"))||{};}catch{S.wmTips={};}
+  try{S.wm.finishedAt=JSON.parse(GM_getValue("v7_wm_finished_at","{}"))||{};}catch{S.wm.finishedAt={};}
+  S.wm.knockoutOpen=GM_getValue("v7_wm_knockout_open",true)!==false;
   try{Object.assign(S.settings,JSON.parse(GM_getValue("v7_set","{}"))||{});}catch{}
   S.update.previousVersion=String(GM_getValue("v7_installed_version","")||"");
   const existingInstallation=!!GM_getValue("v7_layout_default_done",false);
@@ -2296,6 +2478,7 @@ function load(){
   const validEventModes=["off","overview"];
   if(!validEventModes.includes(S.settings.eventMode)) S.settings.eventMode="overview";
   if(typeof S.settings.weatherSound!=="boolean") S.settings.weatherSound=false;
+  if(typeof S.settings.wmGoalSound!=="boolean") S.settings.wmGoalSound=true;
   const validTones=["beep","alarm","chime"];
   if(!validTones.includes(S.settings.weatherTone)) S.settings.weatherTone="beep";
   if(typeof S.settings.playtimeEnabled!=="boolean") S.settings.playtimeEnabled=true;
@@ -2494,12 +2677,17 @@ function fmtWmKickoff(g){
   if(!dt)return escHtml(g?.local_date||"-");
   return dt.toLocaleString(uiLocale(),{timeZone:"Europe/Berlin",weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(",","");
 }
+function wmTeamRaw(g,side){
+  return (side==="home"?(g.home_team_name_en||g.home_team_label):(g.away_team_name_en||g.away_team_label)) || "TBD";
+}
 function wmTeam(g,side){
-  const name=(side==="home"?(g.home_team_name_en||g.home_team_label):(g.away_team_name_en||g.away_team_label)) || "TBD";
-  return wmTeamDe(name);
+  return wmTeamDe(wmTeamRaw(g,side));
 }
 function wmTeamHtml(g,side){
   return escHtml(wmTeam(g,side));
+}
+function wmTeamFlag(g,side){
+  return WM_TEAM_FLAGS[wmTeamRaw(g,side)]||"🌐";
 }
 function wmEventList(raw){
   if(raw===null || raw===undefined)return [];
@@ -2556,6 +2744,157 @@ function wmTv(g){
   const type=String(g?.type||"").toLowerCase();
   const free=Number(g?.id)===1 || type==="sf" || type==="final" || teams.includes("germany");
   return free?"MagentaTV + ARD/ZDF":"MagentaTV";
+}
+function wmDateKey(value=new Date()){
+  return new Intl.DateTimeFormat("en-CA",{
+    timeZone:"Europe/Berlin",year:"numeric",month:"2-digit",day:"2-digit"
+  }).format(value);
+}
+function wmGameKey(g){
+  return String(g?.id||`${parseWmGameDate(g)?.getTime()||g?.local_date||"?"}|${wmTeam(g,"home")}|${wmTeam(g,"away")}`);
+}
+function wmScorePair(g){
+  return {
+    home:Math.max(0,Number(g?.home_score)||0),
+    away:Math.max(0,Number(g?.away_score)||0)
+  };
+}
+function wmMinuteText(g){
+  if(!wmLive(g))return wmStatusText(g);
+  const raw=String(g?.time_elapsed??g?.elapsed??g?.status??"").trim();
+  const normalized=raw.toLowerCase().replace(/[\s_-]+/g,"");
+  if(["halftime","half","ht","pause"].includes(normalized))return "Halbzeit";
+  if(["extratime","et"].includes(normalized))return "Verlängerung";
+  if(["penalties","penalty","pens"].includes(normalized))return "Elfmeterschießen";
+  const minute=raw.match(/\d{1,3}(?:\+\d{1,2})?/);
+  return minute?`${minute[0]}'`:"LIVE";
+}
+function wmTodayGames(){
+  const today=wmDateKey();
+  return wmSortedGames()
+    .filter(g=>g._dt && wmDateKey(g._dt)===today)
+    .sort((a,b)=>(wmLive(b)?1:0)-(wmLive(a)?1:0)||(a._dt-b._dt));
+}
+function wmFinishedAt(g){
+  const saved=Number(S.wm.finishedAt?.[wmGameKey(g)])||0;
+  if(saved)return saved;
+  const kickoff=parseWmGameDate(g)?.getTime()||0;
+  return kickoff?kickoff+(2*60+15)*60*1000:0;
+}
+function wmRecentFinishedGames(){
+  const now=Date.now();
+  return wmSortedGames()
+    .filter(g=>String(g?.finished).toUpperCase()==="TRUE")
+    .filter(g=>{
+      const finishedAt=wmFinishedAt(g);
+      return finishedAt>0 && now>=finishedAt && now-finishedAt<WM_RESULT_VISIBLE_MS;
+    })
+    .sort((a,b)=>wmFinishedAt(b)-wmFinishedAt(a));
+}
+function wmHeaderGames(limit=2){
+  const all=wmSortedGames();
+  const live=all.filter(wmLive);
+  const recent=wmRecentFinishedGames();
+  const upcoming=all.filter(g=>!wmStarted(g) && (g._dt?.getTime()||0)>=Date.now())
+    .sort((a,b)=>a._dt-b._dt);
+  const primary=live.length?live:recent.length?recent:upcoming;
+  const fallback=live.length?[...recent,...upcoming]:recent.length?upcoming:[];
+  const seen=new Set();
+  return [...primary,...fallback].filter(g=>{
+    const key=wmGameKey(g);
+    if(seen.has(key))return false;
+    seen.add(key);
+    return true;
+  }).slice(0,limit);
+}
+function playGoalTone(){
+  try{
+    const C=window.AudioContext||window.webkitAudioContext;
+    if(!C)return;
+    const audio=new C();
+    const gain=audio.createGain();
+    gain.connect(audio.destination);
+    const now=audio.currentTime;
+    [784,988,1175].forEach((frequency,index)=>{
+      const oscillator=audio.createOscillator();
+      const start=now+index*.12;
+      oscillator.type="triangle";
+      oscillator.frequency.setValueAtTime(frequency,start);
+      oscillator.connect(gain);
+      oscillator.start(start);
+      oscillator.stop(start+.22);
+    });
+    gain.gain.setValueAtTime(.0001,now);
+    gain.gain.exponentialRampToValueAtTime(.12,now+.025);
+    gain.gain.exponentialRampToValueAtTime(.0001,now+.52);
+    setTimeout(()=>audio.close?.(),750);
+  }catch{}
+}
+function notifyWmGoal(g,scoringSide){
+  const score=wmScorePair(g);
+  const scoringTeam=wmTeam(g,scoringSide);
+  const title=`⚽ TOR für ${scoringTeam}!`;
+  const body=`${wmTeam(g,"home")} ${score.home}:${score.away} ${wmTeam(g,"away")} · ${wmMinuteText(g)}`;
+  const panel=$("#lss7");
+  let toast=panel.find(".lss7-toast");
+  if(!toast.length)toast=$(`<div class="lss7-toast"></div>`).appendTo(panel);
+  toast.removeClass("bad").addClass("wm-goal-toast show").text(`${title} ${body}`);
+  clearTimeout(notify._t);
+  notify._t=setTimeout(()=>toast.removeClass("show wm-goal-toast"),6500);
+  if(S.settings.wmGoalSound)playGoalTone();
+  if(S.settings.notifications && "Notification" in window && Notification.permission==="granted"){
+    try{
+      const notification=new Notification(title,{body,tag:`lss7-wm-goal-${wmGameKey(g)}-${score.home}-${score.away}`,renotify:true});
+      notification.onclick=()=>{window.focus();togglePanel(true);$("#tp-event").trigger("click");notification.close();};
+      setTimeout(()=>notification.close(),12000);
+    }catch{}
+  }
+}
+function updateWmScoreSnapshot(games){
+  const previous=S.wm.scoreSnapshot||{};
+  const next={};
+  let finishedChanged=false;
+  (games||[]).forEach(g=>{
+    const key=wmGameKey(g);
+    const score=wmScorePair(g);
+    const old=previous[key];
+    next[key]={...score,live:wmLive(g)};
+    if(String(g?.finished).toUpperCase()==="TRUE" && old?.live && !S.wm.finishedAt[key]){
+      S.wm.finishedAt[key]=Date.now();
+      finishedChanged=true;
+    }
+    if(!S.wm.snapshotReady || !old || !(old.live||wmLive(g)))return;
+    if(score.home>old.home)notifyWmGoal(g,"home");
+    if(score.away>old.away)notifyWmGoal(g,"away");
+  });
+  const cutoff=Date.now()-(WM_RESULT_VISIBLE_MS+86400000);
+  Object.keys(S.wm.finishedAt||{}).forEach(key=>{
+    if(Number(S.wm.finishedAt[key])<cutoff){delete S.wm.finishedAt[key];finishedChanged=true;}
+  });
+  if(finishedChanged)GM_setValue("v7_wm_finished_at",JSON.stringify(S.wm.finishedAt));
+  S.wm.scoreSnapshot=next;
+  S.wm.snapshotReady=true;
+}
+function wmHeaderMatchHtml(g){
+  const dt=parseWmGameDate(g);
+  const live=wmLive(g);
+  const finished=String(g?.finished).toUpperCase()==="TRUE";
+  const time=dt?dt.toLocaleTimeString(uiLocale(),{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit"}):"--:--";
+  const score=live||wmStarted(g)?wmScore(g):time;
+  const date=dt?dt.toLocaleDateString(uiLocale(),{timeZone:"Europe/Berlin",weekday:"short",day:"2-digit",month:"2-digit"}):"Geplant";
+  const state=live
+    ? `LIVE · ${wmMinuteText(g)}`
+    : wmStarted(g)
+      ? `Endergebnis · ${timeAgo(wmFinishedAt(g))}`
+      : `${date} · ${time} Uhr`;
+  const cls=live?" live":finished?" finished":" planned";
+  return `<button class="wm-header-match${cls}" type="button" data-open-event="1" title="WM-Spielplan öffnen">
+    <span class="wm-header-copy">
+      <span class="wm-header-teams"><span class="wm-header-flag" aria-hidden="true">${escHtml(wmTeamFlag(g,"home"))}</span><span class="wm-header-team">${wmTeamHtml(g,"home")}</span><span class="wm-header-vs">VS</span><span class="wm-header-flag" aria-hidden="true">${escHtml(wmTeamFlag(g,"away"))}</span><span class="wm-header-team">${wmTeamHtml(g,"away")}</span></span>
+      <span class="wm-header-state">${escHtml(state)}</span>
+    </span>
+    <span class="wm-header-score">${escHtml(score)}</span>
+  </button>`;
 }
 function fmtCountdownMs(endTs){
   const end=Number(endTs)||0;
@@ -3445,6 +3784,16 @@ function wmStadiumText(g){
   const city=s.city_en?` · ${s.city_en}`:"";
   return `${name}${city}`;
 }
+function wmStadiumFacts(g){
+  const s=S.wm.stadiums[String(g.stadium_id)]||{};
+  return {
+    name:s.fifa_name||s.name_en||`Stadion ${g.stadium_id||"-"}`,
+    city:s.city_en||"",
+    country:s.country_en||"",
+    capacity:Number(s.capacity)||0,
+    region:s.region||""
+  };
+}
 function wmGroupStandings(){
   const groups={};
   (S.wm.games||[]).filter(g=>String(g?.type||"").toLowerCase()==="group" && g?.group).forEach(g=>{
@@ -3492,6 +3841,57 @@ function renderWmGroups(){
   panel.html(`<div class="wm-groups-legend"><span class="wm-legend qualify">Platz 1-2: direkte Qualifikation</span><span class="wm-legend third">Platz 3: Vergleich der Gruppendritten</span></div>${cards}<div class="wm-groups-note">${tr("Automatisch aus den API-Ergebnissen berechnet.")} Grün markiert sind Platz 1 und 2; Platz 3 nimmt am Vergleich der besten Gruppendritten teil.</div>`);
   applyTranslations(panel.get(0));
 }
+function wmKoTeamHtml(g,side){
+  const raw=wmTeamRaw(g,side);
+  const known=side==="home"?Number(g?.home_team_id)>0:Number(g?.away_team_id)>0;
+  const score=side==="home"?g?.home_score:g?.away_score;
+  return `<div class="wm-ko-team${known?"":" pending"}">
+    <span class="wm-ko-flag">${escHtml(known?wmTeamFlag(g,side):"◌")}</span>
+    <span class="wm-ko-name" title="${escHtml(wmTeam(g,side))}">${wmTeamHtml(g,side)}</span>
+    <span class="wm-ko-score">${wmStarted(g)?escHtml(score??0):""}</span>
+  </div>`;
+}
+function wmKoMatchHtml(g){
+  const dt=parseWmGameDate(g);
+  const cls=wmLive(g)?" live":wmStarted(g)?" finished":" planned";
+  const time=dt?dt.toLocaleString(uiLocale(),{timeZone:"Europe/Berlin",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(",",""):"Termin offen";
+  return `<article class="wm-ko-match${cls}">
+    <div class="wm-ko-meta"><span>Spiel ${escHtml(g?.id||"-")}</span><span>${escHtml(time)}</span></div>
+    ${wmKoTeamHtml(g,"home")}${wmKoTeamHtml(g,"away")}
+    <div class="wm-ko-status">${escHtml(wmLive(g)?wmMinuteText(g):wmStarted(g)?"Beendet":wmStadiumFacts(g).city||"Geplant")}</div>
+  </article>`;
+}
+function wmKoPairsHtml(matches){
+  const pairs=[];
+  for(let i=0;i<matches.length;i+=2){
+    pairs.push(`<div class="wm-ko-pair">${matches.slice(i,i+2).map(wmKoMatchHtml).join("")}</div>`);
+  }
+  return pairs.join("");
+}
+function renderWmKnockout(){
+  const panel=$("#wm-knockout-grid");
+  if(!panel.length)return;
+  const defs=[
+    ["r32","Runde der 32"],["r16","Achtelfinale"],["qf","Viertelfinale"],
+    ["sf","Halbfinale"],["final","Finale"]
+  ];
+  const games=wmSortedGames().filter(g=>String(g?.type||"").toLowerCase()!=="group");
+  if(!games.length){
+    panel.html(`<div class="lss7-empty">Die K.-o.-Paarungen werden geladen, sobald sie von der API bereitgestellt werden.</div>`);
+    return;
+  }
+  const bracket=defs.map(([type,label])=>{
+    const matches=games.filter(g=>String(g?.type||"").toLowerCase()===type);
+    const final=type==="final";
+    return `<section class="wm-ko-stage ${type}${final?" wm-ko-final-stage":""}">
+      <div class="wm-ko-stage-title">${label}<span>${matches.length}</span></div>
+      <div class="wm-ko-matches">${matches.length?(final?matches.map(wmKoMatchHtml).join(""):wmKoPairsHtml(matches)):`<div class="wm-ko-match"><div class="wm-ko-team pending"><span class="wm-ko-flag">◌</span><span class="wm-ko-name">Noch nicht angesetzt</span><span></span></div></div>`}</div>
+    </section>`;
+  }).join("");
+  const third=games.find(g=>String(g?.type||"").toLowerCase()==="third");
+  panel.html(`<div class="wm-bracket">${bracket}</div>${third?`<section class="wm-ko-third"><div class="wm-ko-third-title">Spiel um Platz 3</div>${wmKoMatchHtml(third)}</section>`:""}`);
+  $("#wm-knockout-badge").text(`${games.filter(g=>Number(g.home_team_id)>0||Number(g.away_team_id)>0).length} teilweise/fest`);
+}
 function wmRowHtml(g,mini=false){
   const home=wmTeamHtml(g,"home");
   const away=wmTeamHtml(g,"away");
@@ -3501,6 +3901,8 @@ function wmRowHtml(g,mini=false){
   const stage=escHtml(wmStage(g));
   const tv=escHtml(wmTv(g));
   const status=escHtml(wmStatusText(g));
+  const facts=wmStadiumFacts(g);
+  const matchday=Number(g?.matchday)||0;
   const cls=wmLive(g)?" live":wmStarted(g)?" finished":" planned";
   const scoreCls=wmStarted(g)?"":" pending";
   const matchEvents=wmMatchEventsHtml(g);
@@ -3527,8 +3929,14 @@ function wmRowHtml(g,mini=false){
   return `<div class="wm-row${cls}" data-wm-id="${escHtml(id)}">
     <div class="wm-time"><strong>${when}</strong><br><span class="wm-stage">${stage}</span></div>
     <div class="wm-main">
-      <div class="wm-teams">${home}<span class="wm-team-vs">vs</span>${away}</div>
-      <div class="wm-meta"><span class="wm-meta-item" title="${stadium}">${stadium}</span><span class="wm-meta-item">TV: ${tv}</span><span class="wm-status">${status}</span></div>
+      <div class="wm-teams">${escHtml(wmTeamFlag(g,"home"))} ${home}<span class="wm-team-vs">vs</span>${escHtml(wmTeamFlag(g,"away"))} ${away}</div>
+      <div class="wm-meta">
+        <span class="wm-meta-item" title="${stadium}">${stadium}</span>
+        <span class="wm-fact">${escHtml(facts.country||facts.region||"WM 2026")}</span>
+        ${facts.capacity?`<span class="wm-fact">${fmt(facts.capacity)} Plätze</span>`:""}
+        ${matchday?`<span class="wm-fact">Spieltag ${matchday}</span>`:""}
+        <span class="wm-fact">TV: ${tv}</span><span class="wm-status">${status}</span>
+      </div>
       ${matchEvents}
     </div>
     <div class="wm-result-tip">
@@ -3539,6 +3947,71 @@ function wmRowHtml(g,mini=false){
       ${tipHtml}
     </div>
   </div>`;
+}
+function wmFocusCardHtml(g){
+  const dt=parseWmGameDate(g);
+  const cls=wmLive(g)?" live":wmStarted(g)?" finished":" planned";
+  const status=wmLive(g)?wmMinuteText(g):wmStarted(g)?"Endstand":"Nächstes Spiel";
+  const score=wmStarted(g)?wmScore(g):(dt?dt.toLocaleTimeString(uiLocale(),{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit"}):"--:--");
+  const facts=wmStadiumFacts(g);
+  return `<article class="wm-focus-card${cls}">
+    <div class="wm-focus-top"><span class="wm-focus-status">${escHtml(status)}</span><span>${escHtml(wmStage(g))}</span></div>
+    <div class="wm-focus-teams">
+      <div class="wm-focus-team"><span class="wm-focus-flag">${escHtml(wmTeamFlag(g,"home"))}</span>${wmTeamHtml(g,"home")}</div>
+      <div class="wm-focus-score">${escHtml(score)}</div>
+      <div class="wm-focus-team"><span class="wm-focus-flag">${escHtml(wmTeamFlag(g,"away"))}</span>${wmTeamHtml(g,"away")}</div>
+    </div>
+    <div class="wm-focus-meta">
+      <span>${escHtml(dt?fmtWmKickoff(g):"-")}</span>
+      <span>${escHtml(facts.city||facts.name)}</span>
+      ${Number(g?.matchday)?`<span>Spieltag ${Number(g.matchday)}</span>`:""}
+    </div>
+  </article>`;
+}
+function wmEventFocusGames(limit=3){
+  const all=wmSortedGames();
+  const live=all.filter(wmLive);
+  const today=wmTodayGames().filter(g=>!wmLive(g) && !wmStarted(g));
+  const recent=wmRecentFinishedGames();
+  const upcoming=all.filter(g=>!wmStarted(g)&&(g._dt?.getTime()||0)>=Date.now());
+  const seen=new Set();
+  return [...live,...today,...recent,...upcoming].filter(g=>{
+    const key=wmGameKey(g);
+    if(seen.has(key))return false;
+    seen.add(key);
+    return true;
+  }).slice(0,limit);
+}
+function wmFilteredGames(view){
+  const all=wmSortedGames();
+  const now=Date.now();
+  if(view==="live")return all.filter(g=>wmLive(g)||wmRecentFinishedGames().some(x=>wmGameKey(x)===wmGameKey(g)));
+  if(view==="upcoming")return all.filter(g=>!wmStarted(g)&&(g._dt?.getTime()||0)>=now);
+  if(view==="results")return all.filter(g=>String(g?.finished).toUpperCase()==="TRUE").sort((a,b)=>(b._dt?.getTime()||0)-(a._dt?.getTime()||0));
+  if(view==="focus"){
+    const focusKeys=new Set(wmEventFocusGames(8).map(wmGameKey));
+    return all.filter(g=>focusKeys.has(wmGameKey(g)));
+  }
+  return all;
+}
+function wmDayLabel(g){
+  const dt=parseWmGameDate(g);
+  if(!dt)return "Termin offen";
+  return dt.toLocaleDateString(uiLocale(),{timeZone:"Europe/Berlin",weekday:"long",day:"2-digit",month:"long",year:"numeric"});
+}
+function wmGroupedScheduleHtml(view){
+  const games=wmFilteredGames(view);
+  if(!games.length)return `<div class="lss7-empty">Für diese Auswahl sind keine Spiele vorhanden.</div>`;
+  const groups=new Map();
+  games.forEach(g=>{
+    const key=wmDateKey(parseWmGameDate(g)||new Date(0));
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(g);
+  });
+  return [...groups.entries()].map(([,items])=>`<section class="wm-day">
+    <div class="wm-day-head"><b>${escHtml(wmDayLabel(items[0]))}</b><span>${items.length} ${items.length===1?"Spiel":"Spiele"}</span></div>
+    <div class="wm-list">${items.map(g=>wmRowHtml(g)).join("")}</div>
+  </section>`).join("");
 }
 function headerGameEventInfo(ev){
   const title=String(ev?.title||"Leitstellenspiel Event").replace(/\s+/g," ").trim();
@@ -3559,9 +4032,11 @@ function renderWmHeader(){
   const active=isWmActive();
   const liveEvents=activeGameEvents();
   const items=[];
-  if(active)items.push({label:"WM-2026 LIVE",cls:"event-wm"});
   liveEvents.forEach(ev=>items.push(headerGameEventInfo(ev)));
-  $("#lss7-header-events").html(items.map(headerEventButtonHtml).join("")).toggle(items.length>0);
+  const headerGames=wmHeaderGames(2);
+  const wmHtml=headerGames.map(wmHeaderMatchHtml).join("");
+  const eventHtml=items.map(headerEventButtonHtml).join("");
+  $("#lss7-header-events").html(`${wmHtml}${eventHtml}`).toggle(!!wmHtml||items.length>0);
   $("#lss7-nav-events").html(items.map(item=>`<span class="lss7-nav-event">${escHtml(item.label)}</span>`).join(""));
   $("#wm-event-pill").text(active?"WM-2026 LIVE":"WM-2026");
   applyNavButtonStyle();
@@ -3613,11 +4088,32 @@ function renderWmEvent(){
   const list=wmSortedGames();
   if(S.wm.error){$("#wm-schedule-list").html(`<div class="lss7-empty">${escHtml(S.wm.error)}</div>`);renderWmOverview();return;}
   if(!list.length){$("#wm-schedule-list").html(`<div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div>`);renderWmOverview();return;}
-  $("#wm-schedule-list").html(list.map(g=>wmRowHtml(g)).join(""));
+  const liveCount=list.filter(wmLive).length;
+  const finishedCount=list.filter(g=>String(g?.finished).toUpperCase()==="TRUE").length;
+  const upcomingCount=list.filter(g=>!wmStarted(g)).length;
+  const focus=wmEventFocusGames(3);
+  $("#wm-schedule-list").html(`
+    <section class="wm-command">
+      <div><span class="wm-command-kicker">FIFA World Cup 2026 · Match Center</span><span class="wm-command-title">Spiele, Ergebnisse und Live-Lage</span><span class="wm-command-sub">Live-Partien und aktuelle Spiele stehen automatisch oben. Alle Uhrzeiten werden für Deutschland angezeigt.</span></div>
+      <div class="wm-command-stats">
+        <div class="wm-command-stat"><b>${liveCount}</b><span>Live</span></div>
+        <div class="wm-command-stat"><b>${finishedCount}</b><span>Beendet</span></div>
+        <div class="wm-command-stat"><b>${upcomingCount}</b><span>Ausstehend</span></div>
+      </div>
+    </section>
+    ${focus.length?`<div class="wm-focus">${focus.map(wmFocusCardHtml).join("")}</div>`:""}
+    <nav class="wm-filterbar" aria-label="WM-Spielplan filtern">
+      ${[
+        ["focus","Aktuell"],["live","Live & letzte Ergebnisse"],["upcoming","Kommende Spiele"],
+        ["results","Ergebnisse"],["all","Alle Spiele"]
+      ].map(([id,label])=>`<button class="wm-filter${S.wm.view===id?" active":""}" type="button" data-wm-view="${id}">${label}</button>`).join("")}
+    </nav>
+    <div id="wm-schedule-groups">${wmGroupedScheduleHtml(S.wm.view||"focus")}</div>`);
+  renderWmKnockout();
   renderWmGroups();
   const hasCards=(S.wm.games||[]).some(g=>Object.keys(g||{}).some(k=>/card|booking|dismissal/i.test(k)));
   const cardInfo=hasCards?"Kartendaten verfügbar":"Kartendaten derzeit nicht verfügbar";
-  $("#wm-source").text(S.wm.lastTs?`Quelle: worldcup26.ir · Torschützen verfügbar · ${cardInfo} · aktualisiert ${timeAgo(S.wm.lastTs)}`:`Quelle: worldcup26.ir · ${cardInfo}`);
+  $("#wm-source").text(S.wm.lastTs?`Live-Daten: worldcup26.ir · Spielplan, Ergebnisse, Torschützen, Stadien und Gruppen · ${cardInfo} · aktualisiert ${timeAgo(S.wm.lastTs)}`:`Live-Daten: worldcup26.ir · ${cardInfo}`);
   renderWmOverview();
 }
 
@@ -4924,19 +5420,42 @@ function fetchAllData(){
   fetchWmEvent();
 }
 
+let wmRefreshTimer=null;
+function scheduleWmRefresh(delay){
+  clearTimeout(wmRefreshTimer);
+  wmRefreshTimer=setTimeout(fetchWmEvent,Math.max(10000,Number(delay)||300000));
+}
+function nextWmRefreshDelay(){
+  if((S.wm.games||[]).some(wmLive))return 20000;
+  if(wmTodayGames().length||wmRecentFinishedGames().length)return 60000;
+  return 300000;
+}
 function fetchWmEvent(){
-  jsonGet(API.wmStadiums,d=>{
-    const map={};
-    (d.stadiums||[]).forEach(s=>{map[String(s.id)]=s;});
-    S.wm.stadiums=map;
-    renderWmEvent();
-  },()=>{S.wm.error="Stadien konnten nicht geladen werden";renderWmEvent();});
+  if(S.wm.loading)return;
+  S.wm.loading=true;
+  if(!Object.keys(S.wm.stadiums||{}).length){
+    jsonGet(API.wmStadiums,d=>{
+      const map={};
+      (d.stadiums||[]).forEach(s=>{map[String(s.id)]=s;});
+      S.wm.stadiums=map;
+      renderWmEvent();
+    },()=>{renderWmEvent();});
+  }
   jsonGet(API.wmGames,d=>{
-    S.wm.games=Array.isArray(d.games)?d.games:[];
+    const games=Array.isArray(d.games)?d.games:[];
+    updateWmScoreSnapshot(games);
+    S.wm.games=games;
     S.wm.error=null;
     S.wm.lastTs=Date.now();
+    S.wm.loading=false;
     renderWmEvent();
-  },()=>{S.wm.error="Spielplan konnte nicht geladen werden";renderWmEvent();});
+    scheduleWmRefresh(nextWmRefreshDelay());
+  },()=>{
+    S.wm.loading=false;
+    S.wm.error="Spielplan konnte nicht geladen werden";
+    renderWmEvent();
+    scheduleWmRefresh(60000);
+  });
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -6123,6 +6642,16 @@ function buildUI(){
       <div class="event-kpi"><span class="event-k">Daten</span><span class="event-v">Ergebnis, Status, Spielort und Torschützen werden automatisch aktualisiert. Karten erscheinen, sobald die API sie bereitstellt.</span></div>
     </div>
     <div class="event-actions"><button class="lbtn prime" id="wm-refresh" type="button">Spielplan aktualisieren</button><a class="lbtn" href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/scores-fixtures" target="_blank" rel="noopener">FIFA-Spielplan</a></div>
+    <section class="wm-knockout${S.wm.knockoutOpen?" open":""}" id="wm-knockout">
+      <div class="wm-knockout-head">
+        <div class="wm-knockout-title"><b>K.-o.-Phase</b><span>Bereits bekannte Teams und offene Qualifikationspfade von der Runde der 32 bis zum Finale</span></div>
+        <div class="wm-knockout-tools"><span class="wm-knockout-badge" id="wm-knockout-badge">Wird geladen</span><button class="wm-knockout-toggle" id="wm-knockout-toggle" type="button" aria-expanded="${S.wm.knockoutOpen?"true":"false"}">${S.wm.knockoutOpen?"Turnierbaum ausblenden":"Turnierbaum anzeigen"}</button></div>
+      </div>
+      <div class="wm-knockout-body">
+        <div class="wm-knockout-grid" id="wm-knockout-grid"><div class="lss7-empty"><span class="lspin"></span> Lade K.-o.-Paarungen...</div></div>
+        <div class="wm-ko-note">◌ kennzeichnet einen noch offenen Platz. Die Linien zeigen den Weg bis ins Finale. Sobald Gruppensieger, Gruppenzweite oder vorherige K.-o.-Sieger feststehen, ersetzt die API den Platzhalter automatisch durch Team und Flagge.</div>
+      </div>
+    </section>
     <section class="wm-groups" id="wm-groups">
       <div class="wm-groups-head">
         <div class="wm-groups-title"><b>Gruppentabellen</b><span>Punkte, Tore und Tordifferenz aller zwölf Gruppen</span></div>
@@ -6274,7 +6803,9 @@ function buildUI(){
       <option value="overview"${S.settings.eventMode==="overview"?" selected":""}>An - in Übersicht anzeigen</option>
     </select>
   </label>`);
+  grpEvent.append(mkToggle("tog-wm-goal-sound","Signalton bei WM-Toren","wmGoalSound"));
   grpEvent.append(`<button class="lbtn prime" id="sb-event-refresh" type="button">WM-Spielplan aktualisieren</button>`);
+  grpEvent.append(`<div class="set-note">Torhinweise erscheinen immer direkt im Dashboard. Für Hinweise außerhalb des geöffneten Dashboards bitte zusätzlich „Browser-Benachrichtigungen“ aktivieren.</div>`);
   const settingsFeatures=$(`<div class="settings-feature-grid set-wide"></div>`);
   settingsFeatures.append($(`<div class="settings-feature-column"></div>`).append(grpForecast,grpEvent));
   settingsFeatures.append($(`<div class="settings-feature-column"></div>`).append(grpWx));
@@ -6314,7 +6845,7 @@ function buildUI(){
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v9.3.1",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v9.4.1",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -6349,7 +6880,7 @@ function buildUI(){
     if(id==="tp-overview"){renderForecast();setTimeout(drawChart,50);}
   });
 
-  panel.on("click",".hd-event-badge[data-open-event]",function(e){
+  panel.on("click","[data-open-event]",function(e){
     e.stopPropagation();e.preventDefault();
     panel.find('.ltab[data-tab="tp-event"]').trigger("click");
   });
@@ -6503,6 +7034,24 @@ function buildUI(){
     $(e.currentTarget).text(tr(open?"Tabellen ausblenden":"Tabellen anzeigen"));
     if(open)renderWmGroups();
   });
+  panel.on("click","#wm-knockout-toggle",e=>{
+    e.stopPropagation();e.preventDefault();
+    S.wm.knockoutOpen=!S.wm.knockoutOpen;
+    GM_setValue("v7_wm_knockout_open",S.wm.knockoutOpen);
+    const section=$("#wm-knockout").toggleClass("open",S.wm.knockoutOpen);
+    $(e.currentTarget)
+      .attr("aria-expanded",String(S.wm.knockoutOpen))
+      .text(S.wm.knockoutOpen?"Turnierbaum ausblenden":"Turnierbaum anzeigen");
+    if(S.wm.knockoutOpen && !section.find(".wm-ko-stage").length)renderWmKnockout();
+  });
+  panel.on("click",".wm-filter",e=>{
+    e.stopPropagation();e.preventDefault();
+    const view=String($(e.currentTarget).data("wm-view")||"focus");
+    S.wm.view=["focus","live","upcoming","results","all"].includes(view)?view:"focus";
+    panel.find(".wm-filter").removeClass("active");
+    $(e.currentTarget).addClass("active");
+    $("#wm-schedule-groups").html(wmGroupedScheduleHtml(S.wm.view));
+  });
   panel.on("click",".wm-group-name",e=>{
     e.stopPropagation();e.preventDefault();
     const card=$(e.currentTarget).closest(".wm-group-card");
@@ -6560,6 +7109,11 @@ function buildUI(){
     if(key==="playtimeEnabled")updatePlaytimeUi();
     if(key==="coins")updateCoinsUi();
     if(key==="forecastEnabled")renderForecast();
+    if(key==="notifications" && S.settings.notifications && "Notification" in window && Notification.permission==="default"){
+      Notification.requestPermission().then(permission=>{
+        notify(permission==="granted"?"Browser-Benachrichtigungen sind aktiviert.":"Browser-Benachrichtigungen wurden nicht freigegeben.",permission!=="granted");
+      }).catch(()=>{});
+    }
   });
 
   applyTranslations(panel.get(0));
@@ -6822,6 +7376,88 @@ function mkAccordion(icon,title,body){
 }
 function patchHTML(){
   const groups=[
+    {
+      title:"v9.4.1 — Interaktiver K.-o.-Turnierbaum",
+      items:[
+        "Die K.-o.-Phase kann jetzt vollständig ein- und ausgeklappt werden.",
+        "Der Spielplan wurde als klassischer Turnierbaum mit Runden von links nach rechts neu angeordnet.",
+        "Verbindungslinien führen jeweils zwei Paarungen sichtbar in die nächste K.-o.-Runde.",
+        "Runde der 32, Achtelfinale, Viertelfinale, Halbfinale und Finale bilden einen zusammenhängenden Turnierpfad.",
+        "Das Spiel um Platz 3 wird professionell separat unterhalb des Hauptturnierbaums dargestellt.",
+        "Offene Qualifikationsplätze bleiben im Turnierbaum sichtbar und werden automatisch durch Teams und Flaggen ersetzt.",
+        "Der Turnierbaum ist horizontal scrollbar und funktioniert dadurch auch in schmaleren Dashboard-Ansichten.",
+        "Version und Patch-Notes wurden auf v9.4.1 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.4.0 — Premium Theme Refit",
+      items:[
+        "Der WM-Liveticker im Header ist jetzt länger, großzügiger proportioniert und trennt Flaggen, Teams, Status und Ergebnis noch klarer.",
+        "Dark wurde als edles Graphit-Navy-Theme mit kühlen blauen Akzenten, tieferen Flächen und präziseren Schatten neu abgestimmt.",
+        "Light verwendet nun eine ruhige Pearl-Oberfläche mit klareren Konturen, hochwertigeren Karten und reduzierten Blautönen.",
+        "Summer wurde zu einer eleganteren hellen Kombination aus Himmel, Meeresgrün und warmem Sonnengold verfeinert.",
+        "Summer Dark nutzt eine tiefere Mitternachts-Palette mit dezenterem Sternenlicht und besser getrennten Oberflächen.",
+        "LCARS 2364 wurde ruhiger und hochwertiger gestaltet: weniger grelle Vollflächen, dunklere Konsolen und präzisere bernstein- und cyanfarbene Akzente.",
+        "Karten, Tabs, Buttons, Eingabefelder, Tabellen, Eventbereiche, Fuhrpark, Prognosen und Mitgliederansichten folgen jetzt einem gemeinsamen Premium-Designsystem.",
+        "Abstände, Radien, Hover-Effekte, Schatten, Fokusrahmen und Kontraste wurden über alle Themes hinweg vereinheitlicht.",
+        "Version und Patch-Notes wurden auf v9.4.0 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.3.6 — K.-o.-Phasen-Übersicht",
+      items:[
+        "Der WM-Eventbereich zeigt jetzt eine vollständige K.-o.-Übersicht von der Runde der 32 bis zum Finale.",
+        "Bereits feststehende Mannschaften erscheinen mit Name und Flagge; offene Plätze zeigen verständliche Qualifikationspfade.",
+        "Alle 32 K.-o.-Spiele sind nach Runde geordnet und enthalten Termin, Spielnummer, Spielort, Status und Ergebnis.",
+        "Die Übersicht aktualisiert offene Paarungen automatisch, sobald die WM-API weitere Teams festlegt.",
+        "Spiel um Platz 3 und Finale sind als eigene Runden vollständig berücksichtigt.",
+        "Version und Patch-Notes wurden auf v9.3.6 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.3.5 — Teamflaggen im Header",
+      items:[
+        "Die beiden WM-Spielkarten im Dashboard-Header zeigen jetzt direkt die Flaggen beider Mannschaften.",
+        "Flaggen, Teamnamen, VS-Anzeige und Ergebnis bleiben auch bei längeren Ländernamen kompakt und klar ausgerichtet.",
+        "Syntax, WM-Auswahl, Sechs-Stunden-Ergebnisanzeige, Live-Aktualisierung und Match-Center-Filter wurden gemeinsam geprüft.",
+        "Version und Patch-Notes wurden auf v9.3.5 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.3.4 — Professionelles WM Match Center",
+      items:[
+        "Der WM-Eventbereich wurde als professionelles Match Center mit Live-Lage, Ergebnissen und kommenden Spielen neu aufgebaut.",
+        "Live-Spiele, heutige Partien, letzte Ergebnisse und nächste Begegnungen werden automatisch als hervorgehobene Fokus-Karten angezeigt.",
+        "Neue Filter zeigen Aktuell, Live und letzte Ergebnisse, kommende Spiele, Ergebnisse oder den vollständigen Spielplan.",
+        "Der Spielplan ist nach Tagen gruppiert und zeigt Spieltag, Runde, Stadion, Stadt, Gastgeberland, Kapazität, TV-Hinweis und Status.",
+        "Mannschaftsflaggen und Torschützen inklusive der von der API gelieferten Minuten verbessern die schnelle Orientierung.",
+        "Die bestehende schlüsselfreie WM-API bleibt erhalten, da sie Spielplan, Live-Ergebnisse, Torschützen, Stadien und Gruppendaten ohne Nutzerkonto bereitstellt.",
+        "Version und Patch-Notes wurden auf v9.3.4 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.3.3 — Lesbarere WM-Karten",
+      items:[
+        "Die beiden WM-Karten im Header wurden optisch neu aufgebaut und besitzen nun klar getrennte Teams, Statuszeile und Ergebnisfeld.",
+        "Live-Spiele, beendete Spiele und kommende Partien sind durch grüne, goldene und blaue Akzente sofort unterscheidbar.",
+        "Dark, Light, Summer, Summer Dark und LCARS besitzen jeweils eigene kontrastreiche Farbabstimmungen.",
+        "Längere Mannschaftsnamen werden sauber gekürzt, ohne Ergebnis oder Spielstatus aus dem sichtbaren Bereich zu drücken.",
+        "Hover-Effekt, Schatten, Statuspunkt und Live-Animation wurden dezenter und professioneller abgestimmt.",
+        "Version und Patch-Notes wurden auf v9.3.3 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.3.2 — WM-Liveticker im Header",
+      items:[
+        "Bis zu zwei WM-Spiele werden jetzt mittig im Dashboard-Header mit deutscher Anstoßzeit, Teams und Spielstand angezeigt.",
+        "Der Header wechselt automatisch zwischen Live-Spielen, sechs Stunden lang sichtbaren Endergebnissen und den nächsten bevorstehenden Partien.",
+        "Laufende Partien zeigen ihren Live-Status und – soweit von der WM-API geliefert – die aktuelle Spielminute, Halbzeit, Verlängerung oder das Elfmeterschießen.",
+        "Während Live-Spielen werden Ergebnisse automatisch etwa alle 20 Sekunden aktualisiert; an Spieltagen ohne laufende Partie erfolgt die Aktualisierung minütlich.",
+        "Neue Tore werden durch ein auffälliges Tor-Banner, einen kurzen Signalton und optional durch eine Browser-Benachrichtigung gemeldet.",
+        "Ein Klick auf ein Header-Spiel öffnet direkt den vollständigen WM-Spielplan im Eventbereich.",
+        "Version und Patch-Notes wurden auf v9.3.2 aktualisiert."
+      ]
+    },
     {
       title:"v9.3.1 — Profil, Übersicht & Verbandsprognose",
       items:[
@@ -7234,6 +7870,186 @@ GM_addStyle(`
 @media(max-width:900px){.fleet-status-layout{grid-template-columns:1fr}}
 @media(max-width:920px){#lss7-tabs,#lss7-tabs.player-menu-hidden{display:flex;overflow-x:auto}.lss7-nav-group{flex:0 0 auto;max-width:78vw}}
 @media(max-width:760px){.asset-kpis.asset-kpis-pro{grid-template-columns:repeat(2,minmax(0,1fr))}.building-detail-row{grid-template-columns:minmax(140px,1fr) repeat(3,60px)}.building-detail-row .building-detail-stat:nth-last-child(-n+2){display:none}.nav-style-showcase{grid-template-columns:1fr}.fleet-command{align-items:stretch;flex-direction:column}.fleet-command-badge{align-self:flex-start}.fleet-panel{padding:9px}}
+
+/* v9.4.0 Premium Theme System */
+#lss7{
+  --premium-bg:var(--bg0);
+  --premium-body:var(--bg1);
+  --premium-surface:rgba(255,255,255,.028);
+  --premium-surface-strong:rgba(255,255,255,.052);
+  --premium-border:var(--b1);
+  --premium-border-strong:var(--b2);
+  --premium-highlight:rgba(255,255,255,.065);
+  --premium-shadow:0 16px 42px rgba(0,0,0,.25);
+  --premium-card-shadow:0 8px 24px rgba(0,0,0,.14),inset 0 1px rgba(255,255,255,.035);
+  --premium-accent:var(--blue);
+  --premium-accent-2:var(--cyan);
+  --premium-radius:12px;
+}
+#lss7.theme-dark{
+  --bg0:#070b12;--bg1:#0b111b;--bg2:#101827;--bg3:#162133;--bg4:#1b2940;
+  --b0:rgba(174,203,242,.045);--b1:rgba(174,203,242,.09);--b2:rgba(174,203,242,.16);--b3:rgba(174,203,242,.24);
+  --t1:#f5f8fd;--t2:#d5deeb;--t3:#9eacbf;--t4:#718096;
+  --blue:#4c8dff;--blueh:#82b1ff;--cyan:#2cc7da;--cyanh:#75e3ee;
+  --premium-bg:#070b12;--premium-body:#09101a;--premium-surface:rgba(19,31,49,.82);
+  --premium-surface-strong:rgba(25,41,64,.92);--premium-border:rgba(151,185,229,.11);
+  --premium-border-strong:rgba(151,185,229,.20);--premium-highlight:rgba(130,177,255,.07);
+  --premium-shadow:0 24px 70px rgba(0,0,0,.56);--premium-card-shadow:0 12px 30px rgba(0,0,0,.23),inset 0 1px rgba(255,255,255,.045);
+}
+#lss7.theme-light{
+  --bg0:#f4f6fa;--bg1:#edf1f6;--bg2:#e5eaf1;--bg3:#dce3ec;--bg4:#d2dbe7;
+  --b0:rgba(25,43,67,.04);--b1:rgba(25,43,67,.09);--b2:rgba(25,43,67,.16);--b3:rgba(25,43,67,.24);
+  --t1:#142033;--t2:#29384d;--t3:#526177;--t4:#748196;
+  --blue:#356fd1;--blueh:#2459b2;--cyan:#168a9b;--cyanh:#0c6d7d;
+  --premium-bg:#f5f7fa;--premium-body:#eef2f7;--premium-surface:rgba(255,255,255,.82);
+  --premium-surface-strong:#fff;--premium-border:rgba(36,57,84,.10);
+  --premium-border-strong:rgba(36,57,84,.18);--premium-highlight:rgba(53,111,209,.055);
+  --premium-shadow:0 22px 60px rgba(36,57,84,.18);--premium-card-shadow:0 10px 28px rgba(36,57,84,.09),inset 0 1px #fff;
+}
+#lss7.theme-summer{
+  --premium-bg:#f3fafb;--premium-body:#edf7f7;--premium-surface:rgba(255,255,255,.76);
+  --premium-surface-strong:rgba(255,255,255,.94);--premium-border:rgba(27,86,108,.11);
+  --premium-border-strong:rgba(27,86,108,.19);--premium-highlight:rgba(22,135,200,.065);
+  --premium-shadow:0 24px 64px rgba(32,91,111,.20);--premium-card-shadow:0 11px 28px rgba(32,91,111,.09),inset 0 1px rgba(255,255,255,.95);
+}
+#lss7.theme-summer-dark{
+  --bg0:#060b17;--bg1:#091225;--bg2:#0e1a32;--bg3:#142441;--bg4:#1b2f50;
+  --b0:rgba(178,205,255,.04);--b1:rgba(178,205,255,.09);--b2:rgba(178,205,255,.16);--b3:rgba(178,205,255,.24);
+  --t1:#f5f8ff;--t2:#d8e3f7;--t3:#9fb2d0;--t4:#7185a7;
+  --premium-bg:#060b17;--premium-body:#081123;--premium-surface:rgba(13,27,52,.83);
+  --premium-surface-strong:rgba(19,38,70,.93);--premium-border:rgba(166,197,255,.12);
+  --premium-border-strong:rgba(166,197,255,.21);--premium-highlight:rgba(117,158,255,.075);
+  --premium-shadow:0 26px 72px rgba(0,0,0,.57);--premium-card-shadow:0 12px 30px rgba(0,0,0,.25),inset 0 1px rgba(255,255,255,.045);
+}
+#lss7.theme-lcars{
+  --premium-bg:#06070a;--premium-body:#080a0e;--premium-surface:#0c0f15;
+  --premium-surface-strong:#11151d;--premium-border:rgba(217,166,93,.16);
+  --premium-border-strong:rgba(217,166,93,.28);--premium-highlight:rgba(232,169,88,.065);
+  --premium-shadow:0 25px 70px rgba(0,0,0,.64);--premium-card-shadow:0 11px 28px rgba(0,0,0,.30),inset 0 1px rgba(255,255,255,.025);
+}
+#lss7{
+  background:var(--premium-bg);
+  border-color:var(--premium-border-strong);
+  box-shadow:var(--premium-shadow);
+}
+#lss7 #lss7-body{background:var(--premium-body);}
+#lss7 #lss7-hd{
+  min-height:72px;padding:15px 17px;
+  border-bottom-color:var(--premium-border);
+  box-shadow:inset 0 -1px var(--premium-highlight);
+}
+#lss7.theme-dark #lss7-hd{background:radial-gradient(circle at 72% 0,rgba(76,141,255,.14),transparent 38%),linear-gradient(145deg,#101b2d,#070b12 72%);}
+#lss7.theme-light #lss7-hd{background:radial-gradient(circle at 72% 0,rgba(53,111,209,.11),transparent 40%),linear-gradient(145deg,#fff,#edf2f7 74%);}
+#lss7.theme-summer #lss7-hd{background:radial-gradient(circle at 75% 0,rgba(255,208,79,.24),transparent 34%),linear-gradient(135deg,#d9f2fb,#e8f8f2 58%,#fff4c9);}
+#lss7.theme-summer-dark #lss7-hd{background:radial-gradient(circle at 76% -10%,rgba(129,156,255,.19),transparent 38%),linear-gradient(145deg,#111d3a,#060b17 72%);}
+#lss7 .hd-title{font-size:15px;font-weight:900;letter-spacing:.15px;}
+#lss7 .hd-sub{margin-top:3px;font-size:9px;font-weight:600;letter-spacing:.18px;}
+#lss7 .hd-meta{gap:8px;}
+#lss7 .hd-events{gap:10px;}
+#lss7 .wm-header-match{
+  min-width:248px;max-width:286px;min-height:50px;
+  grid-template-columns:minmax(150px,1fr) auto;gap:11px;
+  padding:7px 10px 7px 13px;border-radius:11px;
+  box-shadow:0 10px 24px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.055);
+}
+#lss7 .wm-header-match::before{width:3px;}
+#lss7 .wm-header-teams{gap:6px;font-size:10.5px;letter-spacing:.05px;}
+#lss7 .wm-header-flag{font-size:16px;}
+#lss7 .wm-header-vs{font-size:7px;opacity:.9;}
+#lss7 .wm-header-state{font-size:8px;letter-spacing:.12px;}
+#lss7 .wm-header-score{min-width:48px;padding:8px 7px;font-size:14px;border-radius:8px;}
+#lss7 .wm-header-match.planned .wm-header-score{font-size:10.5px;}
+#lss7.theme-dark .wm-header-match{--wm-card:#101b2c;--wm-border:rgba(116,164,234,.26);--wm-accent:#5f9cff;--wm-score-bg:#172b47;}
+#lss7.theme-light .wm-header-match{background:linear-gradient(145deg,#fff,#edf2f8);box-shadow:0 10px 25px rgba(35,58,88,.11),inset 0 1px #fff;}
+#lss7.theme-summer .wm-header-match{background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(229,246,247,.96));box-shadow:0 10px 25px rgba(24,100,125,.12),inset 0 1px #fff;}
+#lss7.theme-summer-dark .wm-header-match{background:linear-gradient(145deg,var(--wm-card),#080f20);box-shadow:0 10px 26px rgba(0,0,0,.27),inset 0 1px rgba(255,255,255,.045);}
+#lss7 .prof-strip,#lss7 .sc,#lss7 .set-group,#lss7 .asset-section,#lss7 .fleet-panel,
+#lss7 .event-card,#lss7 .vehicle-summary-card,#lss7 .forecast-controls,#lss7 .forecast-chart-box,
+#lss7 .quality-card,#lss7 .wm-command,#lss7 .wm-focus-card,#lss7 .wm-day,#lss7 .wm-knockout,
+#lss7 .wm-groups,#lss7 .team-category,#lss7 .player-daily-panel{
+  border-color:var(--premium-border);
+  border-radius:var(--premium-radius);
+  background:var(--premium-surface);
+  box-shadow:var(--premium-card-shadow);
+}
+#lss7 .sc:hover,#lss7 .vehicle-summary-card:hover,#lss7 .wm-focus-card:hover,#lss7 .team-card:hover{
+  border-color:var(--premium-border-strong);
+  box-shadow:0 14px 32px rgba(0,0,0,.16),inset 0 1px var(--premium-highlight);
+}
+#lss7 #lss7-qs,#lss7 #lss7-tabs{
+  background:color-mix(in srgb,var(--premium-body) 92%,transparent);
+  border-color:var(--premium-border);
+  backdrop-filter:blur(14px) saturate(1.12);
+}
+#lss7 .lss7-nav-group{border-color:var(--premium-border);border-radius:10px;background:var(--premium-surface);}
+#lss7 .lss7-nav-group-label{border-color:var(--premium-border);font-size:7px;letter-spacing:1px;}
+#lss7 .lss7-nav-group .ltab{min-height:36px;border-radius:7px;margin:3px;padding:8px 11px;transition:background .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease;}
+#lss7 .lss7-nav-group .ltab:hover{transform:translateY(-1px);background:var(--premium-highlight);}
+#lss7 .lss7-nav-group .ltab.active{background:linear-gradient(135deg,var(--premium-accent),var(--premium-accent-2));box-shadow:0 7px 17px color-mix(in srgb,var(--premium-accent) 25%,transparent);}
+#lss7 .qs-cell{background:transparent;}
+#lss7 .qs-cell:hover{background:var(--premium-highlight);}
+#lss7 .lbtn,#lss7 .wm-filter,#lss7 .wm-groups-toggle,#lss7 .wm-knockout-toggle{
+  min-height:32px;border-color:var(--premium-border-strong);border-radius:8px;
+  background:linear-gradient(180deg,var(--premium-surface-strong),var(--premium-surface));
+  box-shadow:inset 0 1px var(--premium-highlight),0 5px 14px rgba(0,0,0,.08);
+  font-weight:850;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease,background .15s ease;
+}
+#lss7 .lbtn:hover,#lss7 .wm-filter:hover,#lss7 .wm-groups-toggle:hover,#lss7 .wm-knockout-toggle:hover{transform:translateY(-1px);border-color:var(--premium-accent);box-shadow:0 8px 18px rgba(0,0,0,.13);}
+#lss7 .lbtn.prime,#lss7 .wm-filter.active{color:#fff;background:linear-gradient(135deg,var(--premium-accent),var(--premium-accent-2));border-color:transparent;}
+#lss7 .lss7-select,#lss7 input,#lss7 select,#lss7 textarea{
+  border-color:var(--premium-border-strong)!important;border-radius:8px!important;
+  background:var(--premium-surface-strong)!important;color:var(--t1)!important;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.08),0 1px var(--premium-highlight);
+}
+#lss7 .lss7-select:focus,#lss7 input:focus,#lss7 select:focus,#lss7 textarea:focus{outline:none!important;border-color:var(--premium-accent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--premium-accent) 16%,transparent)!important;}
+#lss7 .wm-row,#lss7 .game-event-row,#lss7 .sch-row,#lss7 .arr-row,#lss7 .hist-row,
+#lss7 .rank-mini-row,#lss7 .team-card,#lss7 .wm-ko-match,#lss7 .wm-group-card{
+  border-color:var(--premium-border);background:var(--premium-surface);box-shadow:0 5px 15px rgba(0,0,0,.07);
+}
+#lss7 .wm-command,#lss7 .fleet-command,#lss7 .team-command{
+  background:linear-gradient(135deg,color-mix(in srgb,var(--premium-accent) 11%,var(--premium-surface)),var(--premium-surface));
+  border-color:color-mix(in srgb,var(--premium-accent) 25%,var(--premium-border));
+}
+#lss7 .wm-day-head,#lss7 .wm-groups-head,#lss7 .wm-knockout-head,#lss7 .team-category-head,#lss7 .asset-section-head{
+  background:linear-gradient(90deg,var(--premium-highlight),transparent);
+  border-color:var(--premium-border);
+}
+#lss7 table th{background:var(--premium-surface-strong)!important;color:var(--t3)!important;border-color:var(--premium-border)!important;}
+#lss7 table td{border-color:var(--premium-border)!important;}
+#lss7 #lss7-ft{background:var(--premium-body);border-color:var(--premium-border);padding:9px 13px;}
+#lss7.theme-light .sc,#lss7.theme-light .set-group,#lss7.theme-light .event-card,#lss7.theme-light .wm-command,
+#lss7.theme-light .wm-focus-card,#lss7.theme-light .wm-day,#lss7.theme-light .wm-knockout,#lss7.theme-light .wm-groups{
+  background:rgba(255,255,255,.86);
+}
+#lss7.theme-summer .sc,#lss7.theme-summer .set-group,#lss7.theme-summer .event-card,#lss7.theme-summer .wm-command,
+#lss7.theme-summer .wm-focus-card,#lss7.theme-summer .wm-day,#lss7.theme-summer .wm-knockout,#lss7.theme-summer .wm-groups{
+  background:rgba(255,255,255,.79);
+}
+#lss7.theme-lcars{border-radius:18px 8px 8px 18px;}
+#lss7.theme-lcars #lss7-hd{min-height:92px;background:radial-gradient(circle at 86% 20%,rgba(133,214,255,.08),transparent 34%),linear-gradient(145deg,#0b0d12,#050609);border-color:rgba(232,169,88,.22);}
+#lss7.theme-lcars #lss7-hd .hd-row{margin-top:19px;}
+#lss7.theme-lcars .wm-header-match{min-width:248px;max-width:286px;min-height:48px;border-radius:18px 7px 7px 18px;background:linear-gradient(145deg,#11151d,#080a0e);box-shadow:inset 6px 0 var(--wm-accent),0 10px 25px rgba(0,0,0,.30);}
+#lss7.theme-lcars .sc,#lss7.theme-lcars .set-group,#lss7.theme-lcars .asset-section,#lss7.theme-lcars .fleet-panel,
+#lss7.theme-lcars .event-card,#lss7.theme-lcars .vehicle-summary-card,#lss7.theme-lcars .forecast-controls,
+#lss7.theme-lcars .forecast-chart-box,#lss7.theme-lcars .quality-card,#lss7.theme-lcars .wm-command,
+#lss7.theme-lcars .wm-focus-card,#lss7.theme-lcars .wm-day,#lss7.theme-lcars .wm-knockout,#lss7.theme-lcars .wm-groups{
+  border-radius:18px 7px 7px 18px;background:#0c0f15;border-color:rgba(232,169,88,.18);
+  box-shadow:inset 5px 0 rgba(232,169,88,.75),var(--premium-card-shadow);
+}
+#lss7.theme-lcars .lss7-nav-group{border-radius:18px 7px 7px 18px;background:#0c0f15;}
+#lss7.theme-lcars .lss7-nav-group .ltab{border-radius:13px 5px 5px 13px;background:#10141b;border-color:rgba(232,169,88,.17);}
+#lss7.theme-lcars .lss7-nav-group .ltab.active{color:#ffe2aa!important;background:#241b11!important;border-color:rgba(232,169,88,.52);box-shadow:inset 5px 0 #e8a958;}
+#lss7.theme-lcars .lbtn,#lss7.theme-lcars .wm-filter,#lss7.theme-lcars .wm-groups-toggle,#lss7.theme-lcars .wm-knockout-toggle{border-radius:14px 5px 5px 14px;background:#11151d;color:#fff7e8;border-color:rgba(232,169,88,.28);box-shadow:inset 4px 0 #e8a958;}
+#lss7.theme-lcars .lbtn.prime,#lss7.theme-lcars .wm-filter.active{color:#dff5ff;background:#101c28;border-color:rgba(133,214,255,.42);box-shadow:inset 4px 0 #85d6ff;}
+@media(max-width:1180px){
+  #lss7 .hd-events{position:static;transform:none;margin-right:auto;overflow-x:auto;justify-content:flex-start;}
+  #lss7 .wm-header-match{min-width:226px;max-width:255px;}
+}
+@media(max-width:760px){
+  #lss7 #lss7-hd{padding:12px;}
+  #lss7 .wm-header-match{min-width:210px;max-width:235px;}
+  #lss7 .wm-header-teams{font-size:9.5px;}
+}
 `);
 
 function brandMarkHtml(extraClass=""){
@@ -7548,7 +8364,6 @@ $(document).ready(()=>{
   setInterval(fetchDailyEarnFromOverview, ITV.dailyEarn);
   setInterval(fetchWeather,       ITV.weather);
   setInterval(scanGameEvents,     30000);
-  setInterval(fetchWmEvent,       300000);
   setInterval(updateFooter,       ITV.footer);
 
   // Daily-Earnings quick-stat sync
@@ -7557,7 +8372,7 @@ $(document).ready(()=>{
   checkUpdate();
 });
 
-window.addEventListener("beforeunload",()=>{summerSceneCtl?.dispose();save();});
+window.addEventListener("beforeunload",()=>{clearTimeout(wmRefreshTimer);summerSceneCtl?.dispose();save();});
 window.addEventListener("pagehide",save);
 
 })();
