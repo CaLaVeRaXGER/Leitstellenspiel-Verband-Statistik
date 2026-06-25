@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.4.1
+// @version      9.5.3
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @match        https://www.leitstellenspiel.de/*
@@ -41,7 +41,7 @@ if(/^\/(?:alliances\/\d+|verband(?:\/|$))/i.test(location.pathname))return;
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "9.4.1";
+const V   = "9.5.3";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
@@ -2361,6 +2361,15 @@ const S = {
     weatherTone:"beep",
     eventMode:"overview", // off | overview
     wmGoalSound:true,
+    creditPopupEnabled:true,
+    creditPopupSound:true,
+    creditPopupSoundType:"kaching",
+    creditPopupVolume:65,
+    creditPopupSize:"medium",
+    creditPopupPosition:"right-center",
+    creditPopupAnimation:"slide",
+    creditPopupDuration:5000,
+    creditPopupMinimum:1,
     playtimeEnabled:true,
     forecastEnabled:true,
     forecastTarget:30000000000,
@@ -2479,6 +2488,16 @@ function load(){
   if(!validEventModes.includes(S.settings.eventMode)) S.settings.eventMode="overview";
   if(typeof S.settings.weatherSound!=="boolean") S.settings.weatherSound=false;
   if(typeof S.settings.wmGoalSound!=="boolean") S.settings.wmGoalSound=true;
+  if(typeof S.settings.creditPopupEnabled!=="boolean")S.settings.creditPopupEnabled=true;
+  if(typeof S.settings.creditPopupSound!=="boolean")S.settings.creditPopupSound=true;
+  if(!["kaching","coins","register","success","soft","arcade"].includes(S.settings.creditPopupSoundType))S.settings.creditPopupSoundType="kaching";
+  const creditVolume=Number(S.settings.creditPopupVolume);
+  S.settings.creditPopupVolume=Number.isFinite(creditVolume)?Math.max(0,Math.min(100,Math.round(creditVolume))):65;
+  if(!["small","medium","large"].includes(S.settings.creditPopupSize))S.settings.creditPopupSize="medium";
+  if(!["right-top","right-center","right-bottom","left-top","left-center","left-bottom"].includes(S.settings.creditPopupPosition))S.settings.creditPopupPosition="right-center";
+  if(!["slide","float","scale","bounce","fade"].includes(S.settings.creditPopupAnimation))S.settings.creditPopupAnimation="slide";
+  S.settings.creditPopupDuration=Math.max(2000,Math.min(12000,Number(S.settings.creditPopupDuration)||5000));
+  S.settings.creditPopupMinimum=Math.max(1,Math.round(Number(S.settings.creditPopupMinimum)||1));
   const validTones=["beep","alarm","chime"];
   if(!validTones.includes(S.settings.weatherTone)) S.settings.weatherTone="beep";
   if(typeof S.settings.playtimeEnabled!=="boolean") S.settings.playtimeEnabled=true;
@@ -3190,6 +3209,186 @@ function notify(msg,bad=false){
   toast.toggleClass("bad",!!bad).text(String(msg||"")).addClass("show");
   clearTimeout(notify._t);
   notify._t=setTimeout(()=>toast.removeClass("show"),2600);
+}
+let creditBalanceReady=false;
+let lastCreditBalance=0;
+let creditObserver=null;
+let creditObserverTimer=null;
+let creditPollTimer=null;
+function creditPopupTheme(){
+  return ["dark","light","summer","summer-dark","lcars"].includes(S.settings.panelTheme)?S.settings.panelTheme:"dark";
+}
+function creditPopupContainer(){
+  const position=S.settings.creditPopupPosition||"right-center";
+  const size=S.settings.creditPopupSize||"medium";
+  let box=document.getElementById("lss7-credit-popups");
+  if(!box){
+    box=document.createElement("div");
+    box.id="lss7-credit-popups";
+    document.body.appendChild(box);
+  }
+  box.className=`lss7-credit-popups pos-${position} size-${size}`;
+  return box;
+}
+function playCreditSound(force=false){
+  if(!force&&!S.settings.creditPopupSound)return;
+  try{
+    const C=window.AudioContext||window.webkitAudioContext;
+    if(!C)return;
+    const ctx=new C();
+    const rawVolume=Number(S.settings.creditPopupVolume);
+    const volume=Math.max(0,Math.min(1,(Number.isFinite(rawVolume)?rawVolume:65)/100));
+    if(volume<=0){ctx.close?.();return;}
+    const profiles={
+      kaching:{
+        duration:.72,master:.13,
+        notes:[
+          {f:1318.5,t:0,d:.10,type:"sine",gain:.18},
+          {f:1760,t:.08,d:.13,type:"triangle",gain:.17},
+          {f:2637,t:.18,d:.22,type:"sine",gain:.15},
+          {f:523.25,t:.02,d:.18,type:"triangle",gain:.28}
+        ]
+      },
+      coins:{
+        duration:.62,master:.12,
+        notes:[
+          {f:2093,t:0,d:.08,type:"square",gain:.09},
+          {f:2637,t:.09,d:.08,type:"square",gain:.08},
+          {f:3136,t:.18,d:.11,type:"triangle",gain:.12},
+          {f:3520,t:.29,d:.15,type:"sine",gain:.14}
+        ]
+      },
+      register:{
+        duration:.78,master:.14,
+        notes:[
+          {f:196,t:0,d:.16,type:"sawtooth",gain:.18},
+          {f:392,t:.04,d:.14,type:"square",gain:.12},
+          {f:1568,t:.22,d:.09,type:"triangle",gain:.16},
+          {f:2349,t:.31,d:.24,type:"sine",gain:.14}
+        ]
+      },
+      success:{
+        duration:.82,master:.12,
+        notes:[
+          {f:523.25,t:0,d:.18,type:"sine",gain:.18},
+          {f:659.25,t:.13,d:.18,type:"sine",gain:.18},
+          {f:783.99,t:.26,d:.18,type:"sine",gain:.18},
+          {f:1046.5,t:.39,d:.30,type:"triangle",gain:.16}
+        ]
+      },
+      soft:{
+        duration:.92,master:.09,
+        notes:[
+          {f:440,t:0,d:.32,type:"sine",gain:.16},
+          {f:554.37,t:.08,d:.36,type:"sine",gain:.14},
+          {f:659.25,t:.18,d:.42,type:"sine",gain:.12},
+          {f:880,t:.34,d:.38,type:"sine",gain:.10}
+        ]
+      },
+      arcade:{
+        duration:.64,master:.10,
+        notes:[
+          {f:659.25,t:0,d:.09,type:"square",gain:.10},
+          {f:880,t:.09,d:.09,type:"square",gain:.10},
+          {f:1174.66,t:.18,d:.09,type:"square",gain:.10},
+          {f:1567.98,t:.27,d:.18,type:"square",gain:.09}
+        ]
+      }
+    };
+    const profile=profiles[S.settings.creditPopupSoundType]||profiles.kaching;
+    const master=ctx.createGain();
+    master.gain.setValueAtTime(.0001,ctx.currentTime);
+    master.gain.exponentialRampToValueAtTime(Math.max(.0002,profile.master*volume),ctx.currentTime+.015);
+    master.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+profile.duration);
+    master.connect(ctx.destination);
+    profile.notes.forEach(note=>{
+      const osc=ctx.createOscillator(),gain=ctx.createGain();
+      const start=ctx.currentTime+note.t;
+      osc.type=note.type;osc.frequency.setValueAtTime(note.f,start);
+      gain.gain.setValueAtTime(.0001,start);
+      gain.gain.exponentialRampToValueAtTime(Math.max(.0002,note.gain||.12),start+.008);
+      gain.gain.exponentialRampToValueAtTime(.0001,start+note.d);
+      osc.connect(gain);gain.connect(master);osc.start(start);osc.stop(start+note.d+.02);
+    });
+    setTimeout(()=>ctx.close?.(),Math.ceil((profile.duration+.25)*1000));
+  }catch{}
+}
+function showCreditPopup(amount,{preview=false}={}){
+  const value=Math.max(0,Math.round(Number(amount)||0));
+  if(!preview && (!S.settings.creditPopupEnabled || value<S.settings.creditPopupMinimum))return;
+  const box=creditPopupContainer();
+  const item=document.createElement("article");
+  const animation=S.settings.creditPopupAnimation||"slide";
+  const duration=Math.max(2000,Number(S.settings.creditPopupDuration)||5000);
+  const visibleDuration=preview?Math.min(duration,3500):duration;
+  item.className=`lss7-credit-popup theme-${creditPopupTheme()} popup-${S.settings.creditPopupSize||"medium"} anim-${animation}`;
+  item.innerHTML=`
+    <span class="credit-popup-rail" aria-hidden="true"></span>
+    <span class="credit-popup-icon" aria-hidden="true"><i>¢</i><em>+</em></span>
+    <span class="credit-popup-content">
+      <span class="credit-popup-head"><small>${preview?"Popup-Vorschau":"Credit-Eingang"}</small><span class="credit-popup-live"><i></i>${preview?"TEST":"GEBUCHT"}</span></span>
+      <strong class="credit-popup-amount"><b>+</b>${escHtml(fmt(value))}<small>Credits</small></strong>
+      <span class="credit-popup-details"><span><i>Tagesstand</i><b>${escHtml(fmtMoney(Math.max(0,Number(S.dailyEarn)||0)))}</b></span><span><i>Zeit</i><b>${escHtml(new Date().toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit"}))}</b></span></span>
+    </span>
+    <span class="credit-popup-spark" aria-hidden="true">✦</span>
+    <span class="credit-popup-progress" aria-hidden="true" style="--credit-duration:${visibleDuration}ms"></span>`;
+  box.prepend(item);
+  while(box.children.length>4)box.lastElementChild?.remove();
+  requestAnimationFrame(()=>item.classList.add("show"));
+  if(S.settings.creditPopupSound)playCreditSound();
+  setTimeout(()=>{
+    item.classList.add("leaving");
+    item.classList.remove("show");
+    setTimeout(()=>item.remove(),650);
+  },visibleDuration);
+}
+function handleCreditBalance(value){
+  const current=Math.max(0,Math.round(Number(value)||0));
+  if(!current)return;
+  if(!creditBalanceReady){
+    lastCreditBalance=current;
+    creditBalanceReady=true;
+    return;
+  }
+  if(current===lastCreditBalance)return;
+  const delta=current-lastCreditBalance;
+  lastCreditBalance=current;
+  if(delta>0){
+    S.dailyEarn=Math.max(0,Number(S.dailyEarn)||0)+delta;
+    setV("#qs-daily",fmtMoney(S.dailyEarn));
+    save();
+    showCreditPopup(delta);
+  }
+}
+function installCreditPopupObserver(){
+  const bind=()=>{
+    const node=document.querySelector("#navigation_top .credits-value");
+    if(!node)return false;
+    handleCreditBalance(parseCreditsValue(node.textContent));
+    creditObserver?.disconnect();
+    creditObserver=new MutationObserver(()=>{
+      clearTimeout(creditObserverTimer);
+      creditObserverTimer=setTimeout(()=>{
+        const value=readOwnCreditsFromNavbar();
+        if(value!==null){
+          handleCreditBalance(value);
+          S.userCredits=value;
+          setV("#qs-credits",fmtMoney(value));
+        }
+      },180);
+    });
+    creditObserver.observe(node,{subtree:true,childList:true,characterData:true});
+    return true;
+  };
+  if(!bind()){
+    let attempts=0;
+    const timer=setInterval(()=>{attempts++;if(bind()||attempts>80)clearInterval(timer);},500);
+  }
+  clearInterval(creditPollTimer);
+  creditPollTimer=setInterval(()=>{
+    const value=readOwnCreditsFromNavbar();
+    if(value!==null)handleCreditBalance(value);
+  },2000);
 }
 function diagnosticsSave(){
   try{GM_setValue("v7_diag",JSON.stringify(S.diagnostics));}catch{}
@@ -5086,7 +5285,9 @@ function fetchUserinfo(){
     S.userId=Number(d.id||d.user_id||d.userId)||readOwnUserIdFromDom()||S.userId||null;
     const domCredits=readOwnCreditsFromNavbar();
     const domCoins=readOwnCoinsFromNavbar();
-    S.userCredits=(domCredits!==null?domCredits:(d.credits||0));
+    const currentCredits=(domCredits!==null?domCredits:(d.credits||0));
+    handleCreditBalance(currentCredits);
+    S.userCredits=currentCredits;
     S.userCoins=(domCoins!==null?domCoins:(d.coins||0));
     setV("#qs-credits",fmtMoney(S.userCredits));
     setV("#qs-coins",fmt(S.userCoins));
@@ -6750,6 +6951,48 @@ function buildUI(){
   </label>`);
   setWrap.append(grpOpt);
 
+  const grpCredits=$(`<div class="set-group set-wide settings-credit-popups"><div class="set-head">Credit-Eingang · Popup & Kassenklang</div></div>`);
+  grpCredits.append(mkToggle("tog-credit-popup","Credit-Eingänge als Popup anzeigen","creditPopupEnabled"));
+  grpCredits.append(mkToggle("tog-credit-sound","Credit-Klang abspielen","creditPopupSound"));
+  grpCredits.append(`<div class="settings-feature-grid">
+    <label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">Klang</span><select id="sb-credit-sound-type" class="lss7-select">
+      <option value="kaching"${S.settings.creditPopupSoundType==="kaching"?" selected":""}>Kaching · Klassische Kasse</option>
+      <option value="coins"${S.settings.creditPopupSoundType==="coins"?" selected":""}>Coins · Münzen</option>
+      <option value="register"${S.settings.creditPopupSoundType==="register"?" selected":""}>Register · Registrierkasse</option>
+      <option value="success"${S.settings.creditPopupSoundType==="success"?" selected":""}>Success · Erfolgsfanfare</option>
+      <option value="soft"${S.settings.creditPopupSoundType==="soft"?" selected":""}>Soft · Dezent</option>
+      <option value="arcade"${S.settings.creditPopupSoundType==="arcade"?" selected":""}>Arcade · Retro-Bonus</option>
+    </select></label>
+    <label class="tog-row credit-volume-row"><span class="tog-lbl">Lautstärke</span><span class="credit-volume-control"><input id="sb-credit-volume" type="range" min="0" max="100" step="5" value="${Math.max(0,Math.min(100,Number.isFinite(Number(S.settings.creditPopupVolume))?Number(S.settings.creditPopupVolume):65))}"><output id="sb-credit-volume-value">${Math.max(0,Math.min(100,Number.isFinite(Number(S.settings.creditPopupVolume))?Number(S.settings.creditPopupVolume):65))}%</output></span></label>
+    <label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">Größe</span><select id="sb-credit-size" class="lss7-select">
+      <option value="small"${S.settings.creditPopupSize==="small"?" selected":""}>Klein · kompakt</option>
+      <option value="medium"${S.settings.creditPopupSize==="medium"?" selected":""}>Mittel · Standard</option>
+      <option value="large"${S.settings.creditPopupSize==="large"?" selected":""}>Groß · prominent</option>
+    </select></label>
+    <label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">Position</span><select id="sb-credit-position" class="lss7-select">
+      <option value="right-top"${S.settings.creditPopupPosition==="right-top"?" selected":""}>Rechts oben</option>
+      <option value="right-center"${S.settings.creditPopupPosition==="right-center"?" selected":""}>Rechts mittig</option>
+      <option value="right-bottom"${S.settings.creditPopupPosition==="right-bottom"?" selected":""}>Rechts unten</option>
+      <option value="left-top"${S.settings.creditPopupPosition==="left-top"?" selected":""}>Links oben</option>
+      <option value="left-center"${S.settings.creditPopupPosition==="left-center"?" selected":""}>Links mittig</option>
+      <option value="left-bottom"${S.settings.creditPopupPosition==="left-bottom"?" selected":""}>Links unten</option>
+    </select></label>
+    <label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">Animation</span><select id="sb-credit-animation" class="lss7-select">
+      <option value="slide"${S.settings.creditPopupAnimation==="slide"?" selected":""}>Seitlich einschieben</option>
+      <option value="float"${S.settings.creditPopupAnimation==="float"?" selected":""}>Sanft hochschweben</option>
+      <option value="scale"${S.settings.creditPopupAnimation==="scale"?" selected":""}>Elegant vergrößern</option>
+      <option value="bounce"${S.settings.creditPopupAnimation==="bounce"?" selected":""}>Dynamisch federn</option>
+      <option value="fade"${S.settings.creditPopupAnimation==="fade"?" selected":""}>Dezent einblenden</option>
+    </select></label>
+    <label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">Anzeigedauer</span><select id="sb-credit-duration" class="lss7-select">
+      ${[[3000,"3 Sekunden"],[5000,"5 Sekunden"],[7000,"7 Sekunden"],[10000,"10 Sekunden"]].map(([value,label])=>`<option value="${value}"${Number(S.settings.creditPopupDuration)===value?" selected":""}>${label}</option>`).join("")}
+    </select></label>
+    <label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">Mindestbetrag</span><input id="sb-credit-minimum" class="lss7-select" type="number" min="1" step="100" value="${Math.max(1,Number(S.settings.creditPopupMinimum)||1)}"></label>
+  </div>`);
+  grpCredits.append(`<div class="update-actions"><button class="lbtn prime" id="sb-credit-preview" type="button">Popup testen</button><button class="lbtn" id="sb-credit-sound-test" type="button">Klang testen</button></div>`);
+  grpCredits.append(`<div class="set-note">Das Popup reagiert direkt auf steigende Credits in der Spiel-Navigation. Mehrere Einnahmen werden gestapelt; Ausgaben erzeugen keine Meldung. In jeder Größe bleiben Buchungsstatus, Einnahmebetrag, Tagesstand und Uhrzeit vollständig sichtbar.</div>`);
+  setWrap.append(grpCredits);
+
   const grpForecast=$(`<div class="set-group settings-forecast"><div class="set-head">Verbandsprognose</div></div>`);
   grpForecast.append(mkToggle("tog-forecast","Prognose in Übersicht anzeigen","forecastEnabled"));
   grpForecast.append(`<label class="tog-row" style="justify-content:space-between;">
@@ -6845,7 +7088,7 @@ function buildUI(){
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v9.4.1",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v9.5.3",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -6956,6 +7199,42 @@ function buildUI(){
     e.stopPropagation();
     S.settings.panelTheme=String($(e.currentTarget).val()||"dark");
     save();applyPanelMode();
+  });
+  panel.on("change","#sb-credit-position",e=>{
+    S.settings.creditPopupPosition=String($(e.currentTarget).val()||"right-center");
+    save();creditPopupContainer();
+  });
+  panel.on("change","#sb-credit-size",e=>{
+    S.settings.creditPopupSize=String($(e.currentTarget).val()||"medium");
+    save();creditPopupContainer();showCreditPopup(12500,{preview:true});
+  });
+  panel.on("change","#sb-credit-sound-type",e=>{
+    S.settings.creditPopupSoundType=String($(e.currentTarget).val()||"kaching");
+    save();playCreditSound(true);
+  });
+  panel.on("input change","#sb-credit-volume",e=>{
+    S.settings.creditPopupVolume=Math.max(0,Math.min(100,Math.round(Number($(e.currentTarget).val())||0)));
+    $("#sb-credit-volume-value").text(`${S.settings.creditPopupVolume}%`);
+    save();
+  });
+  panel.on("change","#sb-credit-animation",e=>{
+    S.settings.creditPopupAnimation=String($(e.currentTarget).val()||"slide");
+    save();
+  });
+  panel.on("change","#sb-credit-duration",e=>{
+    S.settings.creditPopupDuration=Math.max(2000,Number($(e.currentTarget).val())||5000);
+    save();
+  });
+  panel.on("change","#sb-credit-minimum",e=>{
+    S.settings.creditPopupMinimum=Math.max(1,Math.round(Number($(e.currentTarget).val())||1));
+    $(e.currentTarget).val(S.settings.creditPopupMinimum);
+    save();
+  });
+  panel.on("click","#sb-credit-preview",e=>{
+    e.stopPropagation();e.preventDefault();showCreditPopup(12500,{preview:true});
+  });
+  panel.on("click","#sb-credit-sound-test",e=>{
+    e.stopPropagation();e.preventDefault();playCreditSound(true);
   });
   panel.on("change","#sb-nav-style",e=>{
     e.stopPropagation();
@@ -7376,6 +7655,63 @@ function mkAccordion(icon,title,body){
 }
 function patchHTML(){
   const groups=[
+    {
+      title:"v9.5.3 — Einstellbare Popup-Größe",
+      items:[
+        "Das Credit-Popup kann jetzt in den Größen Klein, Mittel oder Groß angezeigt werden.",
+        "Klein nutzt ein kompaktes Layout für wenig Platz, ohne Buchungsstatus, Betrag, Tagesstand oder Uhrzeit auszublenden.",
+        "Mittel bleibt die ausgewogene Standarddarstellung mit guter Lesbarkeit und moderatem Platzbedarf.",
+        "Groß bietet eine prominentere Darstellung mit größerem Münzsymbol, Betrag und großzügigeren Abständen.",
+        "Jede Größenstufe besitzt eigene Breiten, Typografie und Abstände statt einer unscharfen Skalierung.",
+        "Beim Wechsel der Größe erscheint automatisch eine Vorschau in der neuen Darstellung.",
+        "Die gewählte Größe wird lokal gespeichert und für alle zukünftigen Credit-Meldungen verwendet.",
+        "Version und Patch-Notes wurden auf v9.5.3 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.5.2 — Klangauswahl & Lautstärke",
+      items:[
+        "Für Credit-Eingänge stehen jetzt sechs eigenständige Klänge zur Auswahl.",
+        "Kaching bietet den klassischen Kassenklang, Coins eine helle Münzfolge und Register einen kräftigeren Registrierkassen-Effekt.",
+        "Success spielt eine freundliche Erfolgsfanfare, Soft eine dezente harmonische Meldung und Arcade einen kurzen Retro-Bonus.",
+        "Die Lautstärke kann über einen professionellen Regler von 0 bis 100 Prozent eingestellt werden.",
+        "Der aktuelle Lautstärkewert wird direkt neben dem Regler angezeigt und automatisch gespeichert.",
+        "Beim Wechsel des Klangs wird die neue Auswahl sofort zur Vorschau abgespielt.",
+        "Der Klangtest berücksichtigt sowohl die aktuelle Klangauswahl als auch die eingestellte Lautstärke.",
+        "Alle Sounds werden weiterhin synthetisch im Browser erzeugt und benötigen keine externen Audiodateien.",
+        "Version und Patch-Notes wurden auf v9.5.2 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.5.1 — Premium Credit-Popup",
+      items:[
+        "Das Credit-Popup wurde als hochwertiges Buchungsfenster vollständig neu gestaltet.",
+        "Ein professioneller Kopfbereich zeigt Credit-Eingang, Buchungsstatus und einen animierten Live-Punkt.",
+        "Der Einnahmebetrag ist größer, klarer gegliedert und optisch vom Tagesstand sowie der Buchungszeit getrennt.",
+        "Das neue Münzsymbol kombiniert Credit-Zeichen, Plus-Badge, Goldverlauf und dezente Tiefenwirkung.",
+        "Eine Ablaufleiste zeigt sichtbar, wie lange die Meldung noch eingeblendet bleibt.",
+        "Lichtreflex, Statusakzent, Hintergrundglühen und Schatten wurden ruhiger und hochwertiger abgestimmt.",
+        "Dark, Light, Summer, Summer Dark und LCARS besitzen jeweils eine eigene passende Popup-Ausführung.",
+        "Version und Patch-Notes wurden auf v9.5.1 aktualisiert."
+      ]
+    },
+    {
+      title:"v9.5.0 — Animierte Credit-Eingänge",
+      items:[
+        "Neue professionelle Credit-Popups zeigen direkt am Spielrand, wie viele Credits gerade verdient wurden.",
+        "Jede Meldung enthält Einnahmebetrag und den fortgeschriebenen Tagesverdienst.",
+        "Ein eigener synthetischer Kassenklang im Stil von „Kaching“ begleitet Einnahmen optional ohne externe Audiodatei.",
+        "Die Position kann frei zwischen rechts oder links sowie oben, mittig oder unten gewählt werden.",
+        "Fünf Animationen stehen zur Auswahl: seitlich einschieben, hochschweben, vergrößern, federn oder dezent einblenden.",
+        "Anzeigedauer, Mindestbetrag, Popup-Aktivierung und Kassenklang lassen sich individuell einstellen.",
+        "Testschaltflächen ermöglichen eine sofortige Vorschau des Popups und des Kassenklangs.",
+        "Mehrere Einnahmen werden übersichtlich gestapelt; Ausgaben erzeugen bewusst keine Meldung.",
+        "Die Erkennung nutzt den Credit-Zähler der Spielnavigation, einen DOM-Beobachter und ein sparsames Sicherheits-Polling.",
+        "Beim ersten Laden wird nur ein Ausgangswert gesetzt, damit kein falsches Einnahme-Popup erscheint.",
+        "Das Popup besitzt eigene professionelle Varianten für Dark, Light, Summer, Summer Dark und LCARS.",
+        "Version und Patch-Notes wurden auf v9.5.0 aktualisiert."
+      ]
+    },
     {
       title:"v9.4.1 — Interaktiver K.-o.-Turnierbaum",
       items:[
@@ -8050,6 +8386,128 @@ GM_addStyle(`
   #lss7 .wm-header-match{min-width:210px;max-width:235px;}
   #lss7 .wm-header-teams{font-size:9.5px;}
 }
+
+/* Credit income notifications */
+.lss7-credit-popups{
+  position:fixed;z-index:10060;display:flex;flex-direction:column;gap:10px;
+  width:min(370px,calc(100vw - 24px));pointer-events:none;
+}
+.lss7-credit-popups.size-small{width:min(310px,calc(100vw - 24px));}
+.lss7-credit-popups.size-medium{width:min(370px,calc(100vw - 24px));}
+.lss7-credit-popups.size-large{width:min(440px,calc(100vw - 24px));}
+.lss7-credit-popups.pos-right-top{right:14px;top:66px;align-items:flex-end;}
+.lss7-credit-popups.pos-right-center{right:14px;top:50%;transform:translateY(-50%);align-items:flex-end;}
+.lss7-credit-popups.pos-right-bottom{right:14px;bottom:18px;align-items:flex-end;flex-direction:column-reverse;}
+.lss7-credit-popups.pos-left-top{left:14px;top:66px;align-items:flex-start;}
+.lss7-credit-popups.pos-left-center{left:14px;top:50%;transform:translateY(-50%);align-items:flex-start;}
+.lss7-credit-popups.pos-left-bottom{left:14px;bottom:18px;align-items:flex-start;flex-direction:column-reverse;}
+.lss7-credit-popup{
+  --cp-bg:linear-gradient(145deg,rgba(12,29,24,.985),rgba(7,14,21,.99));
+  --cp-border:rgba(74,222,128,.34);--cp-text:#f5fff8;--cp-muted:#9abaaa;--cp-accent:#4ade80;--cp-gold:#f3c85b;
+  position:relative;display:grid;grid-template-columns:48px minmax(0,1fr) 18px;gap:12px;align-items:center;
+  width:100%;min-height:108px;padding:13px 14px 15px 17px;border:1px solid var(--cp-border);border-radius:16px;
+  background:var(--cp-bg);color:var(--cp-text);box-shadow:0 24px 58px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.08),inset 0 -1px rgba(0,0,0,.20);
+  overflow:hidden;opacity:0;will-change:transform,opacity;transition:opacity .38s ease,transform .48s cubic-bezier(.2,.85,.25,1);
+  font-family:'Inter',system-ui,sans-serif;
+}
+.lss7-credit-popup::before{content:"";position:absolute;right:-55px;top:-68px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--cp-accent) 16%,transparent),transparent 68%);pointer-events:none;}
+.lss7-credit-popup::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 12%,rgba(255,255,255,.13) 42%,transparent 68%);transform:translateX(-120%);}
+.lss7-credit-popup.show::after{animation:credit-popup-sheen 1.15s .12s ease-out;}
+.credit-popup-rail{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--cp-gold),var(--cp-accent));box-shadow:0 0 16px var(--cp-accent);}
+.credit-popup-icon{position:relative;display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:14px;color:#3b2500;background:linear-gradient(145deg,#fff0ad,#d8a225);border:1px solid rgba(255,240,178,.76);box-shadow:0 9px 22px rgba(220,166,45,.30),inset 0 1px rgba(255,255,255,.82),inset 0 -5px 12px rgba(126,80,0,.12);}
+.credit-popup-icon i{font:950 22px/1 'JetBrains Mono',monospace;font-style:normal;}
+.credit-popup-icon em{position:absolute;right:-4px;bottom:-3px;display:flex;align-items:center;justify-content:center;width:17px;height:17px;border:2px solid rgba(8,20,17,.92);border-radius:50%;color:#fff;background:var(--cp-accent);font:950 12px/1 Arial;font-style:normal;box-shadow:0 3px 8px rgba(0,0,0,.28);}
+.credit-popup-content{display:flex;flex-direction:column;min-width:0;gap:5px;}
+.credit-popup-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.credit-popup-head>small{color:var(--cp-muted);font-size:7.5px;font-weight:950;letter-spacing:1px;text-transform:uppercase;}
+.credit-popup-live{display:inline-flex;align-items:center;gap:4px;padding:3px 6px;border:1px solid color-mix(in srgb,var(--cp-accent) 42%,transparent);border-radius:999px;color:var(--cp-accent);background:color-mix(in srgb,var(--cp-accent) 10%,transparent);font-size:6.5px;font-weight:950;letter-spacing:.55px;}
+.credit-popup-live i{width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 7px currentColor;}
+.credit-popup-amount{display:flex;align-items:baseline;gap:3px;min-width:0;color:var(--cp-text);font:950 22px/1.08 'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.credit-popup-amount>b{color:var(--cp-accent);font-size:16px;}
+.credit-popup-amount>small{margin-left:3px;color:var(--cp-muted);font:850 8px/1 'Inter',sans-serif;text-transform:uppercase;letter-spacing:.55px;}
+.credit-popup-details{display:flex;align-items:center;gap:14px;min-width:0;}
+.credit-popup-details>span{display:flex;align-items:center;gap:5px;min-width:0;}
+.credit-popup-details i{color:var(--cp-muted);font-size:7px;font-style:normal;text-transform:uppercase;letter-spacing:.4px;}
+.credit-popup-details b{color:var(--cp-text);font:850 8px/1 'JetBrains Mono',monospace;white-space:nowrap;}
+.credit-popup-spark{position:relative;z-index:1;color:var(--cp-gold);font-size:15px;text-shadow:0 0 11px var(--cp-gold);animation:credit-popup-spark 1.4s ease-in-out infinite;}
+.credit-popup-progress{position:absolute;left:5px;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--cp-gold),var(--cp-accent));transform-origin:left center;animation:credit-popup-progress var(--credit-duration,5000ms) linear forwards;}
+.pos-left-bottom .credit-popup-progress,.pos-right-bottom .credit-popup-progress{transform-origin:right center;}
+.lss7-credit-popup.theme-light{--cp-bg:linear-gradient(145deg,rgba(255,255,255,.995),rgba(237,247,241,.99));--cp-border:rgba(21,128,61,.27);--cp-text:#142d20;--cp-muted:#5a7164;--cp-accent:#239b55;--cp-gold:#c58b18;box-shadow:0 22px 52px rgba(36,67,49,.20),inset 0 1px #fff;}
+.lss7-credit-popup.theme-summer{--cp-bg:linear-gradient(145deg,rgba(255,255,255,.995),rgba(226,248,239,.99));--cp-border:rgba(47,158,91,.30);--cp-text:#173d2b;--cp-muted:#567669;--cp-accent:#2f9e5b;--cp-gold:#d39a1d;box-shadow:0 22px 52px rgba(29,92,67,.20),inset 0 1px #fff;}
+.lss7-credit-popup.theme-summer-dark{--cp-bg:linear-gradient(145deg,rgba(13,42,38,.995),rgba(8,16,34,.995));--cp-border:rgba(94,234,176,.35);--cp-text:#effff8;--cp-muted:#9fcabb;--cp-accent:#5eeab0;--cp-gold:#f2c96b;}
+.lss7-credit-popup.theme-lcars{--cp-bg:linear-gradient(145deg,#121720,#07080b);--cp-border:rgba(232,169,88,.38);--cp-text:#fff7e8;--cp-muted:#c3a77d;--cp-accent:#85d6ff;--cp-gold:#e8a958;border-radius:20px 7px 7px 20px;box-shadow:inset 7px 0 #e8a958,0 24px 58px rgba(0,0,0,.46);}
+.lss7-credit-popup.theme-lcars .credit-popup-rail{display:none;}
+.lss7-credit-popup.theme-lcars .credit-popup-icon{border-radius:18px 6px 6px 18px;background:linear-gradient(90deg,#e8a958,#ffd99b);}
+.lss7-credit-popup.popup-small{
+  grid-template-columns:39px minmax(0,1fr) 14px;gap:9px;min-height:86px;
+  padding:10px 11px 12px 14px;border-radius:13px;
+}
+.lss7-credit-popup.popup-small .credit-popup-icon{width:38px;height:38px;border-radius:11px;}
+.lss7-credit-popup.popup-small .credit-popup-icon i{font-size:18px;}
+.lss7-credit-popup.popup-small .credit-popup-icon em{width:14px;height:14px;right:-3px;bottom:-2px;font-size:9px;border-width:2px;}
+.lss7-credit-popup.popup-small .credit-popup-content{gap:3px;}
+.lss7-credit-popup.popup-small .credit-popup-head>small{font-size:6.5px;letter-spacing:.7px;}
+.lss7-credit-popup.popup-small .credit-popup-live{padding:2px 5px;font-size:5.5px;}
+.lss7-credit-popup.popup-small .credit-popup-amount{font-size:17px;}
+.lss7-credit-popup.popup-small .credit-popup-amount>b{font-size:13px;}
+.lss7-credit-popup.popup-small .credit-popup-amount>small{font-size:6.5px;}
+.lss7-credit-popup.popup-small .credit-popup-details{gap:8px;}
+.lss7-credit-popup.popup-small .credit-popup-details i{font-size:5.8px;}
+.lss7-credit-popup.popup-small .credit-popup-details b{font-size:6.8px;}
+.lss7-credit-popup.popup-small .credit-popup-spark{font-size:12px;}
+.lss7-credit-popup.popup-large{
+  grid-template-columns:58px minmax(0,1fr) 22px;gap:15px;min-height:128px;
+  padding:16px 17px 18px 20px;border-radius:18px;
+}
+.lss7-credit-popup.popup-large .credit-popup-icon{width:56px;height:56px;border-radius:16px;}
+.lss7-credit-popup.popup-large .credit-popup-icon i{font-size:27px;}
+.lss7-credit-popup.popup-large .credit-popup-icon em{width:20px;height:20px;right:-5px;bottom:-4px;font-size:13px;}
+.lss7-credit-popup.popup-large .credit-popup-content{gap:7px;}
+.lss7-credit-popup.popup-large .credit-popup-head>small{font-size:8.5px;letter-spacing:1.15px;}
+.lss7-credit-popup.popup-large .credit-popup-live{padding:4px 8px;font-size:7px;}
+.lss7-credit-popup.popup-large .credit-popup-amount{font-size:27px;}
+.lss7-credit-popup.popup-large .credit-popup-amount>b{font-size:20px;}
+.lss7-credit-popup.popup-large .credit-popup-amount>small{font-size:9px;}
+.lss7-credit-popup.popup-large .credit-popup-details{gap:20px;}
+.lss7-credit-popup.popup-large .credit-popup-details i{font-size:7.5px;}
+.lss7-credit-popup.popup-large .credit-popup-details b{font-size:9px;}
+.lss7-credit-popup.popup-large .credit-popup-spark{font-size:18px;}
+.lss7-credit-popup.theme-lcars.popup-small{border-radius:16px 6px 6px 16px;}
+.lss7-credit-popup.theme-lcars.popup-large{border-radius:23px 8px 8px 23px;}
+.credit-volume-row{justify-content:space-between!important;gap:14px!important;}
+.credit-volume-control{display:grid;grid-template-columns:minmax(130px,220px) 45px;align-items:center;gap:9px;min-width:210px;}
+#sb-credit-volume{appearance:none!important;width:100%;height:6px;padding:0!important;border:0!important;border-radius:999px!important;background:linear-gradient(90deg,var(--green),var(--cyan))!important;box-shadow:inset 0 1px 2px rgba(0,0,0,.24)!important;cursor:pointer;}
+#sb-credit-volume::-webkit-slider-thumb{appearance:none;width:17px;height:17px;border:2px solid var(--premium-surface-strong);border-radius:50%;background:var(--greenh);box-shadow:0 3px 9px rgba(0,0,0,.28),0 0 0 1px rgba(34,197,94,.42);cursor:grab;}
+#sb-credit-volume::-moz-range-thumb{width:15px;height:15px;border:2px solid var(--premium-surface-strong);border-radius:50%;background:var(--greenh);box-shadow:0 3px 9px rgba(0,0,0,.28);cursor:grab;}
+#sb-credit-volume-value{min-width:43px;padding:4px 6px;border:1px solid var(--premium-border);border-radius:7px;color:var(--greenh);background:var(--premium-surface);font:900 9px/1 'JetBrains Mono',monospace;text-align:center;}
+#lss7.theme-light #sb-credit-volume-value,#lss7.theme-summer #sb-credit-volume-value{color:#166534;}
+#lss7.theme-lcars #sb-credit-volume{background:linear-gradient(90deg,#e8a958,#85d6ff)!important;}
+#lss7.theme-lcars #sb-credit-volume-value{color:#ffd99b;border-radius:12px 4px 4px 12px;}
+.lss7-credit-popup.anim-slide{transform:translateX(120%);}
+.pos-left-top .lss7-credit-popup.anim-slide,.pos-left-center .lss7-credit-popup.anim-slide,.pos-left-bottom .lss7-credit-popup.anim-slide{transform:translateX(-120%);}
+.lss7-credit-popup.anim-float{transform:translateY(28px);}
+.lss7-credit-popup.anim-scale{transform:scale(.72);}
+.lss7-credit-popup.anim-bounce{transform:translateX(120%) scale(.88);}
+.pos-left-top .lss7-credit-popup.anim-bounce,.pos-left-center .lss7-credit-popup.anim-bounce,.pos-left-bottom .lss7-credit-popup.anim-bounce{transform:translateX(-120%) scale(.88);}
+.lss7-credit-popup.anim-fade{transform:none;}
+.lss7-credit-popup.show{opacity:1;transform:translate(0,0) scale(1);}
+.lss7-credit-popup.show.anim-bounce{animation:credit-popup-bounce .62s cubic-bezier(.2,.9,.3,1.25);}
+.pos-left-top .lss7-credit-popup.show.anim-bounce,.pos-left-center .lss7-credit-popup.show.anim-bounce,.pos-left-bottom .lss7-credit-popup.show.anim-bounce{animation-name:credit-popup-bounce-left;}
+.lss7-credit-popup.leaving{opacity:0;transform:translateY(-12px) scale(.96);}
+@keyframes credit-popup-sheen{to{transform:translateX(130%)}}
+@keyframes credit-popup-spark{0%,100%{opacity:.55;transform:scale(.8) rotate(0)}50%{opacity:1;transform:scale(1.16) rotate(12deg)}}
+@keyframes credit-popup-progress{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@keyframes credit-popup-bounce{0%{transform:translateX(100%) scale(.88)}65%{transform:translateX(-8px) scale(1.02)}100%{transform:translateX(0) scale(1)}}
+@keyframes credit-popup-bounce-left{0%{transform:translateX(-100%) scale(.88)}65%{transform:translateX(8px) scale(1.02)}100%{transform:translateX(0) scale(1)}}
+@media(max-width:600px){
+  .lss7-credit-popups{left:10px!important;right:10px!important;width:auto;top:auto!important;bottom:12px!important;transform:none!important;}
+  .lss7-credit-popup{min-height:70px;}
+  .credit-volume-row{align-items:flex-start!important;flex-direction:column!important;}
+  .credit-volume-control{width:100%;min-width:0;}
+}
+@media(prefers-reduced-motion:reduce){
+  .lss7-credit-popup,.lss7-credit-popup::after,.credit-popup-spark{animation:none!important;transition:opacity .15s ease!important;transform:none!important;}
+}
 `);
 
 function brandMarkHtml(extraClass=""){
@@ -8314,6 +8772,7 @@ $(document).ready(()=>{
   initSummerScene();
   buildTrigger();
   installAllianceActivityHooks();
+  installCreditPopupObserver();
   installGlobalHotkeys();
   applyPanelMode();
   updatePlaytimeUi();
@@ -8372,7 +8831,7 @@ $(document).ready(()=>{
   checkUpdate();
 });
 
-window.addEventListener("beforeunload",()=>{clearTimeout(wmRefreshTimer);summerSceneCtl?.dispose();save();});
+window.addEventListener("beforeunload",()=>{clearTimeout(wmRefreshTimer);clearTimeout(creditObserverTimer);clearInterval(creditPollTimer);creditObserver?.disconnect();summerSceneCtl?.dispose();save();});
 window.addEventListener("pagehide",save);
 
 })();
