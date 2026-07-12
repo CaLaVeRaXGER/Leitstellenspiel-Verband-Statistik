@@ -2,9 +2,10 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.5.3
+// @version      9.6.0
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
+// @license      Proprietary - Personal Use Only
 // @match        https://www.leitstellenspiel.de/*
 // @match        https://polizei.leitstellenspiel.de/*
 // @run-at       document-idle
@@ -15,7 +16,6 @@
 // @grant        GM_info
 // @connect      raw.githubusercontent.com
 // @connect      github.com
-// @connect      worldcup26.ir
 // @connect      www.leitstellenspiel.de
 // @connect      polizei.leitstellenspiel.de
 // @connect      api.open-meteo.com
@@ -41,10 +41,17 @@ if(/^\/(?:alliances\/\d+|verband(?:\/|$))/i.test(location.pathname))return;
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 // â•‘  KONFIGURATION                                               â•‘
 // â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "9.5.3";
+const V   = "9.6.0";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
+const SECURITY = {
+  maxBackupBytes: 1_500_000,
+  maxDiagnosticString: 360,
+  minRequestGapMs: 175,
+  pendingRequests: new Map(),
+  lastRequestByOrigin: new Map(),
+};
 
 const API = {
   alliance:    `${BASE}/api/allianceinfo`,
@@ -69,8 +76,6 @@ const API = {
   wxForecast: "https://api.open-meteo.com/v1/forecast",
   zipGeo: "https://api.zippopotam.us",
   dwdWarnings: "https://www.dwd.de/DWD/warnungen/warnapp/json/warnings.json",
-  wmGames: "https://worldcup26.ir/get/games",
-  wmStadiums: "https://worldcup26.ir/get/stadiums",
 };
 const DEBUG = false;
 function logDebug(...args){ if(DEBUG) console.debug("[LSS7]",...args); }
@@ -109,8 +114,6 @@ const I18N = {
     "Lehrgangsarten":"Course types","Alle Lehrgänge":"All courses","Freie Plätze":"Available seats","Lehrgänge durchsuchen...":"Search courses...",
     "Mitglied suchen...":"Search members...","Alle Rollen":"All roles","Leitung":"Leadership","Mitglieder ohne Leitungsrolle":"Regular members",
     "Mitglieder gesamt":"Total members","Leitungsteam":"Leadership team","Sonderrollen":"Special roles","Profil öffnen":"Open profile","Verbands-Eigentümer":"Owner","Spielerprognose":"Player forecast",
-    "Gruppentabellen":"Group tables","Punkte, Tore und Tordifferenz aller zwölf Gruppen":"Points, goals and goal difference for all twelve groups",
-    "Tabellen anzeigen":"Show tables","Tabellen ausblenden":"Hide tables","Gruppe":"Group","Spiele":"matches","Team":"Team",
     "Automatisch aus den API-Ergebnissen berechnet.":"Calculated automatically from API results.",
     "Was zeigt der Verlauf?":"What does History show?","Heute":"Today","Gestern":"Yesterday","Aktualisieren":"Refresh",
     "Daten werden ausschließlich lokal in diesem Browser gespeichert.":"Data is stored locally in this browser only.",
@@ -142,49 +145,12 @@ const I18N = {
     "Lehrgangsarten":"Types de formation","Alle Lehrgänge":"Toutes les formations","Freie Plätze":"Places disponibles","Lehrgänge durchsuchen...":"Rechercher une formation...",
     "Mitglied suchen...":"Rechercher un membre...","Alle Rollen":"Tous les rôles","Leitung":"Direction","Mitglieder ohne Leitungsrolle":"Membres réguliers",
     "Mitglieder gesamt":"Total des membres","Leitungsteam":"Équipe dirigeante","Sonderrollen":"Rôles spéciaux","Profil öffnen":"Ouvrir le profil","Verbands-Eigentümer":"Propriétaire de l’alliance","Spielerprognose":"Prévision du joueur",
-    "Gruppentabellen":"Classements des groupes","Punkte, Tore und Tordifferenz aller zwölf Gruppen":"Points, buts et différence de buts des douze groupes",
-    "Tabellen anzeigen":"Afficher les tableaux","Tabellen ausblenden":"Masquer les tableaux","Gruppe":"Groupe","Spiele":"matchs",
     "Automatisch aus den API-Ergebnissen berechnet.":"Calculé automatiquement à partir des résultats de l'API.",
     "Was zeigt der Verlauf?":"Que montre l'historique ?","Heute":"Aujourd'hui","Gestern":"Hier","Aktualisieren":"Actualiser",
     "Daten werden ausschließlich lokal in diesem Browser gespeichert.":"Les données sont enregistrées uniquement dans ce navigateur.",
     "Der Verlauf zeigt regelmäßig gespeicherte Stände der Verbandscredits.":"L'historique affiche des instantanés réguliers des crédits de l'alliance.",
     "Er ist kein vollständiges Spielprotokoll: Werte entstehen nur, während das Skript Daten abrufen kann.":"Il ne s'agit pas d'un journal complet : les valeurs sont créées uniquement lorsque le script peut récupérer les données."
   }
-};
-
-const WM_START = new Date("2026-06-11T00:00:00+02:00").getTime();
-const WM_END = new Date("2026-07-20T00:00:00+02:00").getTime();
-const WM_RESULT_VISIBLE_MS = 6 * 60 * 60 * 1000;
-const WM_STADIUM_OFFSETS = {
-  1:-6,2:-6,3:-6,
-  4:-5,5:-5,6:-5,
-  7:-4,8:-4,9:-4,10:-4,11:-4,12:-4,
-  13:-7,14:-7,15:-7,16:-7
-};
-const WM_TEAM_DE = {
-  "Algeria":"Algerien","Argentina":"Argentinien","Australia":"Australien","Austria":"Österreich","Belgium":"Belgien",
-  "Bosnia and Herzegovina":"Bosnien und Herzegowina","Brazil":"Brasilien","Canada":"Kanada","Cape Verde":"Kap Verde",
-  "Colombia":"Kolumbien","Croatia":"Kroatien","Curaçao":"Curaçao","Czech Republic":"Tschechien",
-  "Democratic Republic of the Congo":"DR Kongo","Ecuador":"Ecuador","Egypt":"Ägypten",
-  "England":"England","France":"Frankreich","Germany":"Deutschland","Ghana":"Ghana","Haiti":"Haiti",
-  "Iran":"Iran","Iraq":"Irak","Ivory Coast":"Elfenbeinküste","Japan":"Japan","Jordan":"Jordanien",
-  "Mexico":"Mexiko","Morocco":"Marokko","Netherlands":"Niederlande","New Zealand":"Neuseeland",
-  "Norway":"Norwegen","Panama":"Panama","Paraguay":"Paraguay","Portugal":"Portugal","Qatar":"Katar",
-  "Saudi Arabia":"Saudi-Arabien","Scotland":"Schottland","Senegal":"Senegal","South Africa":"Südafrika",
-  "South Korea":"Südkorea","Spain":"Spanien","Sweden":"Schweden","Switzerland":"Schweiz","Tunisia":"Tunesien",
-  "Turkey":"Türkei","United States":"USA","Uruguay":"Uruguay","Uzbekistan":"Usbekistan"
-};
-const WM_TEAM_FLAGS = {
-  "Algeria":"🇩🇿","Argentina":"🇦🇷","Australia":"🇦🇺","Austria":"🇦🇹","Belgium":"🇧🇪",
-  "Bosnia and Herzegovina":"🇧🇦","Brazil":"🇧🇷","Canada":"🇨🇦","Cape Verde":"🇨🇻",
-  "Colombia":"🇨🇴","Croatia":"🇭🇷","Curaçao":"🇨🇼","Czech Republic":"🇨🇿",
-  "Democratic Republic of the Congo":"🇨🇩","Ecuador":"🇪🇨","Egypt":"🇪🇬","England":"\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}",
-  "France":"🇫🇷","Germany":"🇩🇪","Ghana":"🇬🇭","Haiti":"🇭🇹","Iran":"🇮🇷","Iraq":"🇮🇶",
-  "Ivory Coast":"🇨🇮","Japan":"🇯🇵","Jordan":"🇯🇴","Mexico":"🇲🇽","Morocco":"🇲🇦",
-  "Netherlands":"🇳🇱","New Zealand":"🇳🇿","Norway":"🇳🇴","Panama":"🇵🇦","Paraguay":"🇵🇾",
-  "Portugal":"🇵🇹","Qatar":"🇶🇦","Saudi Arabia":"🇸🇦","Scotland":"\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}","Senegal":"🇸🇳",
-  "South Africa":"🇿🇦","South Korea":"🇰🇷","Spain":"🇪🇸","Sweden":"🇸🇪","Switzerland":"🇨🇭",
-  "Tunisia":"🇹🇳","Turkey":"🇹🇷","United States":"🇺🇸","Uruguay":"🇺🇾","Uzbekistan":"🇺🇿"
 };
 
 const LEVELS = [
@@ -444,69 +410,11 @@ GM_addStyle(`
 }
 .hd-event-badge:hover{transform:translateY(-1px);filter:brightness(1.12);color:var(--t1);}
 .hd-event-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;animation:event-dot 1.8s ease-in-out infinite;}
-.hd-event-badge.event-wm{color:#86efac;background:rgba(22,163,74,.14);border-color:rgba(34,197,94,.38);}
 .hd-event-badge.event-sale{color:#e9d5ff;background:rgba(147,51,234,.14);border-color:rgba(192,132,252,.38);}
 .hd-event-badge.event-credit{color:#fde68a;background:rgba(217,119,6,.15);border-color:rgba(251,191,36,.40);}
 .hd-event-badge.event-coin{color:#fecaca;background:rgba(220,38,38,.14);border-color:rgba(248,113,113,.38);}
 .hd-event-badge.event-live{color:#bae6fd;background:rgba(2,132,199,.14);border-color:rgba(56,189,248,.36);}
 @keyframes event-dot{0%,100%{opacity:1}50%{opacity:.42}}
-.wm-header-match{
-  --wm-card:#111c2c;--wm-border:rgba(96,165,250,.30);--wm-accent:#60a5fa;--wm-score-bg:#172b46;
-  appearance:none;position:relative;display:grid;grid-template-columns:minmax(118px,1fr) auto;align-items:center;gap:9px;
-  min-width:190px;max-width:230px;min-height:44px;padding:6px 8px 6px 11px;
-  border:1px solid var(--wm-border);border-radius:9px;overflow:hidden;
-  background:linear-gradient(145deg,var(--wm-card),rgba(7,14,25,.96));color:var(--t1);text-align:left;cursor:pointer;
-  box-shadow:0 7px 18px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.05);
-  transition:background .15s ease,border-color .15s ease,transform .15s ease,box-shadow .15s ease;
-}
-.wm-header-match::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--wm-accent);box-shadow:0 0 12px var(--wm-accent);}
-.wm-header-match:hover{transform:translateY(-2px);border-color:var(--wm-accent);box-shadow:0 10px 24px rgba(0,0,0,.25),0 0 16px color-mix(in srgb,var(--wm-accent) 18%,transparent);}
-.wm-header-match.live{--wm-card:#0b2a21;--wm-border:rgba(52,211,153,.48);--wm-accent:#34d399;--wm-score-bg:#0b3a2c;}
-.wm-header-match.finished{--wm-card:#22200f;--wm-border:rgba(250,204,21,.42);--wm-accent:#facc15;--wm-score-bg:#40360b;}
-.wm-header-copy{display:flex;flex-direction:column;min-width:0;gap:3px;}
-.wm-header-teams{display:flex;align-items:center;gap:5px;min-width:0;color:#f8fbff;font-size:10px;font-weight:950;line-height:1.15;}
-.wm-header-team{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.wm-header-flag{flex:0 0 auto;font-size:14px;line-height:1;filter:saturate(1.08);text-shadow:0 1px 2px rgba(0,0,0,.2);}
-.wm-header-vs{flex:0 0 auto;color:var(--wm-accent);font:950 7px/1 var(--mono);letter-spacing:.35px;}
-.wm-header-state{display:flex;align-items:center;gap:4px;color:#b9c6d7;font:800 7.5px/1.15 var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wm-header-state::before{content:"";flex:0 0 5px;width:5px;height:5px;border-radius:50%;background:var(--wm-accent);box-shadow:0 0 7px var(--wm-accent);}
-.wm-header-match.live .wm-header-state::before{animation:event-dot 1.25s ease-in-out infinite;}
-.wm-header-score{min-width:43px;padding:7px 6px;border-radius:7px;text-align:center;color:#fff;background:var(--wm-score-bg);border:1px solid var(--wm-border);font:950 13px/1 var(--mono);box-shadow:inset 0 1px rgba(255,255,255,.06);}
-.wm-header-match.planned .wm-header-score{font-size:10px;color:#dbeafe;}
-.wm-goal-toast{border-color:rgba(250,204,21,.72)!important;background:linear-gradient(135deg,rgba(133,77,14,.98),rgba(153,27,27,.96))!important;color:#fff7cc!important;font-size:12px!important;box-shadow:0 18px 50px rgba(0,0,0,.42),0 0 24px rgba(250,204,21,.25)!important;}
-#lss7.theme-light .wm-header-match{
-  --wm-card:#f8fbff;--wm-border:rgba(37,99,235,.28);--wm-accent:#2563eb;--wm-score-bg:#e7efff;
-  background:linear-gradient(145deg,#fff,#eef4fb);box-shadow:0 7px 18px rgba(30,64,175,.10),inset 0 1px #fff;
-}
-#lss7.theme-light .wm-header-match.live{--wm-card:#eafbf2;--wm-border:rgba(5,150,105,.36);--wm-accent:#059669;--wm-score-bg:#d5f5e4;}
-#lss7.theme-light .wm-header-match.finished{--wm-card:#fff9dc;--wm-border:rgba(180,83,9,.30);--wm-accent:#b45309;--wm-score-bg:#ffefad;}
-#lss7.theme-light .wm-header-teams{color:#172033;}
-#lss7.theme-light .wm-header-state{color:#526174;}
-#lss7.theme-light .wm-header-score{color:#172033;}
-#lss7.theme-summer .wm-header-match{
-  --wm-card:#fffdf5;--wm-border:rgba(15,111,168,.30);--wm-accent:#0f6fa8;--wm-score-bg:#e5f4fb;
-  background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(232,247,250,.96));box-shadow:0 7px 18px rgba(15,111,168,.12),inset 0 1px #fff;
-}
-#lss7.theme-summer .wm-header-match.live{--wm-card:#ecfaef;--wm-border:rgba(47,158,91,.40);--wm-accent:#2f9e5b;--wm-score-bg:#dff5e5;}
-#lss7.theme-summer .wm-header-match.finished{--wm-card:#fff9dd;--wm-border:rgba(197,138,25,.38);--wm-accent:#c58a19;--wm-score-bg:#ffedaf;}
-#lss7.theme-summer .wm-header-teams{color:#173b51;}
-#lss7.theme-summer .wm-header-state{color:#4b6d7f;}
-#lss7.theme-summer .wm-header-score{color:#173b51;}
-#lss7.theme-summer-dark .wm-header-match{--wm-card:#101e38;--wm-border:rgba(125,169,255,.34);--wm-accent:#7da9ff;--wm-score-bg:#172c50;}
-#lss7.theme-summer-dark .wm-header-match.live{--wm-card:#0c2b28;--wm-border:rgba(94,234,176,.42);--wm-accent:#5eeab0;--wm-score-bg:#104337;}
-#lss7.theme-summer-dark .wm-header-match.finished{--wm-card:#30270c;--wm-border:rgba(251,207,90,.42);--wm-accent:#fbcf5a;--wm-score-bg:#4b3c0b;}
-#lss7.theme-lcars .wm-header-match{
-  --wm-card:#090909;--wm-border:rgba(246,180,93,.48);--wm-accent:#f6b45d;--wm-score-bg:#21160c;
-  border-radius:15px 6px 6px 15px;background:#080808;box-shadow:inset 5px 0 var(--wm-accent),0 8px 18px rgba(0,0,0,.28);
-}
-#lss7.theme-lcars .wm-header-match::before{display:none;}
-#lss7.theme-lcars .wm-header-match.live{--wm-border:rgba(124,224,173,.48);--wm-accent:#7ce0ad;--wm-score-bg:#0b2d20;}
-#lss7.theme-lcars .wm-header-match.finished{--wm-border:rgba(255,213,107,.48);--wm-accent:#ffd56b;--wm-score-bg:#352707;}
-#lss7.theme-lcars .wm-header-teams{color:#fff7e8;text-transform:uppercase;letter-spacing:.2px;}
-#lss7.theme-lcars .wm-header-state{color:#cbbda7;}
-@media(max-width:720px){
-  .wm-header-match{min-width:175px;max-width:195px;}
-}
 @media(max-width:980px){
   .hd-events{position:static;transform:none;margin-right:auto;overflow-x:auto;justify-content:flex-start;}
 }
@@ -1003,6 +911,12 @@ GM_addStyle(`
 .forecast-progress{height:10px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;border:1px solid rgba(255,255,255,.04);}
 .forecast-progress-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#2563eb,#22c55e,#86efac);transition:width .5s ease;}
 .forecast-progress-meta{display:flex;justify-content:space-between;gap:10px;margin-top:5px;font-size:9px;color:var(--t4);}
+.forecast-color-legend{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px;color:var(--t4);font-size:7.5px;font-weight:850;}
+.forecast-color-legend span{display:inline-flex;align-items:center;gap:4px;}
+.forecast-color-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;}
+.forecast-color-legend .l-blue i{background:var(--blue);}
+.forecast-color-legend .l-green i{background:var(--green);}
+.forecast-color-legend .l-amber i{background:var(--amber);}
 .forecast-chart-box{padding:10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);}
 .forecast-chart-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;font-size:9px;color:var(--t4);text-transform:uppercase;letter-spacing:.6px;font-weight:800;}
 .forecast-canvas{display:block;width:100%;height:150px;}
@@ -1245,7 +1159,7 @@ GM_addStyle(`
 }
 .set-note b{color:var(--t1);}
 
-/* Event / WM */
+/* Events */
 .event-card{
   padding:14px;border:1px solid var(--b1);border-radius:var(--rlg);
   background:linear-gradient(180deg,rgba(59,130,246,.10),rgba(255,255,255,.015));
@@ -1279,7 +1193,7 @@ GM_addStyle(`
 .event-actions{display:flex;gap:8px;flex-wrap:wrap;}
 .event-actions .lbtn{width:auto;flex:1;justify-content:center;}
 .event-note{font-size:11px;color:var(--t3);line-height:1.45;}
-.wm-source{font-size:10px;color:var(--t3);text-align:right;}
+.event-source{font-size:10px;color:var(--t3);text-align:right;}
 .game-events-card{
   display:flex;flex-direction:column;gap:9px;
   padding:12px;border:1px solid rgba(245,158,11,.32);border-radius:10px;
@@ -1320,216 +1234,6 @@ GM_addStyle(`
 .game-events-mini .game-event-title{font-size:11px;}
 .game-events-mini .game-event-desc{display:none;}
 .game-events-mini .game-event-time{font-size:11px;}
-.wm-list{display:flex;flex-direction:column;gap:5px;}
-.wm-command{
-  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;
-  margin-bottom:10px;padding:14px 15px;border:1px solid rgba(59,130,246,.25);border-radius:10px;
-  background:linear-gradient(135deg,rgba(59,130,246,.13),rgba(34,197,94,.045));overflow:hidden;
-}
-.wm-command-kicker{display:block;color:var(--blueh);font-size:8px;font-weight:950;letter-spacing:.9px;text-transform:uppercase;}
-.wm-command-title{display:block;margin-top:4px;color:var(--t1);font:950 17px/1.15 var(--head);}
-.wm-command-sub{display:block;margin-top:5px;color:var(--t3);font-size:9.5px;line-height:1.45;}
-.wm-command-stats{display:grid;grid-template-columns:repeat(3,minmax(72px,1fr));gap:6px;min-width:245px;}
-.wm-command-stat{padding:8px 9px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.028);}
-.wm-command-stat b{display:block;color:var(--t1);font:950 13px/1 var(--mono);}
-.wm-command-stat span{display:block;margin-top:4px;color:var(--t4);font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;}
-.wm-focus{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px;}
-.wm-focus-card{position:relative;min-width:0;padding:11px;border:1px solid var(--b1);border-radius:10px;background:linear-gradient(160deg,rgba(255,255,255,.045),rgba(255,255,255,.012));overflow:hidden;}
-.wm-focus-card::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--focus,var(--blue));}
-.wm-focus-card.live{--focus:var(--green);border-color:rgba(34,197,94,.34);background:linear-gradient(150deg,rgba(34,197,94,.12),rgba(34,197,94,.025));}
-.wm-focus-card.finished{--focus:var(--amber);border-color:rgba(245,158,11,.32);}
-.wm-focus-top{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--t3);font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.35px;}
-.wm-focus-status{display:inline-flex;align-items:center;gap:5px;color:var(--focus,var(--blueh));}
-.wm-focus-status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;}
-.wm-focus-card.live .wm-focus-status::before{animation:event-dot 1.25s ease-in-out infinite;}
-.wm-focus-teams{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:7px;align-items:center;margin-top:10px;}
-.wm-focus-team{min-width:0;text-align:center;color:var(--t1);font-size:11px;font-weight:950;line-height:1.25;}
-.wm-focus-flag{display:block;margin-bottom:4px;font-size:22px;line-height:1;}
-.wm-focus-score{min-width:52px;padding:8px 7px;border:1px solid var(--b1);border-radius:8px;text-align:center;color:var(--t1);background:rgba(0,0,0,.14);font:950 17px/1 var(--mono);}
-.wm-focus-meta{display:flex;justify-content:center;gap:5px;flex-wrap:wrap;margin-top:9px;color:var(--t3);font-size:8px;}
-.wm-focus-meta span{padding:3px 6px;border:1px solid var(--b1);border-radius:999px;background:rgba(255,255,255,.025);}
-.wm-filterbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 10px;}
-.wm-filter{padding:7px 10px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);color:var(--t3);font-size:8.5px;font-weight:900;cursor:pointer;}
-.wm-filter:hover{color:var(--t1);border-color:var(--b2);}
-.wm-filter.active{color:#fff;background:var(--blue);border-color:var(--blue);}
-.wm-day{border:1px solid var(--b1);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.012);}
-.wm-day+.wm-day{margin-top:8px;}
-.wm-day-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-bottom:1px solid var(--b1);background:rgba(255,255,255,.035);}
-.wm-day-head b{color:var(--t1);font-size:10px;}
-.wm-day-head span{color:var(--t4);font-size:8px;font-weight:850;}
-.wm-day .wm-list{padding:7px;}
-.wm-row{
-  display:grid;grid-template-columns:78px minmax(0,1fr) minmax(176px,210px);gap:8px;align-items:center;
-  padding:7px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);
-}
-.wm-row.live{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08);}
-.wm-time{font-size:9px;color:var(--t3);line-height:1.35;font-family:var(--mono);}
-.wm-stage{display:inline-flex;margin-top:4px;padding:2px 5px;border-radius:999px;border:1px solid var(--b1);background:rgba(255,255,255,.035);color:var(--t2);font-family:var(--font);font-size:8px;font-weight:850;white-space:nowrap;}
-.wm-main{min-width:0;}
-.wm-teams{font-size:12px;color:var(--t1);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wm-team-vs{display:inline-flex;align-items:center;justify-content:center;margin:0 5px;color:var(--t4);font-size:8px;font-weight:900;text-transform:uppercase;}
-.wm-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:9px;color:var(--t3);margin-top:4px;line-height:1.3;}
-.wm-meta-item{display:inline-flex;align-items:center;min-width:0;padding:2px 5px;border:1px solid var(--b1);border-radius:5px;background:rgba(255,255,255,.025);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wm-meta-item:first-child{max-width:58%;}
-.wm-fact{display:inline-flex;align-items:center;gap:4px;padding:2px 5px;border:1px solid var(--b1);border-radius:5px;background:rgba(255,255,255,.025);white-space:nowrap;}
-.wm-match-events{display:flex;flex-direction:column;gap:5px;margin-top:7px;padding-top:7px;border-top:1px solid var(--b1);}
-.wm-event-line{display:grid;grid-template-columns:18px 72px minmax(0,1fr);gap:5px;align-items:start;font-size:9px;line-height:1.35;}
-.wm-event-icon{font-size:11px;text-align:center;}
-.wm-event-team{color:var(--t3);font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wm-event-names{color:var(--t2);font-weight:650;}
-.wm-api-note{margin-top:5px;font-size:9px;color:var(--t4);line-height:1.35;}
-.wm-status{
-  display:inline-flex;margin:0;padding:2px 6px;border-radius:999px;
-  border:1px solid rgba(96,165,250,.22);background:rgba(96,165,250,.09);
-  color:var(--blueh);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;
-}
-.wm-row.live .wm-status{color:#7cffb2;border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.12);}
-.wm-score{
-  display:inline-flex;justify-content:center;align-items:center;min-width:48px;
-  margin-left:auto;padding:4px 7px;border-radius:6px;
-  color:#7cffb2;background:rgba(34,197,94,.16);border:1px solid rgba(34,197,94,.36);
-  font-size:14px;font-weight:900;text-align:center;font-family:var(--mono);
-  text-shadow:0 0 12px rgba(34,197,94,.35);
-}
-.wm-score.pending{
-  color:#f9e6a2;background:rgba(201,146,36,.18);border-color:rgba(245,195,92,.42);
-  text-shadow:0 0 12px rgba(245,195,92,.25);
-}
-.wm-result-tip{
-  display:grid;grid-template-columns:auto 1fr;gap:7px;align-items:center;justify-items:end;
-}
-.wm-result-box{display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
-.wm-result-label{
-  font-size:9px;color:#fff;font-weight:900;text-transform:uppercase;
-  letter-spacing:.55px;opacity:.95;white-space:nowrap;
-}
-.wm-tip{display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-top:4px;font-size:10px;color:#fff;font-weight:900;flex-wrap:wrap;}
-.wm-result-tip .wm-tip{margin-top:0;min-width:104px;}
-.wm-tip span{color:#fff;font-weight:900;}
-.wm-tip-label{
-  flex-basis:100%;text-align:right;font-size:9px;color:#fff;font-weight:900;
-  text-transform:uppercase;letter-spacing:.6px;opacity:.95;
-}
-.wm-tip input{
-  width:34px;height:26px;text-align:center;
-  background:rgba(248,251,255,.12);
-  border:1px solid rgba(216,225,236,.34);
-  border-radius:7px;color:#ffffff;font-family:var(--mono);font-size:12px;font-weight:900;
-  box-shadow:0 0 0 1px rgba(255,255,255,.04) inset;
-}
-.wm-tip input::placeholder{color:rgba(255,255,255,.64);}
-.wm-tip input:hover{
-  background:rgba(248,251,255,.18);
-  border-color:rgba(249,230,162,.48);
-}
-.wm-tip input:focus{
-  outline:none;
-  background:rgba(249,230,162,.16);
-  border-color:#f9e6a2;
-  box-shadow:0 0 0 2px rgba(245,195,92,.22),0 0 14px rgba(245,195,92,.18);
-}
-.wm-tip-chip{
-  display:inline-flex;align-items:center;justify-content:center;min-width:46px;
-  padding:4px 8px;border-radius:7px;color:#fff;background:rgba(59,130,246,.22);
-  border:1px solid rgba(96,165,250,.42);font-size:12px;font-weight:900;font-family:var(--mono);
-}
-.wm-tip button{
-  height:26px;padding:0 8px;border-radius:6px;border:1px solid rgba(245,195,92,.58);
-  background:rgba(201,146,36,.24);color:#fff1b8;font-size:10px;font-weight:900;
-  font-family:var(--font);cursor:pointer;
-}
-.wm-tip button:hover{background:rgba(201,146,36,.28);color:#fff;}
-.wm-groups{border:1px solid var(--b1);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.018);}
-.wm-groups-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;background:rgba(255,255,255,.025);}
-.wm-groups-title{display:flex;flex-direction:column;gap:2px;min-width:0;}
-.wm-groups-title b{font-size:12px;color:var(--t1);}
-.wm-groups-title span{font-size:10px;color:var(--t3);}
-.wm-groups-toggle{flex-shrink:0;padding:7px 10px;border:1px solid rgba(96,165,250,.38);border-radius:6px;background:rgba(59,130,246,.12);color:var(--blueh);font-size:10px;font-weight:900;cursor:pointer;}
-.wm-groups-toggle:hover{background:rgba(59,130,246,.2);color:var(--t1);}
-.wm-groups-panel{display:none;padding:10px;}
-.wm-groups.open .wm-groups-panel{display:flex;flex-direction:column;gap:8px;}
-.wm-group-card{min-width:0;border:1px solid var(--b1);border-radius:8px;overflow:auto;background:rgba(255,255,255,.02);box-shadow:0 4px 14px rgba(0,0,0,.08);}
-.wm-group-name{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:0;border-bottom:1px solid transparent;color:var(--t1);font:900 11px/1.3 var(--font);background:linear-gradient(90deg,rgba(59,130,246,.12),rgba(34,197,94,.04));cursor:pointer;text-align:left;}
-.wm-group-card.open .wm-group-name{border-bottom-color:var(--b1);}
-.wm-group-name span{color:var(--t3);font-size:9px;font-weight:800;}
-.wm-group-name-main{display:flex;align-items:center;gap:8px;min-width:0;}.wm-group-arrow{font-size:13px;color:var(--blueh);transition:transform .18s ease;}.wm-group-card.open .wm-group-arrow{transform:rotate(90deg);}
-.wm-group-table-wrap{display:none;overflow-x:auto;}.wm-group-card.open .wm-group-table-wrap{display:block;}
-.wm-table{width:100%;min-width:350px;border-collapse:collapse;table-layout:fixed;}
-.wm-table th,.wm-table td{padding:6px 4px;border-bottom:1px solid var(--b0);font-size:9px;text-align:center;color:var(--t2);}
-.wm-table tr:last-child td{border-bottom:0;}
-.wm-table tbody tr:nth-child(even){background:rgba(255,255,255,.018);}
-.wm-table th{color:var(--t3);font-weight:950;text-transform:uppercase;background:rgba(255,255,255,.035);}
-.wm-table .wm-pos{width:22px;color:var(--t4);font-family:var(--mono);}
-.wm-table .wm-club{width:34%;text-align:left;color:var(--t1);font-size:10px;font-weight:850;white-space:normal;overflow:visible;text-overflow:clip;word-break:normal;}
-.wm-table .wm-pts{color:var(--greenh);font-family:var(--mono);font-weight:900;}
-.wm-table tr.qualify .wm-pos{color:var(--greenh);}
-.wm-table tr.third .wm-pos{color:var(--amberh);}
-.wm-groups-note{grid-column:1/-1;color:var(--t3);font-size:9px;line-height:1.45;text-align:left;padding:4px 2px;}
-.wm-groups-legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1px;grid-column:1/-1;}
-.wm-legend{padding:3px 7px;border-radius:999px;border:1px solid var(--b1);font-size:8px;font-weight:900;color:var(--t3);background:rgba(255,255,255,.025);}
-.wm-legend.qualify{color:var(--greenh);border-color:rgba(34,197,94,.32);background:var(--green3);}
-.wm-legend.third{color:var(--amberh);border-color:rgba(245,158,11,.32);background:var(--amber3);}
-.wm-knockout{margin-bottom:10px;border:1px solid var(--b1);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.018);}
-.wm-knockout-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;background:linear-gradient(90deg,rgba(168,85,247,.11),rgba(59,130,246,.06));}
-.wm-knockout-title{display:flex;flex-direction:column;gap:2px;min-width:0;}
-.wm-knockout-title b{color:var(--t1);font-size:12px;}
-.wm-knockout-title span{color:var(--t3);font-size:9px;}
-.wm-knockout-tools{display:flex;align-items:center;gap:7px;flex:0 0 auto;}
-.wm-knockout-badge{padding:5px 8px;border:1px solid rgba(168,85,247,.35);border-radius:999px;color:#d8b4fe;background:rgba(168,85,247,.12);font-size:8px;font-weight:950;text-transform:uppercase;}
-.wm-knockout-toggle{min-height:28px;padding:5px 9px;border:1px solid var(--b2);border-radius:7px;background:rgba(255,255,255,.04);color:var(--t2);font-size:8px;font-weight:950;cursor:pointer;}
-.wm-knockout-toggle:hover{color:var(--t1);border-color:var(--purple);}
-.wm-knockout-toggle::before{content:"▾";display:inline-block;margin-right:5px;transition:transform .18s ease;}
-.wm-knockout:not(.open) .wm-knockout-toggle::before{transform:rotate(-90deg);}
-.wm-knockout-body{display:none;border-top:1px solid var(--b1);}
-.wm-knockout.open .wm-knockout-body{display:block;}
-.wm-knockout-grid{padding:16px 14px 18px;overflow-x:auto;overflow-y:visible;background:linear-gradient(180deg,rgba(168,85,247,.025),transparent);scrollbar-gutter:stable;}
-.wm-knockout-grid::-webkit-scrollbar{width:8px;height:8px}.wm-knockout-grid::-webkit-scrollbar-thumb{background:var(--b2);border-radius:999px}.wm-knockout-grid::-webkit-scrollbar-track{background:rgba(255,255,255,.025);}
-.wm-bracket{display:grid;grid-template-columns:repeat(5,224px);gap:34px;min-width:1256px;align-items:start;padding:2px 4px 10px;}
-.wm-ko-stage{position:relative;display:flex;flex-direction:column;min-width:0;}
-.wm-ko-stage:not(:last-child)::after{content:"›";position:absolute;z-index:2;top:4px;right:-25px;display:grid;place-items:center;width:16px;height:16px;border:1px solid var(--b2);border-radius:50%;color:var(--purple);background:var(--panel);font:950 15px/1 var(--font);}
-.wm-ko-stage-title{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:10px;padding:6px 8px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.025);color:var(--t2);font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.4px;}
-.wm-ko-stage-title span{color:var(--t4);font:800 8px/1 var(--mono);}
-.wm-ko-matches{display:flex;flex-direction:column;gap:8px;}
-.wm-ko-pair{position:relative;display:flex;flex-direction:column;gap:6px;margin-bottom:6px;padding:6px;border:1px solid color-mix(in srgb,var(--purple) 18%,var(--b1));border-radius:10px;background:rgba(168,85,247,.025);}
-.wm-ko-pair:last-child{margin-bottom:0;}
-.wm-ko-pair::after{content:"";position:absolute;top:50%;right:-35px;width:34px;height:1px;background:linear-gradient(90deg,color-mix(in srgb,var(--purple) 52%,var(--b2)),transparent);}
-.wm-ko-match{position:relative;padding:8px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.025);overflow:visible;}
-.wm-ko-match::before{content:"";position:absolute;inset:0 auto 0 0;width:2px;background:var(--ko-accent,var(--blue));}
-.wm-ko-match.live{--ko-accent:var(--green);border-color:rgba(34,197,94,.32);}
-.wm-ko-match.finished{--ko-accent:var(--amber);border-color:rgba(245,158,11,.28);}
-.wm-ko-meta{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:6px;color:var(--t4);font-size:7px;font-weight:850;}
-.wm-ko-team{display:grid;grid-template-columns:17px minmax(0,1fr) auto;gap:5px;align-items:center;min-height:23px;color:var(--t1);font-size:9px;font-weight:900;}
-.wm-ko-team+.wm-ko-team{border-top:1px solid var(--b0);}
-.wm-ko-team.pending{color:var(--t3);font-weight:750;font-style:italic;}
-.wm-ko-flag{font-size:13px;text-align:center;}
-.wm-ko-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.wm-ko-score{min-width:18px;text-align:right;color:var(--t1);font:950 10px/1 var(--mono);}
-.wm-ko-status{margin-top:5px;padding-top:5px;border-top:1px solid var(--b0);color:var(--ko-accent,var(--blueh));font-size:7px;font-weight:900;text-align:center;text-transform:uppercase;}
-.wm-ko-final-stage .wm-ko-matches{align-items:stretch;}
-.wm-ko-final-stage .wm-ko-match{box-shadow:0 0 0 1px rgba(168,85,247,.12),0 12px 30px rgba(0,0,0,.14);}
-.wm-ko-third{margin:4px 12px 12px;padding:10px;border:1px solid var(--b1);border-radius:9px;background:rgba(255,255,255,.018);}
-.wm-ko-third-title{margin-bottom:7px;color:var(--amberh);font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.5px;}
-.wm-ko-third .wm-ko-match{max-width:360px;}
-.wm-ko-note{padding:0 12px 10px;color:var(--t4);font-size:8px;line-height:1.4;}
-@media(max-width:620px){
-  .wm-row{grid-template-columns:66px minmax(0,1fr);}
-  .wm-result-tip{grid-column:1/-1;display:flex;justify-content:flex-end;border-top:1px solid var(--b1);padding-top:6px;}
-  .wm-table{min-width:460px;}
-}
-#lss7:not(.layout) .wm-row{grid-template-columns:66px minmax(0,1fr);}
-#lss7:not(.layout) .wm-result-tip{grid-column:1/-1;display:flex;justify-content:flex-end;border-top:1px solid var(--b1);padding-top:6px;}
-#lss7:not(.layout) .wm-table{min-width:460px;}
-.wm-mini{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
-.wm-mini-row{display:grid;grid-template-columns:82px 1fr 58px;gap:8px;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);}
-.wm-mini-t{font-size:10px;color:var(--t2);font-family:var(--mono);}
-.wm-mini-n{font-size:11px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wm-mini-s{
-  display:inline-flex;align-items:center;justify-content:center;min-width:42px;
-  padding:2px 6px;border-radius:6px;color:#7cffb2;background:rgba(34,197,94,.16);
-  border:1px solid rgba(34,197,94,.32);font-size:11px;font-weight:900;text-align:center;font-family:var(--mono);
-}
-.wm-mini-s.pending{color:#f9e6a2;background:rgba(201,146,36,.18);border-color:rgba(245,195,92,.38);}
-
 .weather-mini{display:block;}
 .wx-card{
   display:grid;grid-template-columns:minmax(260px,.75fr) minmax(420px,1.25fr);gap:10px;align-items:start;
@@ -1736,53 +1440,6 @@ GM_addStyle(`
   color:#fff;background:#0f6fa8;border:1px solid #0a5e90;border-radius:7px;
   padding:3px 9px;text-shadow:none;box-shadow:0 4px 12px rgba(15,111,168,.20);
 }
-#lss7.theme-summer .wm-score.pending,
-#lss7.theme-summer .wm-mini-s.pending{
-  color:#553500;background:#ffe28a;border-color:#b97900;text-shadow:none;
-  box-shadow:0 3px 10px rgba(185,121,0,.15);
-}
-#lss7.theme-summer .wm-score:not(.pending),
-#lss7.theme-summer .wm-mini-s:not(.pending){
-  color:#fff;background:#197442;border-color:#0f5f33;text-shadow:none;
-  box-shadow:0 3px 10px rgba(25,116,66,.20);
-}
-#lss7.theme-summer .wm-result-label,
-#lss7.theme-summer .wm-tip,
-#lss7.theme-summer .wm-tip span,
-#lss7.theme-summer .wm-tip-label{color:#27495c;opacity:1;}
-#lss7.theme-summer .wm-tip button{
-  color:#fff;background:#0f6fa8;border-color:#095886;text-shadow:none;
-  box-shadow:0 3px 9px rgba(15,111,168,.18);
-}
-#lss7.theme-summer .wm-tip button:hover{color:#fff;background:#0b5d8d;border-color:#07486e;}
-#lss7.theme-summer .wm-tip-chip{color:#fff;background:#1687c8;border-color:#0f6fa8;}
-#lss7.theme-summer .wm-tip input{color:#163249;background:#fff;border-color:rgba(15,111,168,.42);}
-#lss7.theme-summer .wm-stage,
-#lss7.theme-summer .wm-meta-item{color:#365c70;background:rgba(255,255,255,.76);border-color:rgba(22,80,104,.15);}
-#lss7.theme-summer .wm-groups,
-#lss7.theme-summer .wm-group-card{background:#fff!important;border-color:rgba(22,80,104,.18);}
-#lss7.theme-summer .wm-knockout,#lss7.theme-summer .wm-ko-match{background:#fff;border-color:rgba(22,80,104,.18);}
-#lss7.theme-summer .wm-knockout-head{background:linear-gradient(90deg,rgba(123,71,177,.10),rgba(22,135,200,.08));}
-#lss7.theme-summer .wm-knockout-badge{color:#633497;background:#f2e7fb;border-color:#b88bd5;}
-#lss7.theme-summer .wm-ko-team,#lss7.theme-summer .wm-ko-score{color:#173b51;}
-#lss7.theme-summer .wm-ko-team.pending,#lss7.theme-summer .wm-ko-meta,#lss7.theme-summer .wm-ko-note{color:#4c6d7e;}
-#lss7.theme-summer .wm-groups-head,
-#lss7.theme-summer .wm-group-name{background:linear-gradient(90deg,rgba(22,135,200,.10),rgba(47,158,91,.07));}
-#lss7.theme-summer .wm-groups-toggle{color:#fff;background:#0f6fa8;border-color:#095886;}
-#lss7.theme-summer .wm-group-name{color:#143b52;border-bottom-color:rgba(22,80,104,.18);}
-#lss7.theme-summer .wm-group-name span{color:#4c6d7e;}
-#lss7.theme-summer .wm-table{background:#fff!important;color:#29495f!important;}
-#lss7.theme-summer .wm-table th{color:#35596c!important;background:#eaf5f7!important;border-bottom-color:rgba(22,80,104,.16)!important;}
-#lss7.theme-summer .wm-table td{color:#2d4f62!important;background:#fff!important;border-bottom-color:rgba(22,80,104,.10)!important;}
-#lss7.theme-summer .wm-table tbody tr:nth-child(even) td{background:#f2f9fa!important;}
-#lss7.theme-summer .wm-table .wm-club{color:#173b51!important;}
-#lss7.theme-summer .wm-table .wm-pts{color:#0d6537!important;background:#e8f7ed!important;}
-#lss7.theme-summer .wm-table tr.qualify{box-shadow:inset 3px 0 #2f9e5b;}
-#lss7.theme-summer .wm-table tr.third{box-shadow:inset 3px 0 #d49a16;}
-#lss7.theme-summer .wm-groups-note{color:#426477;}
-#lss7.theme-summer .wm-legend{color:#365b6e;background:#fff;border-color:rgba(22,80,104,.16);}
-#lss7.theme-summer .wm-legend.qualify{color:#0d6537;background:#e1f6e9;border-color:#58a978;}
-#lss7.theme-summer .wm-legend.third{color:#754600;background:#fff1bd;border-color:#c58a19;}
 #lss7.theme-summer .prof-event-strip{background:linear-gradient(90deg,#fff9dd,#eef9f1);border-bottom-color:rgba(103,119,73,.22);box-shadow:inset 4px 0 #e5ad24;}
 #lss7.theme-summer .prof-event-strip.idle{background:rgba(255,255,255,.62);box-shadow:inset 4px 0 #8ca2ad;}
 #lss7.theme-summer .prof-event-row{border-top-color:rgba(22,80,104,.12);}
@@ -1812,19 +1469,11 @@ GM_addStyle(`
 }
 #lss7.theme-summer .set-note{color:#425f70;background:rgba(255,255,255,.58);}
 #lss7.theme-summer .set-note b{color:#754600;}
-#lss7.theme-summer .game-event-row,
-#lss7.theme-summer .wm-row{background:rgba(255,255,255,.62);}
-#lss7.theme-summer .wm-command,#lss7.theme-summer .wm-focus-card,#lss7.theme-summer .wm-day{background:rgba(255,255,255,.72);border-color:rgba(22,80,104,.17);}
-#lss7.theme-summer .wm-day-head{background:linear-gradient(90deg,rgba(22,135,200,.10),rgba(47,158,91,.06));}
-#lss7.theme-summer .wm-filter{color:#365c70;background:#fff;border-color:rgba(22,80,104,.18);}
-#lss7.theme-summer .wm-filter.active{color:#fff;background:#0f6fa8;border-color:#0f6fa8;}
+#lss7.theme-summer .game-event-row{background:rgba(255,255,255,.62);}
 #lss7.theme-summer .game-events-title{color:#704600;}
 #lss7.theme-summer .game-events-live{color:#146b3b;background:#e1f6e9;border-color:#58a978;}
-#lss7.theme-summer .game-event-title,
-#lss7.theme-summer .wm-teams{color:#1d3f54;}
-#lss7.theme-summer .game-event-time,
-#lss7.theme-summer .wm-row.live .wm-status,
-#lss7.theme-summer .wm-live-dot{color:#197442;}
+#lss7.theme-summer .game-event-title{color:#1d3f54;}
+#lss7.theme-summer .game-event-time{color:#197442;}
 #lss7.theme-summer .wx-warn.lvl0{color:#146b3b;background:#e1f6e9;border-color:#58a978;}
 #lss7.theme-summer .wx-warn.lvl2{color:#754600;background:#fff1bd;border-color:#c58a19;}
 #lss7.theme-summer .wx-warn.lvl3{color:#983b10;background:#ffe6cc;border-color:#d77b37;}
@@ -1891,13 +1540,6 @@ GM_addStyle(`
 #lss7.theme-summer-dark .prof-event-strip{background:linear-gradient(90deg,rgba(243,200,104,.12),rgba(85,214,154,.055));border-bottom-color:rgba(243,200,104,.18);box-shadow:inset 4px 0 #f3c868;}
 #lss7.theme-summer-dark .prof-event-label,#lss7.theme-summer-dark .prof-event-strip.active .prof-event-label{color:#fff3c7;}
 #lss7.theme-summer-dark .prof-event-time{color:#8af1bf;background:rgba(31,110,75,.26);border:1px solid rgba(85,214,154,.34);border-radius:6px;padding:3px 6px;}
-#lss7.theme-summer-dark .wm-group-card,#lss7.theme-summer-dark .wm-table{background:#0d1930!important;color:#dce7fb!important;}
-#lss7.theme-summer-dark .wm-command,#lss7.theme-summer-dark .wm-focus-card,#lss7.theme-summer-dark .wm-day{background:#0d1930;border-color:rgba(177,205,255,.13);}
-#lss7.theme-summer-dark .wm-knockout,#lss7.theme-summer-dark .wm-ko-match{background:#0d1930;border-color:rgba(177,205,255,.13);}
-#lss7.theme-summer-dark .wm-table th{background:#152746!important;color:#b9cdf0!important;}
-#lss7.theme-summer-dark .wm-table td{background:transparent!important;color:#dce7fb!important;border-color:rgba(177,205,255,.09)!important;}
-#lss7.theme-summer-dark .wm-table .wm-club{color:#f4f7ff!important;}
-#lss7.theme-summer-dark .wm-table .wm-pts{color:#82e8b8!important;}
 #lss7.theme-summer-dark .bd-summer{color:#f5ecff;background:linear-gradient(135deg,rgba(107,85,190,.82),rgba(35,89,149,.76));border-color:rgba(169,196,255,.38);box-shadow:0 0 18px rgba(117,151,255,.18);}
 #lss7.theme-summer-dark.layout #lss7-summer-scene{opacity:1;filter:saturate(1.08);}
 #lss7.theme-summer-dark.layout .hd-mark,#lss7.theme-summer-dark.layout .wx-icon{animation:summer-float 3.6s ease-in-out infinite;}
@@ -1949,16 +1591,7 @@ GM_addStyle(`
 #lss7.theme-lcars .lbtn.prime{background:#b89aff;color:#030303}#lss7.theme-lcars .lbtn.danger{background:#ff7b73;color:#030303;}
 #lss7.theme-lcars .lss7-select{background:#0b0b0b!important;color:#fff3d0!important;border-color:#5a3a1a!important;border-radius:999px;}
 #lss7.theme-lcars .vb-fill,#lss7.theme-lcars .pt-fill,#lss7.theme-lcars .prof-fill,#lss7.theme-lcars .forecast-progress-fill{background:linear-gradient(90deg,#ff9d45,#ffba5c,#b89aff)!important;}
-#lss7.theme-lcars .wm-row,#lss7.theme-lcars .game-event-row,#lss7.theme-lcars .sch-row,#lss7.theme-lcars .arr-row,#lss7.theme-lcars .hist-row,#lss7.theme-lcars .rank-mini-row,#lss7.theme-lcars .team-card{background:#070707;border-color:#21170f;border-radius:16px 7px 7px 16px;}
-#lss7.theme-lcars .wm-command,#lss7.theme-lcars .wm-focus-card,#lss7.theme-lcars .wm-day{background:#070707;border-color:#5a3a1a;border-radius:16px 7px 7px 16px;}
-#lss7.theme-lcars .wm-knockout,#lss7.theme-lcars .wm-ko-match{background:#070707;border-color:#5a3a1a;border-radius:16px 7px 7px 16px;}
-#lss7.theme-lcars .wm-knockout-head{background:#0d0906;}
-#lss7.theme-lcars .wm-knockout-badge{color:#050506;background:#b89aff;border-color:#b89aff;}
-#lss7.theme-lcars .wm-day-head{background:#0d0906;border-color:#2a1c0e;}
-#lss7.theme-lcars .wm-filter{border-radius:14px 5px 5px 14px;background:#090909;border-color:#5a3a1a;color:#fff3d0;}
-#lss7.theme-lcars .wm-filter.active{background:#f6b45d;border-color:#f6b45d;color:#050506;}
-@media(max-width:900px){.wm-focus{grid-template-columns:1fr 1fr}.wm-command{grid-template-columns:1fr}.wm-command-stats{min-width:0;}}
-@media(max-width:620px){.wm-focus{grid-template-columns:1fr}.wm-command-stats{grid-template-columns:repeat(3,minmax(0,1fr));}}
+#lss7.theme-lcars .game-event-row,#lss7.theme-lcars .sch-row,#lss7.theme-lcars .arr-row,#lss7.theme-lcars .hist-row,#lss7.theme-lcars .rank-mini-row,#lss7.theme-lcars .team-card{background:#070707;border-color:#21170f;border-radius:16px 7px 7px 16px;}
 #lss7.theme-lcars .sch-row:hover,#lss7.theme-lcars .arr-row:hover,#lss7.theme-lcars .team-card:hover{background:#120d09;}
 #lss7.theme-lcars #lss7-ft{background:#030303;border-top:7px solid #b89aff;color:#c9a36b;}
 #lss7.theme-lcars .ft-version{background:#ffba5c;color:#030303;border:0;border-radius:999px;font-weight:950;}
@@ -2032,7 +1665,6 @@ body.lss7-lcars-global .leaflet-popup-tip{background:#070707!important;}
 #lss7.theme-lcars .sc,#lss7.theme-lcars .set-group,#lss7.theme-lcars .asset-section,#lss7.theme-lcars .fleet-panel,#lss7.theme-lcars .event-card,#lss7.theme-lcars .prof-strip,#lss7.theme-lcars .vehicle-summary-card,#lss7.theme-lcars .forecast-controls,#lss7.theme-lcars .forecast-chart-box,#lss7.theme-lcars .quality-card{background:#080807;border-color:rgba(246,180,93,.20);border-radius:18px 7px 7px 18px;box-shadow:inset 7px 0 rgba(246,180,93,.92);}
 #lss7.theme-lcars .sv,#lss7.theme-lcars .qs-val,#lss7.theme-lcars .asset-section-title,#lss7.theme-lcars .set-head{color:#fff8e8;}
 #lss7.theme-lcars .sl,#lss7.theme-lcars .qs-lbl,#lss7.theme-lcars .asset-section-sub,#lss7.theme-lcars .quality-label{color:#c19b67;}
-#lss7.theme-lcars .rank-mini-row,#lss7.theme-lcars .wm-row,#lss7.theme-lcars .game-event-row,#lss7.theme-lcars .sch-row,#lss7.theme-lcars .arr-row,#lss7.theme-lcars .hist-row,#lss7.theme-lcars .team-card{background:#090908;border-color:rgba(246,180,93,.18);border-radius:15px 6px 6px 15px;}
 #lss7.theme-lcars .rank-mini-row.me{background:rgba(143,220,255,.12);border-color:rgba(143,220,255,.44);box-shadow:inset 6px 0 #8fdcff;}
 #lss7.theme-lcars #lss7-ft{background:#050506;border-top:5px solid #c7a8ff;color:#c19b67;}
 body.lss7-lcars-global{background:#050506!important;color:#fff8e8!important;}
@@ -2094,7 +1726,6 @@ body.lss7-lcars-global .dropdown-menu>li>a:hover,body.lss7-lcars-global .list-gr
 #lss7.theme-lcars .hotkey-value{background:#06070a;color:#ffd99b;border-color:rgba(232,169,88,.42);}
 #lss7.theme-lcars .hotkey-capture.recording{background:#10202a;color:#d7f2ff;border-color:rgba(133,214,255,.58);box-shadow:inset 5px 0 #85d6ff;}
 #lss7.theme-lcars .lss7-select,#lss7.theme-lcars input,#lss7.theme-lcars select,#lss7.theme-lcars textarea{background:#0b0d12!important;color:#fff7e8!important;border:1px solid rgba(232,169,88,.32)!important;border-radius:13px 5px 5px 13px!important;}
-#lss7.theme-lcars .rank-mini-row,#lss7.theme-lcars .wm-row,#lss7.theme-lcars .game-event-row,#lss7.theme-lcars .sch-row,#lss7.theme-lcars .arr-row,#lss7.theme-lcars .hist-row,#lss7.theme-lcars .team-card{background:#0b0d12;border-color:rgba(232,169,88,.16);border-radius:15px 6px 6px 15px;}
 #lss7.theme-lcars .rank-mini-row.me{background:rgba(133,214,255,.10);border-color:rgba(133,214,255,.42);box-shadow:inset 5px 0 #85d6ff;}
 #lss7.theme-lcars #lss7-ft{background:#06070a;border-top:4px solid #bfa3ff;color:#b79466;}
 body.lss7-lcars-global{background:#06070a!important;color:#fff7e8!important;}
@@ -2339,9 +1970,6 @@ const S = {
   allianceId:null, allianceName:"", allianceRank:null, allianceCredits:0,
   weather:null, weatherTs:0, weatherLoc:"",
   gameEvents:[],
-  wm:{games:[],stadiums:{},error:null,lastTs:null,loading:false,scoreSnapshot:{},snapshotReady:false,finishedAt:{},view:"focus",knockoutOpen:true},
-  wmTips:{},
-  wmTipEdit:{},
   profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:"",roles:[],totalCredits:0},
   weatherAlertKey:"",
   lastApiTs:null,
@@ -2369,7 +1997,6 @@ const S = {
     weatherSound:false,
     weatherTone:"beep",
     eventMode:"overview", // off | overview
-    wmGoalSound:true,
     creditPopupEnabled:true,
     creditPopupSound:true,
     creditPopupSoundType:"kaching",
@@ -2409,7 +2036,6 @@ function save(){
   GM_setValue("v7_diag",JSON.stringify(S.diagnostics));
   GM_setValue("v7_set", JSON.stringify(S.settings));
 }
-function saveWmTips(){ GM_setValue("v7_wm_tips", JSON.stringify(S.wmTips||{})); }
 function saveWeatherCache(){
   const loc=(S.settings.weatherLocation||"").trim();
   const locKey=`${S.settings.weatherCountry||"DE"}|${loc}`;
@@ -2463,9 +2089,6 @@ function load(){
   S.playerRanking.loading=false;
   normalizePlayerRankHistory();
   if(newDay && saved && storedPlaytime>0)recordPlaytimeDay(saved,storedPlaytime);
-  try{S.wmTips=JSON.parse(GM_getValue("v7_wm_tips","{}"))||{};}catch{S.wmTips={};}
-  try{S.wm.finishedAt=JSON.parse(GM_getValue("v7_wm_finished_at","{}"))||{};}catch{S.wm.finishedAt={};}
-  S.wm.knockoutOpen=GM_getValue("v7_wm_knockout_open",true)!==false;
   try{Object.assign(S.settings,JSON.parse(GM_getValue("v7_set","{}"))||{});}catch{}
   S.update.previousVersion=String(GM_getValue("v7_installed_version","")||"");
   const existingInstallation=!!GM_getValue("v7_layout_default_done",false);
@@ -2496,7 +2119,6 @@ function load(){
   const validEventModes=["off","overview"];
   if(!validEventModes.includes(S.settings.eventMode)) S.settings.eventMode="overview";
   if(typeof S.settings.weatherSound!=="boolean") S.settings.weatherSound=false;
-  if(typeof S.settings.wmGoalSound!=="boolean") S.settings.wmGoalSound=true;
   if(typeof S.settings.creditPopupEnabled!=="boolean")S.settings.creditPopupEnabled=true;
   if(typeof S.settings.creditPopupSound!=="boolean")S.settings.creditPopupSound=true;
   if(!["kaching","coins","register","success","soft","arcade"].includes(S.settings.creditPopupSoundType))S.settings.creditPopupSoundType="kaching";
@@ -2594,19 +2216,25 @@ function renderClock(){
   $("#lss7-clock .qs-clock-time").text(now.toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
   $("#lss7-clock .qs-clock-date").text(now.toLocaleDateString(uiLocale(),{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"}));
 }
-function fmtWmCountdown(){
-  const now=Date.now();
-  if(now>=WM_END)return "EVENT BEENDET";
-  if(now>=WM_START)return "EVENT LIVE";
-  const diff=Math.max(0,WM_START-Date.now());
-  const d=Math.floor(diff/86400000);
-  const h=Math.floor((diff%86400000)/3600000);
-  const m=Math.floor((diff%3600000)/60000);
-  const s=Math.floor((diff%60000)/1000);
-  return `${String(d).padStart(2,"0")}T ${String(h).padStart(2,"0")}H ${String(m).padStart(2,"0")}M ${String(s).padStart(2,"0")}S`;
-}
 function escHtml(v){
   return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+function safeSameOriginPath(path,fallback="/"){
+  const raw=String(path||"").trim();
+  if(!raw || /^(?:javascript|data|vbscript):/i.test(raw))return fallback;
+  try{
+    const u=new URL(raw,BASE);
+    if(u.origin!==BASE)return fallback;
+    return `${u.pathname}${u.search}${u.hash}`;
+  }catch{return fallback;}
+}
+function safeExternalUrl(url,fallback="#"){
+  const raw=String(url||"").trim();
+  if(!raw || /^(?:javascript|data|vbscript):/i.test(raw))return fallback;
+  try{
+    const u=new URL(raw,location.href);
+    return /^https?:$/.test(u.protocol)?u.href:fallback;
+  }catch{return fallback;}
 }
 function normalizeHotkey(value){
   const raw=String(value||"").trim();
@@ -2681,248 +2309,6 @@ function commitHotkeyCapture(value){
   activeHotkeyCapture="";
   save();refreshHotkeyButtons();
   return true;
-}
-function wmTeamDe(name){
-  const raw=String(name||"");
-  if(WM_TEAM_DE[raw])return WM_TEAM_DE[raw];
-  return raw
-    .replace(/^Winner Group ([A-Z])$/,"Sieger Gruppe $1")
-    .replace(/^Runner-up Group ([A-Z])$/,"Zweiter Gruppe $1")
-    .replace(/^Winner Match (\d+)$/,"Sieger Spiel $1")
-    .replace(/^Loser Match (\d+)$/,"Verlierer Spiel $1")
-    .replace(/^3rd Group (.+)$/,"Dritter Gruppe $1");
-}
-function isWmActive(){const n=Date.now();return n>=WM_START&&n<WM_END;}
-function parseWmGameDate(g){
-  const m=String(g?.local_date||"").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/);
-  if(!m)return null;
-  const mo=Number(m[1]),d=Number(m[2]),y=Number(m[3]),h=Number(m[4]),mi=Number(m[5]);
-  const off=WM_STADIUM_OFFSETS[Number(g.stadium_id)] ?? -5;
-  return new Date(Date.UTC(y,mo-1,d,h-off,mi));
-}
-function fmtWmKickoff(g){
-  const dt=parseWmGameDate(g);
-  if(!dt)return escHtml(g?.local_date||"-");
-  return dt.toLocaleString(uiLocale(),{timeZone:"Europe/Berlin",weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(",","");
-}
-function wmTeamRaw(g,side){
-  return (side==="home"?(g.home_team_name_en||g.home_team_label):(g.away_team_name_en||g.away_team_label)) || "TBD";
-}
-function wmTeam(g,side){
-  return wmTeamDe(wmTeamRaw(g,side));
-}
-function wmTeamHtml(g,side){
-  return escHtml(wmTeam(g,side));
-}
-function wmTeamFlag(g,side){
-  return WM_TEAM_FLAGS[wmTeamRaw(g,side)]||"🌐";
-}
-function wmEventList(raw){
-  if(raw===null || raw===undefined)return [];
-  if(Array.isArray(raw))return raw.flatMap(wmEventList).filter(Boolean);
-  if(typeof raw==="object")return Object.values(raw).flatMap(wmEventList).filter(Boolean);
-  const text=String(raw).trim();
-  if(!text || text.toLowerCase()==="null" || text==="{}" || text==="[]")return [];
-  return text
-    .replace(/^[\[{]|[\]}]$/g,"")
-    .replace(/[“”"]/g,"")
-    .split(/\s*,\s*/)
-    .map(x=>x.trim())
-    .filter(Boolean);
-}
-function wmSideEvents(g,side,type){
-  const names=type==="yellow"
-    ? [`${side}_yellow_cards`,`${side}_yellow_card`,`${side}_bookings`]
-    : [`${side}_red_cards`,`${side}_red_card`,`${side}_dismissals`];
-  for(const key of names){
-    const list=wmEventList(g?.[key]);
-    if(list.length)return list;
-  }
-  return [];
-}
-function wmMatchEventsHtml(g){
-  if(!wmStarted(g))return "";
-  const lines=[];
-  const add=(icon,team,items)=>{if(items.length)lines.push(`<div class="wm-event-line"><span class="wm-event-icon">${icon}</span><span class="wm-event-team">${escHtml(team)}</span><span class="wm-event-names">${items.map(escHtml).join(" · ")}</span></div>`);};
-  add("⚽",wmTeam(g,"home"),wmEventList(g.home_scorers));
-  add("⚽",wmTeam(g,"away"),wmEventList(g.away_scorers));
-  add("🟨",wmTeam(g,"home"),wmSideEvents(g,"home","yellow"));
-  add("🟨",wmTeam(g,"away"),wmSideEvents(g,"away","yellow"));
-  add("🟥",wmTeam(g,"home"),wmSideEvents(g,"home","red"));
-  add("🟥",wmTeam(g,"away"),wmSideEvents(g,"away","red"));
-  return lines.length?`<div class="wm-match-events">${lines.join("")}</div>`:"";
-}
-function wmStarted(g){
-  return String(g?.finished).toUpperCase()==="TRUE" || String(g?.time_elapsed||"notstarted").toLowerCase()!=="notstarted";
-}
-function wmLive(g){return wmStarted(g) && String(g?.finished).toUpperCase()!=="TRUE";}
-function wmStatusText(g){
-  if(wmLive(g))return "Live";
-  if(String(g?.finished).toUpperCase()==="TRUE")return "Beendet";
-  return "Geplant";
-}
-function wmScore(g){return wmStarted(g)?`${g.home_score??0}:${g.away_score??0}`:"vs";}
-function wmStage(g){
-  const t=String(g?.type||"group").toLowerCase();
-  const map={group:`Gruppe ${g.group||""}`,r32:"Runde der 32",r16:"Achtelfinale",qf:"Viertelfinale",sf:"Halbfinale",third:"Platz 3",final:"Finale"};
-  return map[t]||String(g?.group||t).toUpperCase();
-}
-function wmTv(g){
-  const teams=`${wmTeam(g,"home")} ${wmTeam(g,"away")}`.toLowerCase();
-  const type=String(g?.type||"").toLowerCase();
-  const free=Number(g?.id)===1 || type==="sf" || type==="final" || teams.includes("germany");
-  return free?"MagentaTV + ARD/ZDF":"MagentaTV";
-}
-function wmDateKey(value=new Date()){
-  return new Intl.DateTimeFormat("en-CA",{
-    timeZone:"Europe/Berlin",year:"numeric",month:"2-digit",day:"2-digit"
-  }).format(value);
-}
-function wmGameKey(g){
-  return String(g?.id||`${parseWmGameDate(g)?.getTime()||g?.local_date||"?"}|${wmTeam(g,"home")}|${wmTeam(g,"away")}`);
-}
-function wmScorePair(g){
-  return {
-    home:Math.max(0,Number(g?.home_score)||0),
-    away:Math.max(0,Number(g?.away_score)||0)
-  };
-}
-function wmMinuteText(g){
-  if(!wmLive(g))return wmStatusText(g);
-  const raw=String(g?.time_elapsed??g?.elapsed??g?.status??"").trim();
-  const normalized=raw.toLowerCase().replace(/[\s_-]+/g,"");
-  if(["halftime","half","ht","pause"].includes(normalized))return "Halbzeit";
-  if(["extratime","et"].includes(normalized))return "Verlängerung";
-  if(["penalties","penalty","pens"].includes(normalized))return "Elfmeterschießen";
-  const minute=raw.match(/\d{1,3}(?:\+\d{1,2})?/);
-  return minute?`${minute[0]}'`:"LIVE";
-}
-function wmTodayGames(){
-  const today=wmDateKey();
-  return wmSortedGames()
-    .filter(g=>g._dt && wmDateKey(g._dt)===today)
-    .sort((a,b)=>(wmLive(b)?1:0)-(wmLive(a)?1:0)||(a._dt-b._dt));
-}
-function wmFinishedAt(g){
-  const saved=Number(S.wm.finishedAt?.[wmGameKey(g)])||0;
-  if(saved)return saved;
-  const kickoff=parseWmGameDate(g)?.getTime()||0;
-  return kickoff?kickoff+(2*60+15)*60*1000:0;
-}
-function wmRecentFinishedGames(){
-  const now=Date.now();
-  return wmSortedGames()
-    .filter(g=>String(g?.finished).toUpperCase()==="TRUE")
-    .filter(g=>{
-      const finishedAt=wmFinishedAt(g);
-      return finishedAt>0 && now>=finishedAt && now-finishedAt<WM_RESULT_VISIBLE_MS;
-    })
-    .sort((a,b)=>wmFinishedAt(b)-wmFinishedAt(a));
-}
-function wmHeaderGames(limit=2){
-  const all=wmSortedGames();
-  const live=all.filter(wmLive);
-  const recent=wmRecentFinishedGames();
-  const upcoming=all.filter(g=>!wmStarted(g) && (g._dt?.getTime()||0)>=Date.now())
-    .sort((a,b)=>a._dt-b._dt);
-  const primary=live.length?live:recent.length?recent:upcoming;
-  const fallback=live.length?[...recent,...upcoming]:recent.length?upcoming:[];
-  const seen=new Set();
-  return [...primary,...fallback].filter(g=>{
-    const key=wmGameKey(g);
-    if(seen.has(key))return false;
-    seen.add(key);
-    return true;
-  }).slice(0,limit);
-}
-function playGoalTone(){
-  try{
-    const C=window.AudioContext||window.webkitAudioContext;
-    if(!C)return;
-    const audio=new C();
-    const gain=audio.createGain();
-    gain.connect(audio.destination);
-    const now=audio.currentTime;
-    [784,988,1175].forEach((frequency,index)=>{
-      const oscillator=audio.createOscillator();
-      const start=now+index*.12;
-      oscillator.type="triangle";
-      oscillator.frequency.setValueAtTime(frequency,start);
-      oscillator.connect(gain);
-      oscillator.start(start);
-      oscillator.stop(start+.22);
-    });
-    gain.gain.setValueAtTime(.0001,now);
-    gain.gain.exponentialRampToValueAtTime(.12,now+.025);
-    gain.gain.exponentialRampToValueAtTime(.0001,now+.52);
-    setTimeout(()=>audio.close?.(),750);
-  }catch{}
-}
-function notifyWmGoal(g,scoringSide){
-  const score=wmScorePair(g);
-  const scoringTeam=wmTeam(g,scoringSide);
-  const title=`⚽ TOR für ${scoringTeam}!`;
-  const body=`${wmTeam(g,"home")} ${score.home}:${score.away} ${wmTeam(g,"away")} · ${wmMinuteText(g)}`;
-  const panel=$("#lss7");
-  let toast=panel.find(".lss7-toast");
-  if(!toast.length)toast=$(`<div class="lss7-toast"></div>`).appendTo(panel);
-  toast.removeClass("bad").addClass("wm-goal-toast show").text(`${title} ${body}`);
-  clearTimeout(notify._t);
-  notify._t=setTimeout(()=>toast.removeClass("show wm-goal-toast"),6500);
-  if(S.settings.wmGoalSound)playGoalTone();
-  if(S.settings.notifications && "Notification" in window && Notification.permission==="granted"){
-    try{
-      const notification=new Notification(title,{body,tag:`lss7-wm-goal-${wmGameKey(g)}-${score.home}-${score.away}`,renotify:true});
-      notification.onclick=()=>{window.focus();togglePanel(true);$("#tp-event").trigger("click");notification.close();};
-      setTimeout(()=>notification.close(),12000);
-    }catch{}
-  }
-}
-function updateWmScoreSnapshot(games){
-  const previous=S.wm.scoreSnapshot||{};
-  const next={};
-  let finishedChanged=false;
-  (games||[]).forEach(g=>{
-    const key=wmGameKey(g);
-    const score=wmScorePair(g);
-    const old=previous[key];
-    next[key]={...score,live:wmLive(g)};
-    if(String(g?.finished).toUpperCase()==="TRUE" && old?.live && !S.wm.finishedAt[key]){
-      S.wm.finishedAt[key]=Date.now();
-      finishedChanged=true;
-    }
-    if(!S.wm.snapshotReady || !old || !(old.live||wmLive(g)))return;
-    if(score.home>old.home)notifyWmGoal(g,"home");
-    if(score.away>old.away)notifyWmGoal(g,"away");
-  });
-  const cutoff=Date.now()-(WM_RESULT_VISIBLE_MS+86400000);
-  Object.keys(S.wm.finishedAt||{}).forEach(key=>{
-    if(Number(S.wm.finishedAt[key])<cutoff){delete S.wm.finishedAt[key];finishedChanged=true;}
-  });
-  if(finishedChanged)GM_setValue("v7_wm_finished_at",JSON.stringify(S.wm.finishedAt));
-  S.wm.scoreSnapshot=next;
-  S.wm.snapshotReady=true;
-}
-function wmHeaderMatchHtml(g){
-  const dt=parseWmGameDate(g);
-  const live=wmLive(g);
-  const finished=String(g?.finished).toUpperCase()==="TRUE";
-  const time=dt?dt.toLocaleTimeString(uiLocale(),{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit"}):"--:--";
-  const score=live||wmStarted(g)?wmScore(g):time;
-  const date=dt?dt.toLocaleDateString(uiLocale(),{timeZone:"Europe/Berlin",weekday:"short",day:"2-digit",month:"2-digit"}):"Geplant";
-  const state=live
-    ? `LIVE · ${wmMinuteText(g)}`
-    : wmStarted(g)
-      ? `Endergebnis · ${timeAgo(wmFinishedAt(g))}`
-      : `${date} · ${time} Uhr`;
-  const cls=live?" live":finished?" finished":" planned";
-  return `<button class="wm-header-match${cls}" type="button" data-open-event="1" title="WM-Spielplan öffnen">
-    <span class="wm-header-copy">
-      <span class="wm-header-teams"><span class="wm-header-flag" aria-hidden="true">${escHtml(wmTeamFlag(g,"home"))}</span><span class="wm-header-team">${wmTeamHtml(g,"home")}</span><span class="wm-header-vs">VS</span><span class="wm-header-flag" aria-hidden="true">${escHtml(wmTeamFlag(g,"away"))}</span><span class="wm-header-team">${wmTeamHtml(g,"away")}</span></span>
-      <span class="wm-header-state">${escHtml(state)}</span>
-    </span>
-    <span class="wm-header-score">${escHtml(score)}</span>
-  </button>`;
 }
 function fmtCountdownMs(endTs){
   const end=Number(endTs)||0;
@@ -3095,46 +2481,115 @@ function setV(sel,val){
 }
 function setH(sel,html){const root=$("#lss7");(root.is(sel)?root:root.find(sel)).html(html);}
 function spin(sel){const root=$("#lss7");(root.is(sel)?root:root.find(sel)).html(`<span class="lspin"></span>`);}
+function htmlJoin(items,mapper){return (items||[]).map(mapper).join("");}
 
 function shouldRecordApiIssue(url){
   return !/\/api\/v1\/aao_categories(?:\?|$)/.test(String(url||""));
 }
+function retryDelay(attempt){return Math.min(12000,650*Math.pow(2,Math.max(0,attempt-1))+Math.round(Math.random()*240));}
+function shouldRetryStatus(status){return status===0||status===-1||status===408||status===429||status>=500||status==="timeout"||status==="network";}
+function requestAllowedOrigins(){
+  return new Set([
+    location.origin,BASE,"https://raw.githubusercontent.com","https://github.com",
+    "https://api.open-meteo.com","https://geocoding-api.open-meteo.com","https://api.zippopotam.us","https://www.dwd.de"
+  ]);
+}
+function normalizeRequestUrl(url){
+  const raw=String(url||"").trim();
+  if(!raw || raw.length>2048 || /^(?:javascript|data|vbscript|file):/i.test(raw))throw new Error("Unsichere oder zu lange URL blockiert.");
+  const u=new URL(raw,location.href);
+  if(!/^https?:$/.test(u.protocol))throw new Error("Nicht unterstütztes URL-Protokoll blockiert.");
+  if(!requestAllowedOrigins().has(u.origin))throw new Error(`Nicht erlaubte externe Quelle blockiert: ${u.origin}`);
+  return u.href;
+}
+function scheduleRequestByOrigin(url,fn){
+  let origin=location.origin;
+  try{origin=new URL(url).origin;}catch{}
+  const now=Date.now();
+  const last=Number(SECURITY.lastRequestByOrigin.get(origin)||0);
+  const wait=Math.max(0,SECURITY.minRequestGapMs-(now-last));
+  SECURITY.lastRequestByOrigin.set(origin,now+wait);
+  setTimeout(fn,wait);
+}
+function requestTextWithRetry(url,{timeout=12000,retries=2,record=true,label="request"}={},cb,onErr){
+  let safeUrl="";
+  try{safeUrl=normalizeRequestUrl(url);}
+  catch(e){recordDiagnosticError(`${label}.blocked`,e,{url:String(url||"").slice(0,180)});onErr&&onErr("blocked");return;}
+  const key=`GET ${safeUrl}`;
+  if(SECURITY.pendingRequests.has(key)){
+    SECURITY.pendingRequests.get(key).push({cb,onErr});
+    return;
+  }
+  SECURITY.pendingRequests.set(key,[{cb,onErr}]);
+  const finishOk=(txt,r)=>{
+    const subscribers=SECURITY.pendingRequests.get(key)||[];
+    SECURITY.pendingRequests.delete(key);
+    subscribers.forEach(s=>{try{s.cb&&s.cb(txt,r);}catch(e){recordDiagnosticError(`${label}.callback`,e,{url:safeUrl});}});
+  };
+  const finishErr=(err)=>{
+    const subscribers=SECURITY.pendingRequests.get(key)||[];
+    SECURITY.pendingRequests.delete(key);
+    subscribers.forEach(s=>{try{s.onErr&&s.onErr(err);}catch(e){recordDiagnosticError(`${label}.errorCallback`,e,{url:safeUrl});}});
+  };
+  let attempt=0;
+  const run=()=>{
+    attempt++;
+    scheduleRequestByOrigin(safeUrl,()=>{
+      try{
+      GM_xmlhttpRequest({
+        method:"GET",url:safeUrl,timeout,
+        onload(r){
+          if(r.status>=200&&r.status<300){finishOk(String(r.responseText||""),r);return;}
+          if(attempt<=retries+1&&shouldRetryStatus(r.status)){
+            logDebug(`${label} retry`,safeUrl,r.status,attempt);
+            setTimeout(run,retryDelay(attempt));return;
+          }
+          if(record&&shouldRecordApiIssue(safeUrl))recordDiagnosticError(`${label}.http`,`HTTP ${r.status}`,{url:safeUrl,status:r.status,attempts:attempt});
+          finishErr(r.status);
+        },
+        onerror(){
+          if(attempt<=retries+1){setTimeout(run,retryDelay(attempt));return;}
+          if(record&&shouldRecordApiIssue(safeUrl))recordDiagnosticError(`${label}.network`,"Netzwerkfehler",{url:safeUrl,attempts:attempt});
+          finishErr(-1);
+        },
+        ontimeout(){
+          if(attempt<=retries+1){setTimeout(run,retryDelay(attempt));return;}
+          if(record&&shouldRecordApiIssue(safeUrl))recordDiagnosticError(`${label}.timeout`,"Zeitüberschreitung",{url:safeUrl,timeout,attempts:attempt});
+          finishErr("timeout");
+        }
+      });
+      }catch(e){
+      if(attempt<=retries+1){setTimeout(run,retryDelay(attempt));return;}
+      if(record&&shouldRecordApiIssue(safeUrl))recordDiagnosticError(`${label}.exception`,e,{url:safeUrl,attempts:attempt});
+      finishErr("network");
+      }
+    });
+  };
+  run();
+}
 function apiGet(url,cb,onErr){
-  GM_xmlhttpRequest({
-    method:"GET",url,
-    onload(r){
-      if(r.status===200){
-        const txt=String(r.responseText||"").trim();
-        if(!txt || /^</.test(txt)){ onErr&&onErr("parse"); if(shouldRecordApiIssue(url))recordDiagnosticError("api.empty",`Leere oder HTML-Antwort von ${url}`,{url,status:r.status}); logDebug("api returned html/empty",url); return; }
-        try{cb(JSON.parse(txt));}
-        catch(e){onErr&&onErr("parse"); if(shouldRecordApiIssue(url))recordDiagnosticError("api.parse",e,{url,status:r.status}); logDebug("api parse",url,e);}
-      } else { onErr&&onErr(r.status); if(r.status>=500&&shouldRecordApiIssue(url))recordDiagnosticError("api.http",`HTTP ${r.status}`,{url,status:r.status}); }
-    },
-    onerror(){onErr&&onErr(-1);if(shouldRecordApiIssue(url))recordDiagnosticError("api.network","Netzwerkfehler",{url});logDebug("api fail",url);}
-  });
+  requestTextWithRetry(url,{timeout:14000,retries:2,label:"api"},(txt,r)=>{
+    const clean=String(txt||"").trim();
+    if(!clean || /^</.test(clean)){ onErr&&onErr("parse"); if(shouldRecordApiIssue(url))recordDiagnosticError("api.empty",`Leere oder HTML-Antwort von ${url}`,{url,status:r?.status}); logDebug("api returned html/empty",url); return; }
+    try{cb(JSON.parse(clean));}
+    catch(e){onErr&&onErr("parse"); if(shouldRecordApiIssue(url))recordDiagnosticError("api.parse",e,{url,status:r?.status}); logDebug("api parse",url,e);}
+  },onErr);
 }
 function pageGet(url,cb,onErr){
   const fallback=()=>fetchTextFallback(url,cb,onErr);
-  try{
-    GM_xmlhttpRequest({
-      method:"GET",url,timeout:12000,
-      onload(r){
-        if(r.status===200) cb(r.responseText||"");
-        else { onErr&&onErr(r.status); if(r.status>=500)recordDiagnosticError("page.http",`HTTP ${r.status}`,{url,status:r.status}); }
-      },
-      onerror(){fallback();logDebug("page fail",url);},
-      ontimeout(){fallback();logDebug("page timeout",url);}
-    });
-  }catch{fallback();}
+  requestTextWithRetry(url,{timeout:12000,retries:1,record:false,label:"page"},txt=>cb(txt||""),err=>{fallback();logDebug("page retry/fallback",url,err);});
 }
 function fetchTextFallback(url,cb,onErr){
   if(typeof fetch!=="function"){onErr&&onErr("network");return;}
-  fetch(url,{cache:"no-store"}).then(r=>{
+  let safeUrl="";
+  try{safeUrl=normalizeRequestUrl(url);}
+  catch(e){recordDiagnosticError("fetch.blocked",e,{url:String(url||"").slice(0,180)});onErr&&onErr("blocked");return;}
+  fetch(safeUrl,{cache:"no-store"}).then(r=>{
     if(!r.ok)throw new Error(String(r.status));
     return r.text();
   }).then(txt=>cb(txt||"")).catch(e=>{
-    recordDiagnosticError("fetch.fallback",e,{url});
-    logDebug("fetch fallback fail",url,e);
+    recordDiagnosticError("fetch.fallback",e,{url:safeUrl});
+    logDebug("fetch fallback fail",safeUrl,e);
     onErr&&onErr(String(e?.message||"network"));
   });
 }
@@ -3146,19 +2601,10 @@ function fetchJsonFallback(url,cb,onErr){
 }
 function jsonGet(url,cb,onErr){
   const fallback=()=>fetchJsonFallback(url,cb,onErr);
-  try{
-    GM_xmlhttpRequest({
-      method:"GET",url,timeout:12000,
-      onload(r){
-        if(r.status===200){
-          try{cb(JSON.parse(r.responseText||"{}"));}
-          catch{fallback();}
-        }else fallback();
-      },
-      onerror(){fallback();},
-      ontimeout(){fallback();}
-    });
-  }catch{fallback();}
+  requestTextWithRetry(url,{timeout:12000,retries:1,label:"json"},txt=>{
+    try{cb(JSON.parse(txt||"{}"));}
+    catch{fallback();}
+  },()=>fallback());
 }
 function apiArray(data,...keys){
   if(Array.isArray(data))return data;
@@ -3209,6 +2655,94 @@ function downloadTextFile(filename,text,type="text/csv;charset=utf-8"){
   const a=document.createElement("a");
   a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1200);
+}
+function backupPayload(){
+  return {
+    type:"lss-verband-statistik-pro-backup",
+    version:V,
+    createdAt:new Date().toISOString(),
+    host:location.host,
+    data:{
+      playtime:S.playtime,lastTs:S.lastTs,lastAlliCreds:S.lastAlliCreds,dailyEarn:S.dailyEarn,lastDate:S.lastDate,
+      creditHist:S.creditHist,allianceDaily:S.allianceDaily,allianceSnapshot:S.allianceSnapshot,playtimeDaily:S.playtimeDaily,
+      playerDaily:S.playerDaily,playerRanking:S.playerRanking,playerRankHistory:S.playerRankHistory,
+      allianceActivity:S.allianceActivity,diagnostics:S.diagnostics,settings:S.settings,weatherCache:S.weather?{loc:S.weatherLoc,ts:S.weatherTs,data:S.weather}:null
+    }
+  };
+}
+function exportFullBackup(){
+  const stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+  downloadTextFile(`lss-verband-statistik-backup-${stamp}.json`,JSON.stringify(backupPayload(),null,2),"application/json;charset=utf-8");
+  notify("Backup erstellt.");
+}
+function safeJsonClone(value,maxChars=8000){
+  try{return JSON.parse(JSON.stringify(value,(k,v)=>typeof v==="string"?v.slice(0,maxChars):v));}
+  catch{return null;}
+}
+function sanitizeBackupArray(value,max=750){
+  return Array.isArray(value)?safeJsonClone(value.slice(-max))||[]:[];
+}
+function sanitizeBackupObject(value,fallback={}){
+  return value&&typeof value==="object"&&!Array.isArray(value)?safeJsonClone(value)||fallback:fallback;
+}
+function sanitizeBackupSettings(value){
+  const src=sanitizeBackupObject(value,{});
+  const allowed=Object.keys(S.settings||{});
+  const out={...S.settings};
+  allowed.forEach(key=>{
+    if(Object.prototype.hasOwnProperty.call(src,key))out[key]=src[key];
+  });
+  return out;
+}
+function validateBackupPayload(payload){
+  if(!payload||typeof payload!=="object")throw new Error("Backup ist kein gültiges JSON-Objekt.");
+  if(payload.type!=="lss-verband-statistik-pro-backup")throw new Error("Backup-Typ passt nicht zu diesem Skript.");
+  if(!payload.data||typeof payload.data!=="object"||Array.isArray(payload.data))throw new Error("Backup enthält keinen gültigen Datenblock.");
+  const allowedTop=new Set(["type","version","createdAt","host","data"]);
+  Object.keys(payload).forEach(key=>{if(!allowedTop.has(key))throw new Error(`Unbekanntes Backup-Feld blockiert: ${key}`);});
+  const created=Date.parse(payload.createdAt||"");
+  if(payload.createdAt && !Number.isFinite(created))throw new Error("Backup-Datum ist ungültig.");
+  if(payload.host && !GAME_HOSTS.has(String(payload.host)))throw new Error("Backup stammt nicht von einer unterstützten Spiel-Domain.");
+  return payload.data;
+}
+function restoreBackupPayload(payload){
+  const d=validateBackupPayload(payload);
+  GM_setValue("v7_pt",Math.max(0,Number(d.playtime)||0));
+  GM_setValue("v7_lts",Math.max(0,Number(d.lastTs)||Date.now()));
+  GM_setValue("v7_lc",Number(d.lastAlliCreds)||0);
+  GM_setValue("v7_de",Number(d.dailyEarn)||0);
+  GM_setValue("v7_ld",/^\d{4}-\d{2}-\d{2}$/.test(String(d.lastDate||""))?String(d.lastDate):todayStr());
+  GM_setValue("v7_ch",JSON.stringify(sanitizeBackupArray(d.creditHist,1200)));
+  GM_setValue("v7_ad",JSON.stringify(sanitizeBackupArray(d.allianceDaily,90)));
+  GM_setValue("v7_as",JSON.stringify(sanitizeBackupObject(d.allianceSnapshot,null)));
+  GM_setValue("v7_pd",JSON.stringify(sanitizeBackupArray(d.playtimeDaily,90)));
+  GM_setValue("v7_player_daily",JSON.stringify(sanitizeBackupArray(d.playerDaily,365)));
+  GM_setValue("v7_player_rank",JSON.stringify(sanitizeBackupObject(d.playerRanking,{})));
+  GM_setValue("v7_player_rank_hist",JSON.stringify(sanitizeBackupObject(d.playerRankHistory,{})));
+  GM_setValue("v7_alliance_activity",JSON.stringify(sanitizeBackupObject(d.allianceActivity,{})));
+  GM_setValue("v7_diag",JSON.stringify(sanitizeBackupObject(d.diagnostics,{})));
+  GM_setValue("v7_set",JSON.stringify(sanitizeBackupSettings(d.settings)));
+  if(d.weatherCache?.data)GM_setValue("v7_wx_cache",JSON.stringify(sanitizeBackupObject(d.weatherCache,{})));
+  GM_setValue("v7_installed_version",V);
+}
+function importFullBackup(file){
+  if(!file)return;
+  if(file.size>SECURITY.maxBackupBytes){notify(`Backup ist zu groß (${Math.round(file.size/1024)} KB). Import blockiert.`,true);return;}
+  if(!/\.json$/i.test(file.name||"") && file.type && !/json/i.test(file.type)){notify("Nur JSON-Backups können importiert werden.",true);return;}
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const payload=JSON.parse(String(reader.result||"{}"));
+      restoreBackupPayload(payload);
+      notify("Backup wiederhergestellt. Seite wird neu geladen.");
+      setTimeout(()=>location.reload(),900);
+    }catch(e){
+      recordDiagnosticError("backup.restore",e,{name:file.name,size:file.size});
+      notify(`Backup konnte nicht importiert werden: ${e.message||e}`,true);
+    }
+  };
+  reader.onerror=()=>notify("Backup-Datei konnte nicht gelesen werden.",true);
+  reader.readAsText(file);
 }
 function notify(msg,bad=false){
   const panel=$("#lss7");
@@ -3501,7 +3035,8 @@ function runDiagnosticAnalysis(){
 
   if(S.settings.weatherMode==="off")checks.push(diagnosticCheck("ok","Wettermodul","Wetter ist deaktiviert.",{mode:S.settings.weatherMode}));
   else checks.push(diagnosticCheck(S.weather?.error?"warn":S.weather?"ok":"warn","Wettermodul",S.weather?.error||($(".weather-mini").length?"Wetteranzeige vorbereitet.":"Wetterdaten noch nicht geladen."),{mode:S.settings.weatherMode,location:S.settings.weatherLocation,error:S.weather?.error||""}));
-  checks.push(diagnosticCheck(S.wm.error?"warn":diagnosticCount(S.wm.games)>0?"ok":"warn","Event/WM-Daten",S.wm.error||(`${fmt(diagnosticCount(S.wm.games))} WM-Spiele geladen.`),{games:diagnosticCount(S.wm.games),stadiums:diagnosticCount(S.wm.stadiums),error:S.wm.error}));
+  const activeEvents=activeGameEvents();
+  checks.push(diagnosticCheck("ok","Leitstellenspiel-Events",activeEvents.length?`${fmt(activeEvents.length)} aktive Events erkannt.`:"Event-Erkennung bereit; aktuell kein Event sichtbar.",{events:diagnosticCount(activeEvents)}));
 
   const errCount=Array.isArray(S.diagnostics.errors)?S.diagnostics.errors.length:0;
   checks.push(diagnosticCheck(errCount?"warn":"ok","Gespeicherte Skriptfehler",errCount?`${fmt(errCount)} Fehler/Warnungen gespeichert.`:"Keine gespeicherten Skriptfehler.",{errors:errCount,last:S.diagnostics.errors?.[0]||null}));
@@ -3526,20 +3061,59 @@ function renderDiagnosticResults(result=S.diagnostics.lastAnalysis){
   const label={ok:"OK",warn:"Hinweis",error:"Fehler"};
   root.html(result.checks.map(check=>`<div class="diagnostics-result ${escHtml(check.status)}"><i>${escHtml(icon[check.status]||"?")}</i><div><b>${escHtml(check.title)}</b><span>${escHtml(check.message)}</span></div><small>${escHtml(label[check.status]||check.status)}</small></div>`).join(""));
 }
+function privacyHash(value){
+  const s=String(value||"");
+  let h=2166136261;
+  for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+  return Math.abs(h>>>0).toString(36);
+}
+function redactUrl(value){
+  try{
+    const u=new URL(String(value||""),location.href);
+    return `${u.origin}${u.pathname}`;
+  }catch{return String(value||"").split("?")[0].slice(0,SECURITY.maxDiagnosticString);}
+}
+function redactText(value){
+  const s=String(value??"");
+  if(!s)return s;
+  return s
+    .replace(/https?:\/\/[^\s"'<>]+/gi,m=>redactUrl(m))
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,"[email]")
+    .slice(0,SECURITY.maxDiagnosticString);
+}
+function sanitizeDiagnosticExport(value,depth=0){
+  if(depth>5)return "[gekürzt]";
+  if(value===null||value===undefined)return value;
+  if(typeof value==="string")return redactText(value);
+  if(typeof value==="number"||typeof value==="boolean")return value;
+  if(Array.isArray(value))return value.slice(0,40).map(v=>sanitizeDiagnosticExport(v,depth+1));
+  if(typeof value==="object"){
+    const out={};
+    Object.entries(value).slice(0,80).forEach(([key,val])=>{
+      const k=String(key);
+      if(/cookie|token|password|secret|auth|csrf/i.test(k)){out[k]="[entfernt]";return;}
+      if(/name/i.test(k)&&typeof val==="string"){out[k]=`[redacted:${privacyHash(val)}]`;return;}
+      if(/href|url/i.test(k)&&typeof val==="string"){out[k]=redactUrl(val);return;}
+      out[k]=sanitizeDiagnosticExport(val,depth+1);
+    });
+    return out;
+  }
+  return String(value).slice(0,SECURITY.maxDiagnosticString);
+}
 function buildDiagnosticReport(userNote=""){
   const analysis=S.diagnostics.lastAnalysis||runDiagnosticAnalysis();
   const cache=S.dataCache||{};
   const diagnostics={
     generatedAt:new Date().toISOString(),
     script:{name:"LSS Verband Statistik Pro",version:V,manager:GM_info?.scriptHandler||"",managerVersion:GM_info?.version||""},
-    page:{href:location.href,host:location.host,path:location.pathname,visible:document.visibilityState},
-    browser:{userAgent:navigator.userAgent,language:navigator.language,platform:navigator.platform,cookies:navigator.cookieEnabled},
-    userNote:String(userNote||"").slice(0,2500),
+    page:{href:redactUrl(location.href),host:location.host,path:location.pathname,visible:document.visibilityState},
+    browser:{userAgent:navigator.userAgent,language:navigator.language,platform:navigator.platform,cookies:"[nicht exportiert]"},
+    userNote:redactText(String(userNote||"").slice(0,2500)),
     state:{
-      alliance:{id:S.allianceId,name:S.allianceName,rank:S.allianceRank,credits:S.allianceCredits,lastApiTs:S.lastApiTs},
-      player:{id:S.userId,name:S.profile?.name,rank:S.profile?.rank,progress:S.profile?.progressText,credits:S.profile?.totalCredits||S.userCredits,dailyEarn:S.dailyEarn},
+      alliance:{id:S.allianceId?`[id:${privacyHash(S.allianceId)}]`:"",name:S.allianceName?`[redacted:${privacyHash(S.allianceName)}]`:"",rank:S.allianceRank,credits:S.allianceCredits,lastApiTs:S.lastApiTs},
+      player:{id:S.userId?`[id:${privacyHash(S.userId)}]`:"",name:S.profile?.name?`[redacted:${privacyHash(S.profile.name)}]`:"",rank:S.profile?.rank,progress:S.profile?.progressText,credits:S.profile?.totalCredits||S.userCredits,dailyEarn:S.dailyEarn},
       weather:{enabled:S.settings.weatherMode,location:S.settings.weatherLocation,country:S.settings.weatherCountry,error:S.weather?.error||"",cacheAgeMs:S.weatherTs?Date.now()-S.weatherTs:null},
-      wm:{games:diagnosticCount(S.wm.games),stadiums:diagnosticCount(S.wm.stadiums),error:S.wm.error,lastTs:S.wm.lastTs},
+      events:{active:diagnosticCount(activeGameEvents()),raw:diagnosticCount(S.gameEvents)},
       team:{loaded:diagnosticCount(S.teamAdmin.users),details:diagnosticCount(S.teamAdmin.details),detailsByName:diagnosticCount(S.teamAdmin.detailsByName),error:S.teamAdmin.error,lastTs:S.teamAdmin.lastTs},
       activity:{
         date:S.allianceActivity?.date||"",
@@ -3550,7 +3124,7 @@ function buildDiagnosticReport(userNote=""){
       },
       update:S.update
     },
-    settings:{...S.settings},
+    settings:sanitizeDiagnosticExport({...S.settings}),
     cache:{
       vehicleList:diagnosticCount(cache.vehicleList),
       vehicleStates:diagnosticCount(cache.vehicles),
@@ -3564,7 +3138,7 @@ function buildDiagnosticReport(userNote=""){
       allianceEventTypes:diagnosticCount(cache.allianceEventTypes),
       lastMetaTs:cache.lastMetaTs
     },
-    analysis,
+    analysis:sanitizeDiagnosticExport(analysis),
     localData:{
       creditHist:diagnosticCount(S.creditHist),
       allianceDaily:S.allianceDaily,
@@ -3573,7 +3147,7 @@ function buildDiagnosticReport(userNote=""){
       playerRankHistory:S.playerRankHistory
     },
     computed:diagnosticModelSnapshot(),
-    recentErrors:Array.isArray(S.diagnostics.errors)?S.diagnostics.errors.slice(0,40):[]
+    recentErrors:sanitizeDiagnosticExport(Array.isArray(S.diagnostics.errors)?S.diagnostics.errors.slice(0,40):[])
   };
   return diagnostics;
 }
@@ -3982,251 +3556,6 @@ function fetchWeather(){
   lookupByName(geoQueries);
 }
 
-function wmSortedGames(){
-  return (S.wm.games||[]).map(g=>Object.assign({},g,{_dt:parseWmGameDate(g)}))
-    .sort((a,b)=>(a._dt?.getTime()||0)-(b._dt?.getTime()||0));
-}
-function wmFocusGames(limit=10){
-  const now=Date.now();
-  const all=wmSortedGames();
-  const upcoming=all.filter(g=>(g._dt?.getTime()||0)>=now-7200000 || wmLive(g));
-  return (upcoming.length?upcoming:all.slice(-limit)).slice(0,limit);
-}
-function wmStadiumText(g){
-  const s=S.wm.stadiums[String(g.stadium_id)]||{};
-  const name=s.fifa_name||s.name_en||`Stadion ${g.stadium_id||"-"}`;
-  const city=s.city_en?` · ${s.city_en}`:"";
-  return `${name}${city}`;
-}
-function wmStadiumFacts(g){
-  const s=S.wm.stadiums[String(g.stadium_id)]||{};
-  return {
-    name:s.fifa_name||s.name_en||`Stadion ${g.stadium_id||"-"}`,
-    city:s.city_en||"",
-    country:s.country_en||"",
-    capacity:Number(s.capacity)||0,
-    region:s.region||""
-  };
-}
-function wmGroupStandings(){
-  const groups={};
-  (S.wm.games||[]).filter(g=>String(g?.type||"").toLowerCase()==="group" && g?.group).forEach(g=>{
-    const group=String(g.group).toUpperCase();
-    if(!groups[group])groups[group]={group,games:0,played:0,teams:{}};
-    const bucket=groups[group];
-    bucket.games++;
-    const home=wmTeam(g,"home"),away=wmTeam(g,"away");
-    const homeKey=String(g.home_team_id||home),awayKey=String(g.away_team_id||away);
-    if(!bucket.teams[homeKey])bucket.teams[homeKey]={name:home,p:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pts:0};
-    if(!bucket.teams[awayKey])bucket.teams[awayKey]={name:away,p:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pts:0};
-    if(!wmStarted(g))return;
-    const hs=Number(g.home_score),as=Number(g.away_score);
-    if(!Number.isFinite(hs)||!Number.isFinite(as))return;
-    bucket.played++;
-    const h=bucket.teams[homeKey],a=bucket.teams[awayKey];
-    h.p++;a.p++;h.gf+=hs;h.ga+=as;a.gf+=as;a.ga+=hs;
-    if(hs>as){h.w++;a.l++;h.pts+=3;}
-    else if(hs<as){a.w++;h.l++;a.pts+=3;}
-    else{h.d++;a.d++;h.pts++;a.pts++;}
-  });
-  return Object.values(groups).sort((a,b)=>a.group.localeCompare(b.group,"de")).map(group=>{
-    const rows=Object.values(group.teams).map(team=>Object.assign(team,{gd:team.gf-team.ga}))
-      .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf||a.name.localeCompare(b.name,"de"));
-    return Object.assign(group,{rows});
-  });
-}
-function renderWmGroups(){
-  const panel=$("#wm-groups-panel");
-  if(!panel.length)return;
-  const groups=wmGroupStandings();
-  if(!groups.length){panel.html(`<div class="lss7-empty">Noch keine Gruppendaten verfügbar.</div>`);return;}
-  const cards=groups.map((group,groupIndex)=>`<section class="wm-group-card${groupIndex===0?" open":""}">
-    <button class="wm-group-name" type="button" aria-expanded="${groupIndex===0?"true":"false"}">
-      <span class="wm-group-name-main"><i class="wm-group-arrow">›</i><b>${tr("Gruppe")} ${escHtml(group.group)}</b></span><span>${group.played}/${group.games} ${tr("Spiele")}</span>
-    </button>
-    <div class="wm-group-table-wrap"><table class="wm-table">
-      <thead><tr><th class="wm-pos">#</th><th class="wm-club">${tr("Team")}</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>Tore</th><th>TD</th><th>Pkt</th></tr></thead>
-      <tbody>${group.rows.map((team,index)=>`<tr class="${index<2?"qualify":index===2?"third":""}">
-        <td class="wm-pos">${index+1}</td><td class="wm-club" title="${escHtml(team.name)}">${escHtml(team.name)}</td>
-        <td>${team.p}</td><td>${team.w}</td><td>${team.d}</td><td>${team.l}</td><td>${team.gf}:${team.ga}</td><td>${team.gd>0?"+":""}${team.gd}</td><td class="wm-pts">${team.pts}</td>
-      </tr>`).join("")}</tbody>
-    </table></div>
-  </section>`).join("");
-  panel.html(`<div class="wm-groups-legend"><span class="wm-legend qualify">Platz 1-2: direkte Qualifikation</span><span class="wm-legend third">Platz 3: Vergleich der Gruppendritten</span></div>${cards}<div class="wm-groups-note">${tr("Automatisch aus den API-Ergebnissen berechnet.")} Grün markiert sind Platz 1 und 2; Platz 3 nimmt am Vergleich der besten Gruppendritten teil.</div>`);
-  applyTranslations(panel.get(0));
-}
-function wmKoTeamHtml(g,side){
-  const raw=wmTeamRaw(g,side);
-  const known=side==="home"?Number(g?.home_team_id)>0:Number(g?.away_team_id)>0;
-  const score=side==="home"?g?.home_score:g?.away_score;
-  return `<div class="wm-ko-team${known?"":" pending"}">
-    <span class="wm-ko-flag">${escHtml(known?wmTeamFlag(g,side):"◌")}</span>
-    <span class="wm-ko-name" title="${escHtml(wmTeam(g,side))}">${wmTeamHtml(g,side)}</span>
-    <span class="wm-ko-score">${wmStarted(g)?escHtml(score??0):""}</span>
-  </div>`;
-}
-function wmKoMatchHtml(g){
-  const dt=parseWmGameDate(g);
-  const cls=wmLive(g)?" live":wmStarted(g)?" finished":" planned";
-  const time=dt?dt.toLocaleString(uiLocale(),{timeZone:"Europe/Berlin",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(",",""):"Termin offen";
-  return `<article class="wm-ko-match${cls}">
-    <div class="wm-ko-meta"><span>Spiel ${escHtml(g?.id||"-")}</span><span>${escHtml(time)}</span></div>
-    ${wmKoTeamHtml(g,"home")}${wmKoTeamHtml(g,"away")}
-    <div class="wm-ko-status">${escHtml(wmLive(g)?wmMinuteText(g):wmStarted(g)?"Beendet":wmStadiumFacts(g).city||"Geplant")}</div>
-  </article>`;
-}
-function wmKoPairsHtml(matches){
-  const pairs=[];
-  for(let i=0;i<matches.length;i+=2){
-    pairs.push(`<div class="wm-ko-pair">${matches.slice(i,i+2).map(wmKoMatchHtml).join("")}</div>`);
-  }
-  return pairs.join("");
-}
-function renderWmKnockout(){
-  const panel=$("#wm-knockout-grid");
-  if(!panel.length)return;
-  const defs=[
-    ["r32","Runde der 32"],["r16","Achtelfinale"],["qf","Viertelfinale"],
-    ["sf","Halbfinale"],["final","Finale"]
-  ];
-  const games=wmSortedGames().filter(g=>String(g?.type||"").toLowerCase()!=="group");
-  if(!games.length){
-    panel.html(`<div class="lss7-empty">Die K.-o.-Paarungen werden geladen, sobald sie von der API bereitgestellt werden.</div>`);
-    return;
-  }
-  const bracket=defs.map(([type,label])=>{
-    const matches=games.filter(g=>String(g?.type||"").toLowerCase()===type);
-    const final=type==="final";
-    return `<section class="wm-ko-stage ${type}${final?" wm-ko-final-stage":""}">
-      <div class="wm-ko-stage-title">${label}<span>${matches.length}</span></div>
-      <div class="wm-ko-matches">${matches.length?(final?matches.map(wmKoMatchHtml).join(""):wmKoPairsHtml(matches)):`<div class="wm-ko-match"><div class="wm-ko-team pending"><span class="wm-ko-flag">◌</span><span class="wm-ko-name">Noch nicht angesetzt</span><span></span></div></div>`}</div>
-    </section>`;
-  }).join("");
-  const third=games.find(g=>String(g?.type||"").toLowerCase()==="third");
-  panel.html(`<div class="wm-bracket">${bracket}</div>${third?`<section class="wm-ko-third"><div class="wm-ko-third-title">Spiel um Platz 3</div>${wmKoMatchHtml(third)}</section>`:""}`);
-  $("#wm-knockout-badge").text(`${games.filter(g=>Number(g.home_team_id)>0||Number(g.away_team_id)>0).length} teilweise/fest`);
-}
-function wmRowHtml(g,mini=false){
-  const home=wmTeamHtml(g,"home");
-  const away=wmTeamHtml(g,"away");
-  const score=escHtml(wmScore(g));
-  const when=escHtml(fmtWmKickoff(g));
-  const stadium=escHtml(wmStadiumText(g));
-  const stage=escHtml(wmStage(g));
-  const tv=escHtml(wmTv(g));
-  const status=escHtml(wmStatusText(g));
-  const facts=wmStadiumFacts(g);
-  const matchday=Number(g?.matchday)||0;
-  const cls=wmLive(g)?" live":wmStarted(g)?" finished":" planned";
-  const scoreCls=wmStarted(g)?"":" pending";
-  const matchEvents=wmMatchEventsHtml(g);
-  if(mini){
-    return `<div class="wm-mini-row${cls}"><span class="wm-mini-t">${when}</span><span class="wm-mini-n">${home} - ${away}</span><span class="wm-mini-s${scoreCls}">${score}</span></div>`;
-  }
-  const id=String(g.id||"");
-  const tip=S.wmTips[id]||{};
-  const hasTip=tip.home!==undefined && tip.home!=="" && tip.away!==undefined && tip.away!=="";
-  const editing=!!S.wmTipEdit[id] || !hasTip;
-  const tipHtml=editing
-    ? `<div class="wm-tip wm-tip-open">
-        <span class="wm-tip-label">Dein Tipp</span>
-        <input class="wm-tip-input" data-id="${escHtml(id)}" data-side="home" type="number" min="0" max="99" value="${escHtml(tip.home??"")}" placeholder="-">
-        <span>:</span>
-        <input class="wm-tip-input" data-id="${escHtml(id)}" data-side="away" type="number" min="0" max="99" value="${escHtml(tip.away??"")}" placeholder="-">
-        <button class="wm-tip-save" data-id="${escHtml(id)}" type="button">Speichern</button>
-      </div>`
-    : `<div class="wm-tip wm-tip-closed">
-        <span class="wm-tip-label">Dein Tipp</span>
-        <span class="wm-tip-chip">${escHtml(tip.home)}:${escHtml(tip.away)}</span>
-        <button class="wm-tip-edit" data-id="${escHtml(id)}" type="button">Ändern</button>
-      </div>`;
-  return `<div class="wm-row${cls}" data-wm-id="${escHtml(id)}">
-    <div class="wm-time"><strong>${when}</strong><br><span class="wm-stage">${stage}</span></div>
-    <div class="wm-main">
-      <div class="wm-teams">${escHtml(wmTeamFlag(g,"home"))} ${home}<span class="wm-team-vs">vs</span>${escHtml(wmTeamFlag(g,"away"))} ${away}</div>
-      <div class="wm-meta">
-        <span class="wm-meta-item" title="${stadium}">${stadium}</span>
-        <span class="wm-fact">${escHtml(facts.country||facts.region||"WM 2026")}</span>
-        ${facts.capacity?`<span class="wm-fact">${fmt(facts.capacity)} Plätze</span>`:""}
-        ${matchday?`<span class="wm-fact">Spieltag ${matchday}</span>`:""}
-        <span class="wm-fact">TV: ${tv}</span><span class="wm-status">${status}</span>
-      </div>
-      ${matchEvents}
-    </div>
-    <div class="wm-result-tip">
-      <div class="wm-result-box">
-        <span class="wm-result-label">Endergebnis</span>
-        <div class="wm-score${scoreCls}">${score}</div>
-      </div>
-      ${tipHtml}
-    </div>
-  </div>`;
-}
-function wmFocusCardHtml(g){
-  const dt=parseWmGameDate(g);
-  const cls=wmLive(g)?" live":wmStarted(g)?" finished":" planned";
-  const status=wmLive(g)?wmMinuteText(g):wmStarted(g)?"Endstand":"Nächstes Spiel";
-  const score=wmStarted(g)?wmScore(g):(dt?dt.toLocaleTimeString(uiLocale(),{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit"}):"--:--");
-  const facts=wmStadiumFacts(g);
-  return `<article class="wm-focus-card${cls}">
-    <div class="wm-focus-top"><span class="wm-focus-status">${escHtml(status)}</span><span>${escHtml(wmStage(g))}</span></div>
-    <div class="wm-focus-teams">
-      <div class="wm-focus-team"><span class="wm-focus-flag">${escHtml(wmTeamFlag(g,"home"))}</span>${wmTeamHtml(g,"home")}</div>
-      <div class="wm-focus-score">${escHtml(score)}</div>
-      <div class="wm-focus-team"><span class="wm-focus-flag">${escHtml(wmTeamFlag(g,"away"))}</span>${wmTeamHtml(g,"away")}</div>
-    </div>
-    <div class="wm-focus-meta">
-      <span>${escHtml(dt?fmtWmKickoff(g):"-")}</span>
-      <span>${escHtml(facts.city||facts.name)}</span>
-      ${Number(g?.matchday)?`<span>Spieltag ${Number(g.matchday)}</span>`:""}
-    </div>
-  </article>`;
-}
-function wmEventFocusGames(limit=3){
-  const all=wmSortedGames();
-  const live=all.filter(wmLive);
-  const today=wmTodayGames().filter(g=>!wmLive(g) && !wmStarted(g));
-  const recent=wmRecentFinishedGames();
-  const upcoming=all.filter(g=>!wmStarted(g)&&(g._dt?.getTime()||0)>=Date.now());
-  const seen=new Set();
-  return [...live,...today,...recent,...upcoming].filter(g=>{
-    const key=wmGameKey(g);
-    if(seen.has(key))return false;
-    seen.add(key);
-    return true;
-  }).slice(0,limit);
-}
-function wmFilteredGames(view){
-  const all=wmSortedGames();
-  const now=Date.now();
-  if(view==="live")return all.filter(g=>wmLive(g)||wmRecentFinishedGames().some(x=>wmGameKey(x)===wmGameKey(g)));
-  if(view==="upcoming")return all.filter(g=>!wmStarted(g)&&(g._dt?.getTime()||0)>=now);
-  if(view==="results")return all.filter(g=>String(g?.finished).toUpperCase()==="TRUE").sort((a,b)=>(b._dt?.getTime()||0)-(a._dt?.getTime()||0));
-  if(view==="focus"){
-    const focusKeys=new Set(wmEventFocusGames(8).map(wmGameKey));
-    return all.filter(g=>focusKeys.has(wmGameKey(g)));
-  }
-  return all;
-}
-function wmDayLabel(g){
-  const dt=parseWmGameDate(g);
-  if(!dt)return "Termin offen";
-  return dt.toLocaleDateString(uiLocale(),{timeZone:"Europe/Berlin",weekday:"long",day:"2-digit",month:"long",year:"numeric"});
-}
-function wmGroupedScheduleHtml(view){
-  const games=wmFilteredGames(view);
-  if(!games.length)return `<div class="lss7-empty">Für diese Auswahl sind keine Spiele vorhanden.</div>`;
-  const groups=new Map();
-  games.forEach(g=>{
-    const key=wmDateKey(parseWmGameDate(g)||new Date(0));
-    if(!groups.has(key))groups.set(key,[]);
-    groups.get(key).push(g);
-  });
-  return [...groups.entries()].map(([,items])=>`<section class="wm-day">
-    <div class="wm-day-head"><b>${escHtml(wmDayLabel(items[0]))}</b><span>${items.length} ${items.length===1?"Spiel":"Spiele"}</span></div>
-    <div class="wm-list">${items.map(g=>wmRowHtml(g)).join("")}</div>
-  </section>`).join("");
-}
 function headerGameEventInfo(ev){
   const title=String(ev?.title||"Leitstellenspiel Event").replace(/\s+/g," ").trim();
   const type=`${ev?.type||""} ${title}`.toLowerCase();
@@ -4242,17 +3571,12 @@ function headerEventButtonHtml(item){
   if(item.href)return `<a class="hd-event-badge ${item.cls}" href="${item.href}" target="_blank" rel="noopener">${escHtml(item.label)}</a>`;
   return `<button class="hd-event-badge ${item.cls}" type="button" data-open-event="1">${escHtml(item.label)}</button>`;
 }
-function renderWmHeader(){
-  const active=isWmActive();
+function renderEventHeader(){
   const liveEvents=activeGameEvents();
-  const items=[];
-  liveEvents.forEach(ev=>items.push(headerGameEventInfo(ev)));
-  const headerGames=wmHeaderGames(2);
-  const wmHtml=headerGames.map(wmHeaderMatchHtml).join("");
+  const items=liveEvents.map(headerGameEventInfo);
   const eventHtml=items.map(headerEventButtonHtml).join("");
-  $("#lss7-header-events").html(`${wmHtml}${eventHtml}`).toggle(!!wmHtml||items.length>0);
+  $("#lss7-header-events").html(eventHtml).toggle(items.length>0);
   $("#lss7-nav-events").html(items.map(item=>`<span class="lss7-nav-event">${escHtml(item.label)}</span>`).join(""));
-  $("#wm-event-pill").text(active?"WM-2026 LIVE":"WM-2026");
   applyNavButtonStyle();
 }
 function renderGameEvents(){
@@ -4282,53 +3606,26 @@ function renderGameEvents(){
   $("#lss-game-events-card").toggle(has);
   $("#lss-game-events-list").html(full);
   $("#lss-live-events-overview").toggle(has).html(mini);
-  renderWmHeader();
+  renderEventHeader();
 }
-function renderWmOverview(){
+function renderEventOverview(){
   const box=$("#event-board");
   if(!box.length)return;
   const show=(S.settings.eventMode||"overview")==="overview";
   box.toggle(show);
   if(!show)return;
   renderGameEvents();
-  const list=wmFocusGames(3);
-  if(S.wm.error){$("#wm-overview-view").html(`<div class="lss7-empty">${escHtml(S.wm.error)}</div>`);return;}
-  if(!list.length){$("#wm-overview-view").html(`<div class="lss7-empty">Spielplan wird geladen...</div>`);return;}
-  $("#wm-overview-view").html(`<div class="wm-mini">${list.map(g=>wmRowHtml(g,true)).join("")}</div>`);
+  const has=activeGameEvents().length>0;
+  $("#event-overview-view").html(has?`<div class="event-note">Aktive Leitstellenspiel-Events werden automatisch aus der Spielnavigation erkannt und im Header angezeigt.</div>`:`<div class="lss7-empty">Aktuell ist kein Leitstellenspiel-Event aktiv.</div>`);
 }
-function renderWmEvent(){
-  renderWmHeader();
-  $("#wm-countdown").text(fmtWmCountdown());
-  const list=wmSortedGames();
-  if(S.wm.error){$("#wm-schedule-list").html(`<div class="lss7-empty">${escHtml(S.wm.error)}</div>`);renderWmOverview();return;}
-  if(!list.length){$("#wm-schedule-list").html(`<div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div>`);renderWmOverview();return;}
-  const liveCount=list.filter(wmLive).length;
-  const finishedCount=list.filter(g=>String(g?.finished).toUpperCase()==="TRUE").length;
-  const upcomingCount=list.filter(g=>!wmStarted(g)).length;
-  const focus=wmEventFocusGames(3);
-  $("#wm-schedule-list").html(`
-    <section class="wm-command">
-      <div><span class="wm-command-kicker">FIFA World Cup 2026 · Match Center</span><span class="wm-command-title">Spiele, Ergebnisse und Live-Lage</span><span class="wm-command-sub">Live-Partien und aktuelle Spiele stehen automatisch oben. Alle Uhrzeiten werden für Deutschland angezeigt.</span></div>
-      <div class="wm-command-stats">
-        <div class="wm-command-stat"><b>${liveCount}</b><span>Live</span></div>
-        <div class="wm-command-stat"><b>${finishedCount}</b><span>Beendet</span></div>
-        <div class="wm-command-stat"><b>${upcomingCount}</b><span>Ausstehend</span></div>
-      </div>
-    </section>
-    ${focus.length?`<div class="wm-focus">${focus.map(wmFocusCardHtml).join("")}</div>`:""}
-    <nav class="wm-filterbar" aria-label="WM-Spielplan filtern">
-      ${[
-        ["focus","Aktuell"],["live","Live & letzte Ergebnisse"],["upcoming","Kommende Spiele"],
-        ["results","Ergebnisse"],["all","Alle Spiele"]
-      ].map(([id,label])=>`<button class="wm-filter${S.wm.view===id?" active":""}" type="button" data-wm-view="${id}">${label}</button>`).join("")}
-    </nav>
-    <div id="wm-schedule-groups">${wmGroupedScheduleHtml(S.wm.view||"focus")}</div>`);
-  renderWmKnockout();
-  renderWmGroups();
-  const hasCards=(S.wm.games||[]).some(g=>Object.keys(g||{}).some(k=>/card|booking|dismissal/i.test(k)));
-  const cardInfo=hasCards?"Kartendaten verfügbar":"Kartendaten derzeit nicht verfügbar";
-  $("#wm-source").text(S.wm.lastTs?`Live-Daten: worldcup26.ir · Spielplan, Ergebnisse, Torschützen, Stadien und Gruppen · ${cardInfo} · aktualisiert ${timeAgo(S.wm.lastTs)}`:`Live-Daten: worldcup26.ir · ${cardInfo}`);
-  renderWmOverview();
+function renderEventPage(){
+  renderGameEvents();
+  const liveEvents=activeGameEvents();
+  const list=liveEvents.length?liveEvents.map(ev=>gameEventRowHtml(ev,false)).join(""):`<div class="lss7-empty">Aktuell ist kein Leitstellenspiel-Event aktiv. Sobald ein Event in der Spielnavigation erscheint, wird es hier automatisch angezeigt.</div>`;
+  $("#event-live-list").html(list);
+  $("#event-live-count").text(fmt(liveEvents.length));
+  $("#event-source").text(`Quelle: Leitstellenspiel-Navigation · aktualisiert ${new Date().toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit",second:"2-digit"})}`);
+  renderEventOverview();
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -4662,7 +3959,6 @@ function tickTimer(){
 }
 function tickClock(){renderClock();}
 function tickEventCountdown(){
-  $("#wm-countdown").text(fmtWmCountdown());
   renderGameEvents();
 }
 function checkMidnight(){
@@ -4926,7 +4222,7 @@ function forecastFullHtml(m){
       <div class="forecast-kpi"><span class="forecast-k">Trendtempo</span><span class="forecast-v ${m.trendClass}">${escHtml(m.trendLabel)}</span><small>${m.trendPct?`${m.trendPct>0?"+":""}${fmt(m.trendPct)}% gegenüber vorher`: "noch keine Vergleichsbasis"}</small></div>
       <div class="forecast-kpi"><span class="forecast-k">Datenbasis</span><span class="forecast-v">${escHtml(m.qualityText)}</span><small>${escHtml(m.qualityDetail)}</small></div>
     </div>
-    <div><div class="forecast-progress"><div class="forecast-progress-fill" style="width:${m.progress.toFixed(2)}%"></div></div><div class="forecast-progress-meta"><span>${m.progress.toFixed(2).replace(".",",")}% erreicht</span><span>${fmtMoney(m.remaining)} verbleibend</span></div></div>
+    <div><div class="forecast-progress"><div class="forecast-progress-fill" style="width:${m.progress.toFixed(2)}%"></div></div><div class="forecast-progress-meta"><span>${m.progress.toFixed(2).replace(".",",")}% erreicht</span><span>${fmtMoney(m.remaining)} verbleibend</span></div><div class="forecast-color-legend"><span class="l-blue"><i></i>Fortschritt</span><span class="l-green"><i></i>Zieltempo gut</span><span class="l-amber"><i></i>Hinweis / prüfen</span></div></div>
     <div class="forecast-details">
       <div class="forecast-panel">
         <div class="forecast-panel-title">Zieltempo<span>benötigter Tagesverdienst</span></div>
@@ -5841,45 +5137,6 @@ function fetchAllData(){
   fetchSchoolings(); fetchAAOs(); fetchAnalysisMeta();
   fetchDailyEarnFromOverview();
   fetchWeather();
-  fetchWmEvent();
-}
-
-let wmRefreshTimer=null;
-function scheduleWmRefresh(delay){
-  clearTimeout(wmRefreshTimer);
-  wmRefreshTimer=setTimeout(fetchWmEvent,Math.max(10000,Number(delay)||300000));
-}
-function nextWmRefreshDelay(){
-  if((S.wm.games||[]).some(wmLive))return 20000;
-  if(wmTodayGames().length||wmRecentFinishedGames().length)return 60000;
-  return 300000;
-}
-function fetchWmEvent(){
-  if(S.wm.loading)return;
-  S.wm.loading=true;
-  if(!Object.keys(S.wm.stadiums||{}).length){
-    jsonGet(API.wmStadiums,d=>{
-      const map={};
-      (d.stadiums||[]).forEach(s=>{map[String(s.id)]=s;});
-      S.wm.stadiums=map;
-      renderWmEvent();
-    },()=>{renderWmEvent();});
-  }
-  jsonGet(API.wmGames,d=>{
-    const games=Array.isArray(d.games)?d.games:[];
-    updateWmScoreSnapshot(games);
-    S.wm.games=games;
-    S.wm.error=null;
-    S.wm.lastTs=Date.now();
-    S.wm.loading=false;
-    renderWmEvent();
-    scheduleWmRefresh(nextWmRefreshDelay());
-  },()=>{
-    S.wm.loading=false;
-    S.wm.error="Spielplan konnte nicht geladen werden";
-    renderWmEvent();
-    scheduleWmRefresh(60000);
-  });
 }
 
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -6545,7 +5802,7 @@ function renderTeam(users){
       <div class="team-grid"></div>
     </section>`);
     const grid=section.find(".team-grid");
-    members.forEach(({u,info})=>{
+    const cardsHtml=members.map(({u,info})=>{
       const name=String(u.name||`#${u.id}`);
       const initials=name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase().slice(0,2)||"?";
       const roleIds=(info.all.length?info.all:[info.primary]).map(role=>role.id);
@@ -6556,7 +5813,9 @@ function renderTeam(users){
       const toplist=String(details.toplistRank||u.rank||u.position||u.toplist_rank||u.place||"").replace(/[^\d]/g,"");
       const activity=teamActivityInfo(u,details);
       const inactiveDays=activity.days!==null&&activity.days!==undefined?activity.days:(activity.hint.match(/(\d+)\s*Tage/)?.[1]||"");
-      grid.append(`<article class="team-card" data-user-id="${escHtml(u.id)}" data-name="${escHtml(name.toLowerCase())}" data-roles="${escHtml(roleIds.join(","))}" data-offline-days="${escHtml(inactiveDays)}">
+      const messagePath=safeSameOriginPath(`/messages/new?target=${encodeURIComponent(name)}`);
+      const profilePath=safeSameOriginPath(`/profile/${encodeURIComponent(String(u.id||""))}`);
+      return `<article class="team-card" data-user-id="${escHtml(u.id)}" data-name="${escHtml(name.toLowerCase())}" data-roles="${escHtml(roleIds.join(","))}" data-offline-days="${escHtml(inactiveDays)}">
         <div class="team-avatar">${escHtml(initials)}</div>
         <div class="team-main">
           <div class="team-name-row"><span class="team-activity-dot ${activity.cls}" title="${escHtml(activity.label)}">${activity.dot}</span><span class="team-name" title="${escHtml(name)}">${escHtml(name)}</span></div>
@@ -6564,9 +5823,10 @@ function renderTeam(users){
           <div class="team-meta-line"><span>Dienstgrad: <b class="team-grade">${escHtml(level||"-")}</b></span><span>Spielerrang: <b class="team-rank">${toplist?`#${fmt(toplist)}`:"-"}</b></span></div>
           <div class="team-meta-line"><span>Credits: <b class="team-credits">${credits!==null?fmtMoney(credits):"-"}</b></span><span>Zuletzt online: <b class="team-last-online ${activity.cls}" title="${escHtml(activity.label)}">${escHtml(activity.hint)}</b></span></div>
         </div>
-        <div class="team-card-tools"><a class="team-open team-mail" href="${BASE}/messages/new?target=${encodeURIComponent(name)}" title="Nachricht senden">✉</a><a class="team-open" href="${BASE}/profile/${encodeURIComponent(u.id)}" target="_blank" rel="noopener" title="${tr("Profil öffnen")}">↗</a></div>
-      </article>`);
-    });
+        <div class="team-card-tools"><a class="team-open team-mail" href="${BASE}${escHtml(messagePath)}" title="Nachricht senden">✉</a><a class="team-open" href="${BASE}${escHtml(profilePath)}" target="_blank" rel="noopener" title="${tr("Profil öffnen")}">↗</a></div>
+      </article>`;
+    }).join("");
+    grid.html(cardsHtml);
     cont.append(section);
   });
   cont.append(`<div class="lss7-empty team-empty-filter">Keine passenden Mitglieder gefunden.</div>`);
@@ -6790,7 +6050,7 @@ function buildUI(){
           <div class="lss7-live" title="Live-Daten aktiv"></div>
           <div id="lss7-header-events" class="hd-events"></div>
           <span id="lss7-summer" class="bd bd-summer" style="display:${["summer","summer-dark"].includes(S.settings.panelTheme)?"inline-flex":"none"}">${S.settings.panelTheme==="summer-dark"?"SUMMER DARK 2026":"SUMMER 2026"}</span>
-          <button id="lss7-col" title="Ein-/Ausklappen">Ausgeklappt</button>
+          <button id="lss7-col" title="Dashboard ein- oder ausklappen">Offen</button>
           <button id="lss7-x" title="Schliessen">×</button>
         </div>
       </div>
@@ -6957,10 +6217,10 @@ function buildUI(){
       <div class="sc w2" id="event-board" style="display:none">
         <div class="rank-mini-head">
           <span class="rank-mini-title">Events</span>
-          <span class="rank-mini-note">Live & naechste Spiele</span>
+          <span class="rank-mini-note">Leitstellenspiel Live-Events</span>
         </div>
         <div id="lss-live-events-overview" style="display:none"></div>
-        <div id="wm-overview-view"><div class="lss7-empty">Spielplan wird geladen...</div></div>
+        <div id="event-overview-view"><div class="lss7-empty">Aktuell ist kein Leitstellenspiel-Event aktiv.</div></div>
       </div>
     </div>
     <div id="cv-wrap">
@@ -7062,39 +6322,22 @@ function buildUI(){
   <div class="event-card">
     <div class="event-top">
       <div>
-        <div class="event-title">WM 2026</div>
-        <div class="event-sub">Spielplan, Ergebnisse, Spielorte, TV-Hinweis und lokale Tipps direkt im Dashboard.</div>
+        <div class="event-title">Leitstellenspiel Events</div>
+        <div class="event-sub">Aktive Credit-Boosts, Coin-Sales und Einsatz-Events werden automatisch aus der Spielnavigation erkannt und im Dashboard hervorgehoben.</div>
       </div>
-      <div class="event-status"><span class="event-pill" id="wm-event-pill">EVENT LIVE</span><span class="bd bd-gold">WM</span></div>
+      <div class="event-status"><span class="event-pill">Live-Erkennung</span><span class="bd bd-blue">LSS</span></div>
     </div>
-    <div><div class="event-count-lbl">Status</div><div class="event-count" id="wm-countdown">${fmtWmCountdown()}</div></div>
+    <div><div class="event-count-lbl">Aktive Events</div><div class="event-count" id="event-live-count">0</div></div>
     <div class="event-grid">
-      <div class="event-kpi"><span class="event-k">Start</span><span class="event-v">11. Juni 2026</span></div>
-      <div class="event-kpi"><span class="event-k">Tipps</span><span class="event-v">Deine Tipps werden lokal gespeichert und bleiben direkt am Spiel sichtbar.</span></div>
-      <div class="event-kpi"><span class="event-k">TV</span><span class="event-v">MagentaTV, ARD/ZDF je nach Spiel und Runde.</span></div>
-      <div class="event-kpi"><span class="event-k">Daten</span><span class="event-v">Ergebnis, Status, Spielort und Torschützen werden automatisch aktualisiert. Karten erscheinen, sobald die API sie bereitstellt.</span></div>
+      <div class="event-kpi"><span class="event-k">Erkennung</span><span class="event-v">Liest die sichtbaren Event-Hinweise direkt aus der Leitstellenspiel-Navigation.</span></div>
+      <div class="event-kpi"><span class="event-k">Countdown</span><span class="event-v">Restzeiten werden übernommen, wenn Leitstellenspiel einen Endzeitpunkt bereitstellt.</span></div>
+      <div class="event-kpi"><span class="event-k">Header</span><span class="event-v">Aktive Events erscheinen zusätzlich kompakt oben im Dashboard-Header.</span></div>
+      <div class="event-kpi"><span class="event-k">Datenschutz</span><span class="event-v">Es wird keine externe Event-API abgefragt; die Auswertung bleibt auf der Spielseite.</span></div>
     </div>
-    <div class="event-actions"><button class="lbtn prime" id="wm-refresh" type="button">Spielplan aktualisieren</button><a class="lbtn" href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/scores-fixtures" target="_blank" rel="noopener">FIFA-Spielplan</a></div>
-    <section class="wm-knockout${S.wm.knockoutOpen?" open":""}" id="wm-knockout">
-      <div class="wm-knockout-head">
-        <div class="wm-knockout-title"><b>K.-o.-Phase</b><span>Bereits bekannte Teams und offene Qualifikationspfade von der Runde der 32 bis zum Finale</span></div>
-        <div class="wm-knockout-tools"><span class="wm-knockout-badge" id="wm-knockout-badge">Wird geladen</span><button class="wm-knockout-toggle" id="wm-knockout-toggle" type="button" aria-expanded="${S.wm.knockoutOpen?"true":"false"}">${S.wm.knockoutOpen?"Turnierbaum ausblenden":"Turnierbaum anzeigen"}</button></div>
-      </div>
-      <div class="wm-knockout-body">
-        <div class="wm-knockout-grid" id="wm-knockout-grid"><div class="lss7-empty"><span class="lspin"></span> Lade K.-o.-Paarungen...</div></div>
-        <div class="wm-ko-note">◌ kennzeichnet einen noch offenen Platz. Die Linien zeigen den Weg bis ins Finale. Sobald Gruppensieger, Gruppenzweite oder vorherige K.-o.-Sieger feststehen, ersetzt die API den Platzhalter automatisch durch Team und Flagge.</div>
-      </div>
-    </section>
-    <section class="wm-groups" id="wm-groups">
-      <div class="wm-groups-head">
-        <div class="wm-groups-title"><b>Gruppentabellen</b><span>Punkte, Tore und Tordifferenz aller zwölf Gruppen</span></div>
-        <button class="wm-groups-toggle" id="wm-groups-toggle" type="button">Tabellen anzeigen</button>
-      </div>
-      <div class="wm-groups-panel" id="wm-groups-panel"></div>
-    </section>
-    <div class="wm-list" id="wm-schedule-list"><div class="lss7-empty"><span class="lspin"></span> Lade Spielplan...</div></div>
-    <div class="event-note">Tipps werden aktuell lokal in deinem Browser gespeichert. Damit andere die Tipps sehen koennen, brauchen wir spaeter eine zentrale Datenbank oder ein kleines Backend.</div>
-    <div class="wm-source" id="wm-source">Quelle: worldcup26.ir · Torschützen verfügbar · Kartendaten derzeit nicht verfügbar</div>
+    <div class="event-actions"><button class="lbtn prime" id="event-refresh" type="button">Events neu erkennen</button></div>
+    <div class="game-events-list" id="event-live-list"><div class="lss7-empty">Aktuell ist kein Leitstellenspiel-Event aktiv.</div></div>
+    <div class="event-note">Diese Ansicht zeigt nur offizielle Leitstellenspiel-Events, die in deiner Spielnavigation vorhanden sind.</div>
+    <div class="event-source" id="event-source">Quelle: Leitstellenspiel-Navigation</div>
   </div>`);
   body.append(tEvt);
 
@@ -7106,7 +6349,7 @@ function buildUI(){
   const grpNav=$(`<div class="set-group set-wide nav-style-setting" id="lss7-nav-style-setting">
     <div class="set-head">Kopfzeilen-Button</div>
     <div class="nav-style-showcase">
-      <div class="nav-style-preview-shell"><div id="lss7-nav-style-preview" class="nav-style-preview">${brandMarkHtml()}<span class="nav-style-preview-copy"><b>Dein Verband</b><span>WM-2026 LIVE</span></span></div></div>
+      <div class="nav-style-preview-shell"><div id="lss7-nav-style-preview" class="nav-style-preview">${brandMarkHtml()}<span class="nav-style-preview-copy"><b>Dein Verband</b><span>Live-Events</span></span></div></div>
       <div><label class="tog-row"><span class="tog-lbl">Darstellung</span>
         <select id="sb-nav-style" class="lss7-select">
           <option value="logo"${S.settings.navButtonStyle==="logo"?" selected":""}>Nur Logo</option>
@@ -7133,6 +6376,9 @@ function buildUI(){
   grpExport.append(`<button class="lbtn" data-export="aaos" type="button"><span class="lbtn-i">CSV</span><span class="lbtn-t">AAO exportieren</span></button>`);
   grpExport.append(`<button class="lbtn" data-export="team" type="button"><span class="lbtn-i">CSV</span><span class="lbtn-t">Mitspieler exportieren</span></button>`);
   grpExport.append(`<button class="lbtn" data-export="history" type="button"><span class="lbtn-i">CSV</span><span class="lbtn-t">Verlauf exportieren</span></button>`);
+  grpExport.append(`<button class="lbtn prime" id="sb-backup-export" type="button"><span class="lbtn-i">JSON</span><span class="lbtn-t">Komplettes Backup erstellen</span></button>`);
+  grpExport.append(`<button class="lbtn" id="sb-backup-import" type="button"><span class="lbtn-i">JSON</span><span class="lbtn-t">Backup wiederherstellen</span></button><input id="sb-backup-file" type="file" accept="application/json,.json" style="display:none">`);
+  grpExport.append(`<div class="set-note"><b>Datensicherung:</b> Exportiere regelmäßig ein komplettes JSON-Backup. Damit kannst du Verlauf, Einstellungen, Prognosedaten, Spielzeit und Diagnosewerte nach Browser- oder Tampermonkey-Datenlöschung wiederherstellen.</div>`);
   setWrap.append(grpExport);
 
   const grpDiag=$(`<div class="set-group set-wide settings-diagnostics"><div class="set-head">Analyse & Fehlerbericht</div></div>`);
@@ -7270,7 +6516,7 @@ function buildUI(){
   grpWx.append(`<div class="set-note">Wetter und Vorhersage werden für Deutschland, Österreich, Schweiz, Frankreich und Niederlande unterstützt. Amtliche DWD-Warnungen sind technisch nur für Orte in Deutschland verfügbar.</div>`);
   grpWx.append(`<div class="set-note"><div class="weather-mini" id="wx-settings-view"><span class="w-l">Keine Wetterdaten</span><span class="w-r">-</span></div></div>`);
 
-  const grpEvent=$(`<div class="set-group settings-events"><div class="set-head">Events / WM</div></div>`);
+  const grpEvent=$(`<div class="set-group settings-events"><div class="set-head">Leitstellenspiel-Events</div></div>`);
   grpEvent.append(`<label class="tog-row" style="justify-content:space-between;">
     <span class="tog-lbl">Anzeige</span>
     <select id="sb-event-mode" class="lss7-select">
@@ -7278,9 +6524,8 @@ function buildUI(){
       <option value="overview"${S.settings.eventMode==="overview"?" selected":""}>An - in Übersicht anzeigen</option>
     </select>
   </label>`);
-  grpEvent.append(mkToggle("tog-wm-goal-sound","Signalton bei WM-Toren","wmGoalSound"));
-  grpEvent.append(`<button class="lbtn prime" id="sb-event-refresh" type="button">WM-Spielplan aktualisieren</button>`);
-  grpEvent.append(`<div class="set-note">Torhinweise erscheinen immer direkt im Dashboard. Für Hinweise außerhalb des geöffneten Dashboards bitte zusätzlich „Browser-Benachrichtigungen“ aktivieren.</div>`);
+  grpEvent.append(`<button class="lbtn prime" id="sb-event-refresh" type="button">Events neu erkennen</button>`);
+  grpEvent.append(`<div class="set-note">Erkennt aktive Leitstellenspiel-Events direkt aus der Navigation, z. B. Credit-Boosts, Coin-Sales oder Einsatz-Events. Es wird keine externe Event-API abgefragt.</div>`);
   const settingsFeatures=$(`<div class="settings-feature-grid set-wide"></div>`);
   settingsFeatures.append($(`<div class="settings-feature-column"></div>`).append(grpForecast,grpEvent));
   settingsFeatures.append($(`<div class="settings-feature-column"></div>`).append(grpWx));
@@ -7319,7 +6564,7 @@ function buildUI(){
   setWrap.empty().append(
     `<div class="settings-intro"><b>Einstellungen übersichtlich nach Bereichen</b><span>Jeder Abschnitt erklärt, welche Funktionen zusammengehören. Änderungen werden sofort übernommen und ausschließlich lokal in deinem Browser gespeichert.</span></div>`,
     settingsCategory("1 · Oberfläche & Bedienung","Theme, Menüposition, Header-Button, Sprache, sichtbare Kennzahlen und Tastenkürzel.",[grpNav,grpOpt]),
-    settingsCategory("2 · Benachrichtigungen & Sounds","Credit-Popups, Lautstärke, Wetterwarnungen sowie WM- und Eventhinweise.",[grpCredits,grpWx,grpEvent]),
+    settingsCategory("2 · Benachrichtigungen & Sounds","Credit-Popups, Lautstärke, Wetterwarnungen sowie Leitstellenspiel-Eventhinweise.",[grpCredits,grpWx,grpEvent]),
     settingsCategory("3 · Auswertungen & Prognosen","Zielwerte und Berechnungen für die Verbandsentwicklung.",[grpForecast]),
     settingsCategory("4 · Daten, Wartung & Diagnose","Daten aktualisieren, exportieren, Updates prüfen und Fehlerberichte erstellen.",[grpAct,grpExport,grpUpdate,grpDiag]),
     settingsCategory("5 · Hilfe & Projektinformationen","Versionshinweise, Kontaktmöglichkeiten und Hintergrund zum Projekt.",[grpPn,grpContact,grpInfo])
@@ -7329,7 +6574,7 @@ function buildUI(){
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v9.5.3",patchHTML()));
+  panel.append(mkAccordion("PN","Patch-Notes v9.6.0",patchHTML()));
 
   // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   panel.append(`
@@ -7360,7 +6605,7 @@ function buildUI(){
     if(id==="tp-history"){renderHistTab();}
     if(id==="tp-forecast"){renderForecast();}
     if(id==="tp-player-forecast"){renderPlayerForecast();fetchPlayerRanking();}
-    if(id==="tp-event"){scanGameEvents();renderWmEvent();if(!(S.wm.games||[]).length)fetchWmEvent();}
+    if(id==="tp-event"){scanGameEvents();renderEventPage();}
     if(id==="tp-overview"){renderForecast();setTimeout(drawChart,50);}
   });
 
@@ -7374,6 +6619,19 @@ function buildUI(){
   panel.on("click","[data-export]",e=>{
     e.stopPropagation();e.preventDefault();
     exportDashboardData(String($(e.currentTarget).data("export")||""));
+  });
+  panel.on("click","#sb-backup-export",e=>{
+    e.stopPropagation();e.preventDefault();
+    exportFullBackup();
+  });
+  panel.on("click","#sb-backup-import",e=>{
+    e.stopPropagation();e.preventDefault();
+    $("#sb-backup-file").trigger("click");
+  });
+  panel.on("change","#sb-backup-file",e=>{
+    const file=e.currentTarget.files?.[0];
+    if(file&&window.confirm("Dieses Backup überschreibt lokale Dashboard-Daten und lädt die Seite danach neu. Fortfahren?"))importFullBackup(file);
+    e.currentTarget.value="";
   });
   panel.on("click","#sb-diagnostics-run",e=>{
     e.stopPropagation();e.preventDefault();
@@ -7540,70 +6798,12 @@ function buildUI(){
   });
   panel.on("change","#sb-event-mode",e=>{
     S.settings.eventMode=String($(e.currentTarget).val()||"overview");
-    save();renderWmOverview();
+    save();renderEventOverview();
   });
-  panel.on("click","#sb-event-refresh,#wm-refresh",e=>{
+  panel.on("click","#sb-event-refresh,#event-refresh",e=>{
     e.stopPropagation();e.preventDefault();
-    fetchWmEvent();
-  });
-  panel.on("click","#wm-groups-toggle",e=>{
-    e.stopPropagation();e.preventDefault();
-    const groups=$("#wm-groups");
-    const open=!groups.hasClass("open");
-    groups.toggleClass("open",open);
-    $(e.currentTarget).text(tr(open?"Tabellen ausblenden":"Tabellen anzeigen"));
-    if(open)renderWmGroups();
-  });
-  panel.on("click","#wm-knockout-toggle",e=>{
-    e.stopPropagation();e.preventDefault();
-    S.wm.knockoutOpen=!S.wm.knockoutOpen;
-    GM_setValue("v7_wm_knockout_open",S.wm.knockoutOpen);
-    const section=$("#wm-knockout").toggleClass("open",S.wm.knockoutOpen);
-    $(e.currentTarget)
-      .attr("aria-expanded",String(S.wm.knockoutOpen))
-      .text(S.wm.knockoutOpen?"Turnierbaum ausblenden":"Turnierbaum anzeigen");
-    if(S.wm.knockoutOpen && !section.find(".wm-ko-stage").length)renderWmKnockout();
-  });
-  panel.on("click",".wm-filter",e=>{
-    e.stopPropagation();e.preventDefault();
-    const view=String($(e.currentTarget).data("wm-view")||"focus");
-    S.wm.view=["focus","live","upcoming","results","all"].includes(view)?view:"focus";
-    panel.find(".wm-filter").removeClass("active");
-    $(e.currentTarget).addClass("active");
-    $("#wm-schedule-groups").html(wmGroupedScheduleHtml(S.wm.view));
-  });
-  panel.on("click",".wm-group-name",e=>{
-    e.stopPropagation();e.preventDefault();
-    const card=$(e.currentTarget).closest(".wm-group-card");
-    const open=!card.hasClass("open");
-    card.toggleClass("open",open);$(e.currentTarget).attr("aria-expanded",String(open));
-  });
-  panel.on("click",".wm-tip-save",e=>{
-    e.stopPropagation();e.preventDefault();
-    const id=String($(e.currentTarget).data("id")||"");
-    const row=$(e.currentTarget).closest(".wm-row");
-    const homeRaw=String(row.find('.wm-tip-input[data-side="home"]').val()||"").trim();
-    const awayRaw=String(row.find('.wm-tip-input[data-side="away"]').val()||"").trim();
-    if(!id || homeRaw==="" || awayRaw==="")return;
-    S.wmTips[id]={
-      home:Math.max(0,Math.min(99,parseInt(homeRaw,10)||0)),
-      away:Math.max(0,Math.min(99,parseInt(awayRaw,10)||0))
-    };
-    delete S.wmTipEdit[id];
-    saveWmTips();
-    renderWmEvent();
-  });
-  panel.on("click",".wm-tip-edit",e=>{
-    e.stopPropagation();e.preventDefault();
-    const id=String($(e.currentTarget).data("id")||"");
-    if(!id)return;
-    S.wmTipEdit[id]=true;
-    renderWmEvent();
-  });
-  panel.on("keydown",".wm-tip-input",e=>{
-    if(e.key!=="Enter")return;
-    e.preventDefault();
-    $(e.currentTarget).closest(".wm-tip").find(".wm-tip-save").trigger("click");
+    scanGameEvents();
+    renderEventPage();
   });
   panel.on("input","#team-search",filterTeamRows);
   panel.on("change","#team-filter",filterTeamRows);
@@ -7705,7 +6905,7 @@ function applyPanelMode(){
   const themeBadge={summer:"SUMMER 2026","summer-dark":"SUMMER DARK 2026",lcars:"LCARS 2364"}[th];
   $("#lss7-summer").toggle(!!themeBadge).text(themeBadge||"");
   summerSceneCtl?.setTheme(th);
-  $("#lss7-col").text(S.settings.panelCollapsed?"Eingeklappt":"Ausgeklappt");
+  $("#lss7-col").text(S.settings.panelCollapsed?"Zu":"Offen");
   renderWeather();
 }
 function parseAllianceRankingHtml(html,pageHint=1,pageSizeHint=25){
@@ -7847,39 +7047,20 @@ function loadRankContext(done){
     return {ok:!!ctx,pageSize:parsed.pageSize||pageSizeHint,foundById:!!parsed.foundById};
   };
 
-  // Primary path: browser-native fetch with session cookies
-  fetch(API.alliancesPage,{credentials:"include"})
-    .then(r=>r.ok?r.text():Promise.reject(new Error(`HTTP ${r.status}`)))
-    .then(html=>{
-      const first=applyRankHtml(html,1,25);
-      const r=Number(S.allianceRank)||0;
-      const targetPage=r>0?Math.floor((r-1)/(first.pageSize||25))+1:1;
-      if(first.foundById) return;
-      if(targetPage<=1){ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); return; }
-      fetch(`${API.alliancesPage}?page=${targetPage}`,{credentials:"include"})
-        .then(rr=>rr.ok?rr.text():Promise.reject(new Error(`HTTP ${rr.status}`)))
-        .then(h2=>{
-          const second=applyRankHtml(h2,targetPage,first.pageSize||25);
-          if(!second.foundById && !second.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)");
-        })
-        .catch(()=>{ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); });
-    })
-    .catch(()=>{
-      pageGet(API.alliancesPage,raw=>{
-        const first=applyRankHtml(raw,1,25);
-        const r=Number(S.allianceRank)||0;
-        const targetPage=r>0?Math.floor((r-1)/(first.pageSize||25))+1:1;
-        if(first.foundById) return;
-        if(targetPage<=1){ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); return; }
-        pageGet(`${API.alliancesPage}?page=${targetPage}`,h2=>{
-          const second=applyRankHtml(h2,targetPage,first.pageSize||25);
-          if(!second.foundById && !second.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)");
-        },()=>{ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); });
-      },()=>{
-        renderRankSummary(null);
-        renderRankMini(null);
-      });
-    });
+  pageGet(API.alliancesPage,raw=>{
+    const first=applyRankHtml(raw,1,25);
+    const r=Number(S.allianceRank)||0;
+    const targetPage=r>0?Math.floor((r-1)/(first.pageSize||25))+1:1;
+    if(first.foundById) return;
+    if(targetPage<=1){ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); return; }
+    pageGet(`${API.alliancesPage}?page=${targetPage}`,h2=>{
+      const second=applyRankHtml(h2,targetPage,first.pageSize||25);
+      if(!second.foundById && !second.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)");
+    },()=>{ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); });
+  },()=>{
+    renderRankSummary(null);
+    renderRankMini(null);
+  });
 }
 function mkToggle(id,label,key){
   const on=S.settings[key];
@@ -7895,489 +7076,23 @@ function mkAccordion(icon,title,body){
   </div>`;
 }
 function patchHTML(){
-  const groups=[
-    {
-      title:"v9.8.1 — Kompaktere Übersicht",
-      items:[
-        "Der Einsatz-Auslastungsmonitor wurde auf Wunsch vollständig aus der Übersicht entfernt.",
-        "Der mögliche Verdienst aus offenen Einsätzen bleibt unverändert erhalten.",
-        "Nicht mehr benötigte Berechnungslogik, Selektoren und Styles wurden ebenfalls entfernt.",
-        "Version und Patch-Notes wurden auf v9.8.1 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.8.0 — Rekorde, Meilensteine & Einsatzlage",
-      items:[
-        "Die Spielerprognose zeigt jetzt persönliche Rekorde für den besten Tag, den Durchschnitt, die aktive Verdienstserie und die beste Tagesplatzierung.",
-        "Eine kompakte Meilensteinleiste zeigt erreichte Dienstgrade und die unmittelbar nächste Beförderung.",
-        "Die Übersicht besitzt einen Live-Auslastungsmonitor für offene eigene und Verbandseinsätze sowie erkannte Patienten.",
-        "Die Einsatzlage wird verständlich als ruhig, normal, hoch oder sehr hoch eingeordnet.",
-        "Die vollständige Verbandsprognose zeigt das konkrete voraussichtliche Erreichungsdatum jetzt in einer großen Fokuskarte.",
-        "Resttage, aktueller Stand, Zielwert, fehlende Credits und Tagesdurchschnitt stehen direkt beim Erreichungsdatum.",
-        "Wochen- und 30-Tage-Tempo ergänzen die Prognose, ohne zentrale Werte doppelt anzuzeigen.",
-        "Version und Patch-Notes wurden auf v9.8.0 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.7.0 — Neue Übersicht & Spielerprognose",
-      items:[
-        "Die Übersichtsseite ist jetzt klar in Verbandskennzahlen, Aktivität und Entwicklung gegliedert.",
-        "Das voraussichtliche Zieldatum der Verbandsprognose wird bereits im großen Lagekopf angezeigt.",
-        "Kennzahlen besitzen verständliche Untertitel und eine deutlichere visuelle Gewichtung.",
-        "Die Spielerprognose besitzt eine eigene hervorgehobene Fokuskarte für das voraussichtliche Erreichungsdatum.",
-        "Resttage, Datenqualität, nächster Dienstgrad und fehlende Credits sind jetzt auf einen Blick erfassbar.",
-        "Der Beförderungsfortschritt zeigt Prozentwert, aktuellen Creditstand und verbleibenden Betrag in einem eigenen Bereich.",
-        "Doppelte Prognosewerte wurden entfernt und durch aktuelle beziehungsweise zielbezogene Credits ersetzt.",
-        "Der höchste bekannte Rang und noch nicht berechenbare Prognosen werden verständlicher dargestellt.",
-        "Version und Patch-Notes wurden auf v9.7.0 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.6.2 — Kompakte Tageslage & Fehlerkorrekturen",
-      items:[
-        "Die Zähler für abgeschlossene Einsätze, Patienten- und Gefangenentransporte wurden aus der Tageslage entfernt.",
-        "Der mögliche Verdienst aller offenen Einsätze steht jetzt direkt neben dem heutigen Verbandsverdienst.",
-        "Die separate Verdienstbox wurde entfernt, damit die Übersicht kompakter und frei von Dopplungen bleibt.",
-        "Die Verdienstanzeige aktualisiert sich auch nach einem Neuaufbau der Oberfläche zuverlässig.",
-        "Unveränderte Patienten- und Gefangenendaten lösen keine unnötigen Neuberechnungen mehr aus.",
-        "Ein kurzfristig fehlender Einsatzbereich löscht die erkannten offenen Einsätze nicht mehr versehentlich.",
-        "Version und Patch-Notes wurden auf v9.6.2 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.6.1 — Flüssigeres Menü & stabiler K.-o.-Plan",
-      items:[
-        "Die Übersicht zeigt beim Einsatzpotenzial nur noch den möglichen Gesamtverdienst als klaren, kompakten Wert.",
-        "Die Einsatzliste wird nicht mehr alle fünf Sekunden vollständig neu berechnet; Änderungen werden gebündelt und nur bei Bedarf dargestellt.",
-        "Einsatz-Metadaten werden einmalig indexiert, wodurch die Verdienstberechnung deutlich schneller arbeitet.",
-        "Der K.-o.-Plan verwendet keine festen Riesenhöhen oder künstlichen Abstände mehr und kann dadurch nicht mehr am unteren Rand abgeschnitten werden.",
-        "Die Turnierrunden sind jetzt kompakt in professionellen Spalten mit sauberen Paargruppen und eindeutiger Rundennavigation angeordnet.",
-        "Version und Patch-Notes wurden auf v9.6.1 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.6.0 — Einsatzpotenzial, neue Einstellungen & Stabilität",
-      items:[
-        "Die Übersicht zeigt jetzt alle aktuell erkannten eigenen und Verbandseinsätze mit möglichem Gesamtverdienst.",
-        "Grundvergütungen werden aus den öffentlichen Leitstellenspiel-Einsatzdaten beziehungsweise den Live-Einsatzfeldern übernommen.",
-        "Patientenbehandlung und erwartete Transporte werden getrennt berechnet und transparent als Schätzung ausgewiesen.",
-        "Die stärksten aktuell offenen Einsätze werden nach möglichem Verdienst sortiert angezeigt.",
-        "Die Einstellungen wurden vollständig in fünf verständliche Bereiche gegliedert: Oberfläche, Benachrichtigungen, Auswertungen, Datenpflege und Hilfe.",
-        "Die Credit-Popup-Einstellungen befinden sich jetzt sinnvoll im Bereich Benachrichtigungen & Sounds.",
-        "Jeder Einstellungsbereich besitzt eine kurze Erklärung, welche Optionen zusammengehören und was sie beeinflussen.",
-        "Der K.-o.-Turnierbaum besitzt nun einen eigenen horizontalen und vertikalen Scrollbereich und wird nicht mehr am Dashboard-Rand abgeschnitten.",
-        "Rundenabstände und Verbindungslinien wurden für alle 32 K.-o.-Spiele neu berechnet und besser lesbar gestaltet.",
-        "Die Credit-Sounds wurden deutlich verstärkt und laufen nun über einen Kompressor, damit auch Laptop-Lautsprecher klarer und kräftiger wiedergeben.",
-        "Die Lautstärkeregelung bleibt erhalten; 100 Prozent nutzt jetzt einen deutlich höheren, aber begrenzten Ausgangspegel.",
-        "Version und Patch-Notes wurden auf v9.6.0 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.5.3 — Einstellbare Popup-Größe",
-      items:[
-        "Das Credit-Popup kann jetzt in den Größen Klein, Mittel oder Groß angezeigt werden.",
-        "Klein nutzt ein kompaktes Layout für wenig Platz, ohne Buchungsstatus, Betrag, Tagesstand oder Uhrzeit auszublenden.",
-        "Mittel bleibt die ausgewogene Standarddarstellung mit guter Lesbarkeit und moderatem Platzbedarf.",
-        "Groß bietet eine prominentere Darstellung mit größerem Münzsymbol, Betrag und großzügigeren Abständen.",
-        "Jede Größenstufe besitzt eigene Breiten, Typografie und Abstände statt einer unscharfen Skalierung.",
-        "Beim Wechsel der Größe erscheint automatisch eine Vorschau in der neuen Darstellung.",
-        "Die gewählte Größe wird lokal gespeichert und für alle zukünftigen Credit-Meldungen verwendet.",
-        "Version und Patch-Notes wurden auf v9.5.3 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.5.2 — Klangauswahl & Lautstärke",
-      items:[
-        "Für Credit-Eingänge stehen jetzt sechs eigenständige Klänge zur Auswahl.",
-        "Kaching bietet den klassischen Kassenklang, Coins eine helle Münzfolge und Register einen kräftigeren Registrierkassen-Effekt.",
-        "Success spielt eine freundliche Erfolgsfanfare, Soft eine dezente harmonische Meldung und Arcade einen kurzen Retro-Bonus.",
-        "Die Lautstärke kann über einen professionellen Regler von 0 bis 100 Prozent eingestellt werden.",
-        "Der aktuelle Lautstärkewert wird direkt neben dem Regler angezeigt und automatisch gespeichert.",
-        "Beim Wechsel des Klangs wird die neue Auswahl sofort zur Vorschau abgespielt.",
-        "Der Klangtest berücksichtigt sowohl die aktuelle Klangauswahl als auch die eingestellte Lautstärke.",
-        "Alle Sounds werden weiterhin synthetisch im Browser erzeugt und benötigen keine externen Audiodateien.",
-        "Version und Patch-Notes wurden auf v9.5.2 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.5.1 — Premium Credit-Popup",
-      items:[
-        "Das Credit-Popup wurde als hochwertiges Buchungsfenster vollständig neu gestaltet.",
-        "Ein professioneller Kopfbereich zeigt Credit-Eingang, Buchungsstatus und einen animierten Live-Punkt.",
-        "Der Einnahmebetrag ist größer, klarer gegliedert und optisch vom Tagesstand sowie der Buchungszeit getrennt.",
-        "Das neue Münzsymbol kombiniert Credit-Zeichen, Plus-Badge, Goldverlauf und dezente Tiefenwirkung.",
-        "Eine Ablaufleiste zeigt sichtbar, wie lange die Meldung noch eingeblendet bleibt.",
-        "Lichtreflex, Statusakzent, Hintergrundglühen und Schatten wurden ruhiger und hochwertiger abgestimmt.",
-        "Dark, Light, Summer, Summer Dark und LCARS besitzen jeweils eine eigene passende Popup-Ausführung.",
-        "Version und Patch-Notes wurden auf v9.5.1 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.5.0 — Animierte Credit-Eingänge",
-      items:[
-        "Neue professionelle Credit-Popups zeigen direkt am Spielrand, wie viele Credits gerade verdient wurden.",
-        "Jede Meldung enthält Einnahmebetrag und den fortgeschriebenen Tagesverdienst.",
-        "Ein eigener synthetischer Kassenklang im Stil von „Kaching“ begleitet Einnahmen optional ohne externe Audiodatei.",
-        "Die Position kann frei zwischen rechts oder links sowie oben, mittig oder unten gewählt werden.",
-        "Fünf Animationen stehen zur Auswahl: seitlich einschieben, hochschweben, vergrößern, federn oder dezent einblenden.",
-        "Anzeigedauer, Mindestbetrag, Popup-Aktivierung und Kassenklang lassen sich individuell einstellen.",
-        "Testschaltflächen ermöglichen eine sofortige Vorschau des Popups und des Kassenklangs.",
-        "Mehrere Einnahmen werden übersichtlich gestapelt; Ausgaben erzeugen bewusst keine Meldung.",
-        "Die Erkennung nutzt den Credit-Zähler der Spielnavigation, einen DOM-Beobachter und ein sparsames Sicherheits-Polling.",
-        "Beim ersten Laden wird nur ein Ausgangswert gesetzt, damit kein falsches Einnahme-Popup erscheint.",
-        "Das Popup besitzt eigene professionelle Varianten für Dark, Light, Summer, Summer Dark und LCARS.",
-        "Version und Patch-Notes wurden auf v9.5.0 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.4.1 — Interaktiver K.-o.-Turnierbaum",
-      items:[
-        "Die K.-o.-Phase kann jetzt vollständig ein- und ausgeklappt werden.",
-        "Der Spielplan wurde als klassischer Turnierbaum mit Runden von links nach rechts neu angeordnet.",
-        "Verbindungslinien führen jeweils zwei Paarungen sichtbar in die nächste K.-o.-Runde.",
-        "Runde der 32, Achtelfinale, Viertelfinale, Halbfinale und Finale bilden einen zusammenhängenden Turnierpfad.",
-        "Das Spiel um Platz 3 wird professionell separat unterhalb des Hauptturnierbaums dargestellt.",
-        "Offene Qualifikationsplätze bleiben im Turnierbaum sichtbar und werden automatisch durch Teams und Flaggen ersetzt.",
-        "Der Turnierbaum ist horizontal scrollbar und funktioniert dadurch auch in schmaleren Dashboard-Ansichten.",
-        "Version und Patch-Notes wurden auf v9.4.1 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.4.0 — Premium Theme Refit",
-      items:[
-        "Der WM-Liveticker im Header ist jetzt länger, großzügiger proportioniert und trennt Flaggen, Teams, Status und Ergebnis noch klarer.",
-        "Dark wurde als edles Graphit-Navy-Theme mit kühlen blauen Akzenten, tieferen Flächen und präziseren Schatten neu abgestimmt.",
-        "Light verwendet nun eine ruhige Pearl-Oberfläche mit klareren Konturen, hochwertigeren Karten und reduzierten Blautönen.",
-        "Summer wurde zu einer eleganteren hellen Kombination aus Himmel, Meeresgrün und warmem Sonnengold verfeinert.",
-        "Summer Dark nutzt eine tiefere Mitternachts-Palette mit dezenterem Sternenlicht und besser getrennten Oberflächen.",
-        "LCARS 2364 wurde ruhiger und hochwertiger gestaltet: weniger grelle Vollflächen, dunklere Konsolen und präzisere bernstein- und cyanfarbene Akzente.",
-        "Karten, Tabs, Buttons, Eingabefelder, Tabellen, Eventbereiche, Fuhrpark, Prognosen und Mitgliederansichten folgen jetzt einem gemeinsamen Premium-Designsystem.",
-        "Abstände, Radien, Hover-Effekte, Schatten, Fokusrahmen und Kontraste wurden über alle Themes hinweg vereinheitlicht.",
-        "Version und Patch-Notes wurden auf v9.4.0 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.3.6 — K.-o.-Phasen-Übersicht",
-      items:[
-        "Der WM-Eventbereich zeigt jetzt eine vollständige K.-o.-Übersicht von der Runde der 32 bis zum Finale.",
-        "Bereits feststehende Mannschaften erscheinen mit Name und Flagge; offene Plätze zeigen verständliche Qualifikationspfade.",
-        "Alle 32 K.-o.-Spiele sind nach Runde geordnet und enthalten Termin, Spielnummer, Spielort, Status und Ergebnis.",
-        "Die Übersicht aktualisiert offene Paarungen automatisch, sobald die WM-API weitere Teams festlegt.",
-        "Spiel um Platz 3 und Finale sind als eigene Runden vollständig berücksichtigt.",
-        "Version und Patch-Notes wurden auf v9.3.6 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.3.5 — Teamflaggen im Header",
-      items:[
-        "Die beiden WM-Spielkarten im Dashboard-Header zeigen jetzt direkt die Flaggen beider Mannschaften.",
-        "Flaggen, Teamnamen, VS-Anzeige und Ergebnis bleiben auch bei längeren Ländernamen kompakt und klar ausgerichtet.",
-        "Syntax, WM-Auswahl, Sechs-Stunden-Ergebnisanzeige, Live-Aktualisierung und Match-Center-Filter wurden gemeinsam geprüft.",
-        "Version und Patch-Notes wurden auf v9.3.5 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.3.4 — Professionelles WM Match Center",
-      items:[
-        "Der WM-Eventbereich wurde als professionelles Match Center mit Live-Lage, Ergebnissen und kommenden Spielen neu aufgebaut.",
-        "Live-Spiele, heutige Partien, letzte Ergebnisse und nächste Begegnungen werden automatisch als hervorgehobene Fokus-Karten angezeigt.",
-        "Neue Filter zeigen Aktuell, Live und letzte Ergebnisse, kommende Spiele, Ergebnisse oder den vollständigen Spielplan.",
-        "Der Spielplan ist nach Tagen gruppiert und zeigt Spieltag, Runde, Stadion, Stadt, Gastgeberland, Kapazität, TV-Hinweis und Status.",
-        "Mannschaftsflaggen und Torschützen inklusive der von der API gelieferten Minuten verbessern die schnelle Orientierung.",
-        "Die bestehende schlüsselfreie WM-API bleibt erhalten, da sie Spielplan, Live-Ergebnisse, Torschützen, Stadien und Gruppendaten ohne Nutzerkonto bereitstellt.",
-        "Version und Patch-Notes wurden auf v9.3.4 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.3.3 — Lesbarere WM-Karten",
-      items:[
-        "Die beiden WM-Karten im Header wurden optisch neu aufgebaut und besitzen nun klar getrennte Teams, Statuszeile und Ergebnisfeld.",
-        "Live-Spiele, beendete Spiele und kommende Partien sind durch grüne, goldene und blaue Akzente sofort unterscheidbar.",
-        "Dark, Light, Summer, Summer Dark und LCARS besitzen jeweils eigene kontrastreiche Farbabstimmungen.",
-        "Längere Mannschaftsnamen werden sauber gekürzt, ohne Ergebnis oder Spielstatus aus dem sichtbaren Bereich zu drücken.",
-        "Hover-Effekt, Schatten, Statuspunkt und Live-Animation wurden dezenter und professioneller abgestimmt.",
-        "Version und Patch-Notes wurden auf v9.3.3 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.3.2 — WM-Liveticker im Header",
-      items:[
-        "Bis zu zwei WM-Spiele werden jetzt mittig im Dashboard-Header mit deutscher Anstoßzeit, Teams und Spielstand angezeigt.",
-        "Der Header wechselt automatisch zwischen Live-Spielen, sechs Stunden lang sichtbaren Endergebnissen und den nächsten bevorstehenden Partien.",
-        "Laufende Partien zeigen ihren Live-Status und – soweit von der WM-API geliefert – die aktuelle Spielminute, Halbzeit, Verlängerung oder das Elfmeterschießen.",
-        "Während Live-Spielen werden Ergebnisse automatisch etwa alle 20 Sekunden aktualisiert; an Spieltagen ohne laufende Partie erfolgt die Aktualisierung minütlich.",
-        "Neue Tore werden durch ein auffälliges Tor-Banner, einen kurzen Signalton und optional durch eine Browser-Benachrichtigung gemeldet.",
-        "Ein Klick auf ein Header-Spiel öffnet direkt den vollständigen WM-Spielplan im Eventbereich.",
-        "Version und Patch-Notes wurden auf v9.3.2 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.3.1 — Profil, Übersicht & Verbandsprognose",
-      items:[
-        "Der Bereich Mitglieder & Verwaltung wurde zur reinen Mitgliederübersicht zurückgebaut.",
-        "Rechtevergabe, Rollenänderungen, Rauswerfen, Chat-Bann, Mehrfachauswahl und Chatbefehle wurden vollständig aus dem Dashboard entfernt.",
-        "Mitgliederkarten behalten Suche, Rollenfilter, Online-/Inaktivitätsstatus, Dienstgrad, Credits, Spielerrang sowie Profil- und Nachrichtenlink.",
-        "Die Spielerplatzierung speichert jetzt den Tagesstart lokal und beginnt um 0:00 Uhr automatisch eine neue Historie.",
-        "Im Spielerprofil wird angezeigt, ob du seit Tagesstart Plätze aufgestiegen oder abgestiegen bist, inklusive grünem Aufwärtspfeil und rotem Abwärtspfeil.",
-        "Die Spielerprognose zeigt die Platzänderung des aktuellen Tages zusätzlich als eigene Kennzahl mit farbigem Pfeil-Badge.",
-        "Namen im Platzierungsumfeld der Spielerprognose sind jetzt anklickbar und öffnen direkt das jeweilige Profil.",
-        "Verbände im Platzierungsumfeld der Übersicht sind jetzt anklickbar und öffnen direkt die jeweilige Verbandsseite.",
-        "Die Spielerplatzierungsbox im Profil öffnet die Spielerprognose jetzt direkt und zuverlässiger.",
-        "Eine alte doppelte .prof-placement-CSS-Regel wurde entfernt, damit die Profilkarte nicht mehr als kleines Badge gerendert wird.",
-        "Die Verbandsprognose wurde zur professionellen Lageansicht ausgebaut: Datenbasis, 7-Tage-Summe, Trendtempo, Zieltempo für 7/14/30 Tage, bester Tag, schwächster Tag und heutige Hochrechnung.",
-        "Die Übersicht hat ein neues Verbandslage-Panel mit Zielprognose, Durchschnitt pro Tag, Tagesverdienst und Datenbasis erhalten.",
-        "Der BETA-Hinweis wurde aus der Spielerprognose entfernt.",
-        "Version und Patch-Notes wurden auf v9.3.1 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.2.5 — Individuelle Hotkeys & LCARS-Refit",
-      items:[
-        "Hotkeys werden jetzt nicht mehr nur über eine feste Liste gewählt: In den Einstellungen kann das jeweilige Hotkey-Feld angeklickt und anschließend direkt die gewünschte Taste oder Tastenkombination gedrückt werden.",
-        "Esc bricht die Hotkey-Aufnahme ab; Entf oder Backspace löscht das jeweilige Tastenkürzel.",
-        "Wenn ein neu gesetzter Hotkey bereits für die andere Aktion belegt ist, wird die andere Belegung automatisch geleert, damit keine Doppelbelegung entsteht.",
-        "Leere Hotkey-Felder bleiben auch nach einem Neuladen leer und springen nicht mehr automatisch auf Standardwerte zurück.",
-        "LCARS 2364 wurde nochmals überarbeitet: dunklere Cockpit-Basis, weniger grelle Flächen, lesbarere Tabs, bessere Buttons und ruhigere globale LSS-Anpassungen.",
-        "Die Hotkey-Felder wurden optisch als klare Key-Capture-Karten gestaltet und sind auch im LCARS-Theme gut lesbar.",
-        "Version und Patch-Notes wurden auf v9.2.5 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.2.4 — Tastenkürzel, LCARS-Rework & Stabilität",
-      items:[
-        "In den Einstellungen gibt es jetzt Tastenkürzel für Menü öffnen/schließen und Menü ein-/ausklappen.",
-        "Standardmäßig öffnet bzw. schließt Alt+V das Dashboard; Alt+C klappt das Dashboard ein oder aus.",
-        "Die Tastenkürzel können in den Einstellungen geändert oder komplett deaktiviert werden.",
-        "Hotkeys greifen nicht in Eingabefeldern, Chatfeldern, Dropdowns oder bearbeitbaren Bereichen, damit beim Tippen nichts versehentlich ausgelöst wird.",
-        "Das Ein-/Ausklappen funktioniert jetzt im Layout-Modus und im Floating-Fenster einheitlich.",
-        "LCARS 2364 wurde erneut deutlich überarbeitet: dunklere Basis, ruhigere Akzentleisten, bessere Button-Kontraste, lesbarere Dropdowns und klarere Panel-Struktur.",
-        "Der globale LCARS-Stil für die Leitstellenspiel-Oberfläche wurde professioneller abgestimmt, damit Navbar, Buttons, Tabellen und Panels besser lesbar bleiben.",
-        "Der fehlerhafte /profile-Aufruf ohne Spieler-ID wurde entfernt; Profilseiten werden erst mit echter User-ID geladen.",
-        "API-Antworten, die HTML statt JSON liefern, erzeugen keine lauten Parser-Fehler mehr in der Browser-Konsole.",
-        "Das Three.js-Require wurde entfernt, um die wiederholte Deprecated-Warnung aus Tampermonkey/Browser-Konsole zu vermeiden. Die Sommerszene bleibt weiterhin optional und wird nur genutzt, wenn Three.js bereits verfügbar ist.",
-        "Version und Patch-Notes wurden auf v9.2.4 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.2.3 — LCARS-Redesign & globaler LSS-Stil",
-      items:[
-        "LCARS 2364 wurde optisch komplett überarbeitet: weniger dominante Gelbflächen, ruhiger schwarzer Kern, präzisere Segmentleisten und deutlich bessere Kontraste.",
-        "Wenn LCARS 2364 aktiv ist, erhält jetzt auch das Leitstellenspiel außerhalb des Dashboards einen passenden LCARS-Stil.",
-        "Navbar, Dropdowns, Buttons, Eingabefelder, Tabellen, Panels, Missionslisten, Chat-/Funkbereiche und Kartenrahmen werden passend umgestaltet.",
-        "Der globale LCARS-Stil ist sauber gekapselt und wird automatisch wieder entfernt, sobald ein anderes Theme ausgewählt wird.",
-        "Version und Patch-Notes wurden auf v9.2.3 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.2.2 — LCARS-Theme & aktive Lehrgänge",
-      items:[
-        "Neues professionelles LCARS-2364-Theme ergänzt: dunkler Kern, farbige Interface-Bänder, pillenförmige Navigation, klare Kontraste und passende Dashboard-Akzente.",
-        "LCARS 2364 ist ab sofort in den Einstellungen unter Panel-Theme auswählbar.",
-        "Die Theme-Umschaltung erkennt LCARS vollständig und blendet die bisherige Summer-Badge-Logik passend um.",
-        "Lehrgänge werden strenger gefiltert: Fertige, abgeschlossene, abgelaufene oder per Timer bereits vergangene Lehrgänge werden nicht mehr angezeigt.",
-        "Der HTML-Fallback liest den Lehrgangs-Timer jetzt als echten Zeitstempel aus und nutzt ihn für die Aktiv-Prüfung.",
-        "Version und Patch-Notes wurden auf v9.2.2 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.2.1 — API-Analyse, Qualitätschecks & CSV-Export",
-      items:[
-        "Fuhrpark & Standorte wurde um einen Qualitätscheck erweitert: Standorte ohne Fahrzeug, Standorte ohne Personal, Unterbesetzung, deaktivierte Standorte sowie Ausbauten im Bau oder deaktivierte Ausbauten werden automatisch erkannt.",
-        "Die neue Analyse nutzt zusätzliche offizielle Datenquellen: /api/v2/vehicles, /api/v2/pois, /api/v1/aao_categories, /api/mission_type_data, einsaetze.json und alliance_event_types.json.",
-        "Die v2-Abrufe für Fahrzeuge, Gebäude und POIs unterstützen jetzt Pagination über den after-Parameter, damit größere Accounts vollständiger ausgewertet werden.",
-        "Top-Fahrzeugtypen werden jetzt direkt im Fuhrparkbereich angezeigt, sobald die Fahrzeugliste geladen wurde.",
-        "Die Datenbasis zeigt POIs, Einsatzdaten, Verbandsevents und AAO-Kategorien als eigene API-Kennzahlen.",
-        "Der AAO-Bereich wurde erweitert: Hotkey-Abdeckung, fehlende Hotkeys, Kategorien und eine Kategorieübersicht werden sichtbar.",
-        "In den Einstellungen gibt es jetzt CSV-Exporte für Fuhrpark, Standorte, Lehrgänge, AAO, Mitspieler und Verlauf.",
-        "Export- und Analyseaktionen geben jetzt eine kleine Dashboard-Benachrichtigung aus, ohne das Spiel zu stören.",
-        "Version und Patch-Notes wurden auf v9.2.1 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.2.0 — Mitgliederverwaltung, Online-Status & API-Update",
-      items:[
-        "Neue Mitgliederverwaltung mit Mehrfachauswahl, gesammeltem Entfernen von Rollen und optionaler Markierung von 90+ Tage inaktiven Mitgliedern ergänzt.",
-        "Verwaltungsaktionen orientieren sich an den echten Leitstellenspiel-Rechten und unterstützen Rauswerfen, Rollen setzen oder entfernen, Nachrichten, Bewerbungsverbot und Chat-Bann.",
-        "Chat-Banns werden jetzt als Dropdown mit den bekannten Laufzeiten von 5 Minuten bis 14 Tage angezeigt.",
-        "Mitgliederkarten zeigen private Nachrichten direkt über einen Brief-Button an.",
-        "Online- und Inaktivitätsstatus werden aus den LSS-Online-Icons gelesen und als echte farbige Punkte dargestellt: grün online, grau kurz offline, blau über 7 Tage, gelb über 14 Tage und rot über 30 Tage.",
-        "Die Mitgliederseite erkennt User-IDs jetzt robuster über Profil-Link, user_id und rights_...-Container.",
-        "Online-Hinweise wie < 30 Tage oder < 60 Tage werden zusätzlich über den Spielernamen aus dem LSS-Icon-Titel zugeordnet, falls Icon und Rechteblock nicht in derselben Tabellenzeile liegen.",
-        "Zuletzt-online-Hinweise werden jetzt als farbige Text-Badges angezeigt, damit Blau/Gelb/Rot und der genaue Offline-Zeitraum direkt sichtbar sind.",
-        "Dienstgrad und Credits der Mitglieder werden im Hintergrund aus den Profilseiten nachgeladen und in den Karten ergänzt, sofern Leitstellenspiel diese Daten freigibt.",
-        "Die Team-Zusammenfassung zeigt zusätzlich die aktuell online erkannten Mitglieder.",
-        "Die Gruppierung der Mitglieder wurde angepasst: Lehrgangsmeister steht jetzt vor Sprechwunsch Admin.",
-        "Dropdowns im Mitgliederbereich sind im Dark- und Summer-Dark-Theme wieder hell lesbar.",
-        "Das Dashboard startet auf Verbandsvorstellungs- und Verbandsverwaltungsseiten nicht mehr, damit keine Inhalte in Vorstellungstext oder Regeln eingebettet werden können.",
-        "Gebäudedaten werden auf den neuen offiziellen v2-Endpunkt /api/v2/buildings umgestellt; der neue v2-Endpunkt für Verbandsgebäude ist vorbereitet.",
-        "Version und Patch-Notes wurden auf v9.2.0 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.1.1 — Spielerprofil, Navigation & Updates",
-      items:[
-        "Das Spielerprofil wurde größer, übersichtlicher und professioneller aufgebaut; Dienstgrad und Verbandsrolle stehen jetzt gemeinsam in einer klaren Badge-Zeile.",
-        "Die Spielerplatzierung wird als hervorgehobene Toplisten-Karte dargestellt und öffnet direkt die persönliche Spielerprognose.",
-        "Spielerprognose und 7-Tage-Statistik sind als kleines Untermenü direkt in das Spielerprofil integriert.",
-        "In den Einstellungen kann gewählt werden, ob die Spielerprognose nur im Profil oder zusätzlich als eigener Menüpunkt erscheint.",
-        "Verband, Spieler und Werkzeuge stehen jetzt in einer gemeinsamen, aufgeräumten Navigationszeile; die Menüschrift wurde heller und besser lesbar gestaltet.",
-        "Übersicht wird wieder korrekt mit Ü geschrieben.",
-        "Dashboard- und Spiel-Header verwenden ein neu proportioniertes VS-Funksignal-Logo ohne Verzerrung.",
-        "Level-Up wurde durch die eindeutigere Bezeichnung Beförderungs-Belohnung ersetzt.",
-        "Update-Hinweise zeigen bei einer verfügbaren Version jetzt direkt den Button Jetzt installieren mit dem RAW-Installationslink.",
-        "Die 7-Tage-Spielzeit liegt nun auf einer höheren Darstellungsebene und wird nicht mehr hinter Menübereichen verdeckt.",
-        "Das kompakte VS-Funksignal-Logo im Spiel-Header wurde gegen alte Logo-Regeln abgesichert und wird nicht mehr abgeschnitten.",
-        "Coins stehen jetzt direkt neben den eigenen Credits in der oberen Schnellanzeige und wurden aus der Verbandsübersicht entfernt.",
-        "Der Event-Menüpunkt ist in allen Themes kontrastreicher, trägt einen LIVE-Hinweis und wird mit einer dezenten Animation hervorgehoben.",
-        "Spielerplatzierung und Topliste wurden in der Profilkarte wie gewünscht getauscht.",
-        "Datum und Uhrzeit werden jetzt getrennt, größer und besser lesbar dargestellt.",
-        "Der Schließen-Button der Update-Benachrichtigung steht nun zuverlässig ganz rechts.",
-        "Der bisherige Menüpunkt Team heißt jetzt Mitglieder & Verwaltung und beschreibt die Mitgliederübersicht sowie die rollenabhängigen Verwaltungsfunktionen eindeutiger.",
-        "Der Mitgliederbereich besitzt jetzt eine rollenabhängige Verwaltung. Angezeigt werden ausschließlich Aktionen, die Leitstellenspiel auf der Mitglieder- oder Profilseite wirklich freigibt.",
-        "Unterstützt werden je nach Berechtigung Rauswerfen, Rollen setzen oder entfernen, Verbandschat-Banns, Bewerbungsverbot und direkte Nachrichten.",
-        "Kritische Teamaktionen verlangen eine zusätzliche Bestätigung und verwenden bei POST-Aktionen den CSRF-Schutz des Spiels.",
-        "Mitgliederkarten zeigen jetzt Dienstgrad, Credits, Spieler-/Toplistenrang soweit verfügbar sowie einen farbigen Online- beziehungsweise Inaktivitätsstatus.",
-        "Alle Mitglieder besitzen einen direkten Nachrichten-Button, damit auch normale Mitglieder schnell privat angeschrieben werden können.",
-        "Chat-Banns werden in der Verwaltung als Dropdown mit den bekannten Laufzeiten von 5 Minuten bis 14 Tage angezeigt.",
-        "Mehrere Mitglieder können gleichzeitig ausgewählt werden; für berechtigte Rollen lassen sich Rechte gesammelt entfernen oder 90+ Tage inaktive Mitglieder markieren.",
-        "Zusätzliche Chat-Helfer erkennen eindeutige Befehle wie !kick, /kick, !chatban und /chatban und führen sie erst nach Bestätigung aus.",
-        "Online- und Inaktivitätsstatus werden jetzt direkt aus den LSS-Online-Icons der Verbandsmitgliederseite übernommen, inklusive blau/gelb/rot und Angaben wie < 30 oder < 60 Tage.",
-        "Dienstgrad und Credits der Mitglieder werden im Hintergrund aus den Profilseiten nachgeladen und anschließend direkt in den Mitgliederkarten ergänzt.",
-        "Die Team-Zusammenfassung zeigt jetzt zusätzlich, wie viele Mitglieder aktuell online sind.",
-        "Dropdowns im Mitgliederbereich sind im Dark- und Summer-Dark-Theme wieder hell lesbar.",
-        "Das Dashboard startet auf Verbandsvorstellungs- und Verbandsverwaltungsseiten nicht mehr, damit keine Inhalte in Vorstellungstext oder Regeln eingebettet werden können.",
-        "Der Dashboard-Button im Spiel-Header übernimmt jetzt exakt die Höhe der originalen Navigationsleiste; das VS-Funksignal wurde neu zentriert und kompakter proportioniert.",
-        "Die Übersicht zeigt neben dem heutigen Verbandsverdienst eine neue Live-Statistik für beobachtete abgeschlossene Verbandseinsätze sowie deren Patienten und Gefangene.",
-        "Die Verbandsaktivität wird lokal gespeichert, täglich zurückgesetzt und zählt transparent nur Vorgänge, die bei geöffneter Spielseite live empfangen wurden.",
-        "Verbandsverdienst und Live-Aktivität wurden zu einer gemeinsamen, gleichmäßig aufgebauten Tageslage mit vier klaren Kennzahlen zusammengeführt.",
-        "Unterhalb der Kontaktbox befindet sich jetzt eine persönliche Nachricht des Entwicklers zur kostenlosen Nutzung, zum Projekt und zu Feedbackmöglichkeiten.",
-        "Die Einstellungen wurden in eine professionelle Themenreihenfolge mit klaren Spalten für Darstellung, Funktionen, Updates, Informationen und Kontakt gebracht.",
-        "Die Auswahl für den Kopfzeilen-Button und die allgemeinen Darstellungsoptionen reagieren wieder zuverlässig und speichern Änderungen sofort.",
-        "Der Kopfzeilen-Button befindet sich ausschließlich in den Einstellungen und wird nicht mehr versehentlich im Verlauf eingeblendet.",
-        "Updates stehen jetzt direkt unter dem Kopfzeilen-Button; Event und WM wurden unter der Verbandsprognose einsortiert.",
-        "Kontakt und Informationen bilden den Abschluss der Einstellungen. Die persönlichen Worte des Entwicklers sind nun in die vollbreite Infobox integriert.",
-        "Der BETA-Hinweis wurde bei der Spielerprognose entfernt; die Verbandsprognose bleibt weiterhin datenbasiert vorsichtig formuliert.",
-        "Dashboard- und Spiel-Header verwenden ein vollständig neu gestaltetes, längliches VS-PRO-Emblem mit animiertem Funksignal.",
-        "Version und Patch-Notes wurden auf v9.1.1 aktualisiert."
-      ]
-    },
-    {
-      title:"v9.1.0 — Stabilität, Spielerprognose & Fuhrpark",
-      items:[
-        "Lehrgänge werden jetzt ohne feste Verbands-ID aus der alliance_schoolings-API des jeweils angemeldeten Verbandes geladen; die API-Antwort wird korrekt aus result gelesen.",
-        "Teamrollen korrigiert: Es werden die tatsächlich zugewiesenen Rollen des Mitglieds ausgewertet. Berechtigungs-Flags erzeugen keine falschen Finanzminister- oder Lehrgangsmeister-Rollen mehr.",
-        "Owner heißt in der deutschen Oberfläche jetzt Verbands-Eigentümer; in der englischen Übersetzung bleibt die Bezeichnung Owner.",
-        "Die Update-Benachrichtigung besitzt nun einen Schließen-Button und merkt sich das Wegklicken für die installierte Version.",
-        "Die doppelte Live-Event-Anzeige unter dem Spielerprofil wurde entfernt. Laufende Events bleiben kompakt im Dashboard- und Spiel-Header sichtbar.",
-        "Fuhrpark & Standorte wurde neu strukturiert: Kennzahlen, klare Statusreihenfolge, funktionsfähige Balken sowie übersichtlichere Standort- und Ausbauinformationen.",
-        "Neue Einstellung für den Spiel-Header: nur Logo, Standard, Standard ohne Events oder nur Dein Verband.",
-        "Neue Spielerprognose mit persönlichem Tagesdurchschnitt, Restcredits, geschätzter Dauer bis zur nächsten Beförderung und lokal gespeicherter Datengrundlage.",
-        "Die persönliche Platzierung wird über die Spieler-Topliste gesucht und direkt im Profilbereich angezeigt.",
-        "Schutz vor unerwünschten Änderungen verstärkt: Das Skript läuft nicht mehr in eingebetteten Lightbox-Frames und schreibt sichtbare Werte nur noch innerhalb des eigenen Dashboards.",
-        "Das Floating-Menü nutzt die verfügbare Bildschirmhöhe, ist horizontal anpassbar und die veraltete Panel-Größen-Auswahl wurde entfernt.",
-        "Summer Dark enthält mehr Sterne und häufiger sichtbare Sternschnuppen.",
-        "Die Dashboard-Navigation wurde professionell neu gegliedert: Verbandsfunktionen stehen im Vordergrund, Spielerfunktionen und Werkzeuge sind klar getrennt und kompakter angeordnet.",
-        "Das WM-2026-Live-Badge besitzt im Summer-2026-Theme nun einen deutlich sichtbaren grünen Kontrast.",
-        "Fuhrpark & Standorte wurde erneut grundlegend erweitert und zeigt jetzt Personal-Soll und -Abdeckung, aktive Standorte, Einsatzgenerierung, automatische Werbung, Spezialisierungen, Leitstellenbindung, Kleinwachen und geteilte Standorte.",
-        "Standortkategorien und Ausbauten besitzen nun vergleichbare Fortschrittsbalken; die Standorttypen zeigen Betriebs-, Personal- und Ausbauzustand übersichtlicher.",
-        "Die Spielerprognose enthält jetzt eine persönliche 7-Tage-Verdienststatistik mit Tagesbalken und Durchschnitt.",
-        "Dashboard- und Spiel-Header verwenden ein neues gemeinsames V-Datenlogo mit animiertem Balkensignal.",
-        "Die Einstellung für den Kopfzeilen-Button wurde hervorgehoben und um eine direkte Darstellungsvorschau erweitert.",
-        "Im WM-Spielplan werden beendete Spiele grün und geplante Spiele gelb gekennzeichnet.",
-      ],
-    },
-    {
-      title:"v9.0.1 — Summer 2026 Design",
-      items:[
-        "Neues Summer-2026-Theme mit einer frischen Kombination aus Himmelblau, Sonnen-Gelb, Blattgrün und warmen Blütenfarben hinzugefügt.",
-        "Der Dashboard-Header wurde für den Sommerstil mit einer dezenten Sonne und floralen Details erweitert.",
-        "Der Sommer-Header enthält jetzt eine leichte Three.js-Szene mit animierter Sonne, Sonnenstrahlen und schwebenden Blütenelementen.",
-        "Die Animation pausiert bei ausgeblendeter Seite und respektiert die Systemeinstellung Bewegung reduzieren.",
-        "Ein eigener SUMMER-2026-Badge zeigt direkt im Header an, dass das saisonale Design aktiv ist.",
-        "Profilbereich, aktive Tabs, Fortschrittsbalken, Buttons und die eigene Platzierungszeile wurden farblich an das Sommerdesign angepasst.",
-        "BETA-Hinweise, Prognose-Status, Wetterwarnungen, Live-Events und Update-Meldungen wurden für eine klare Lesbarkeit im hellen Sommermodus neu abgestimmt.",
-        "Fahrzeuganzahlen, Fahrzeugstatus-Zähler, das WM-VS und das Prozentzeichen bei Coin-Sales wurden im Sommerdesign kontrastreicher gestaltet.",
-        "Der Fahrzeuge-Bereich zeigt jetzt zusätzlich die Gesamtzahl eigener Gebäude, die Anzahl der Gebäudetypen und Fahrzeuge pro Gebäude.",
-        "Der vorhandene Gebäude-API-Abruf wurde reaktiviert, robuster für unterschiedliche Antwortformate gemacht und wird regelmäßig aktualisiert.",
-        "Die Sommeranimationen wurden verstärkt: mehr Blüten, deutlichere Sonnenstrahlen, lebendigere Tiefenbewegung sowie dezente Karten-, Status- und Fortschrittsanimationen.",
-        "Das Skript unterstützt jetzt sowohl www.leitstellenspiel.de als auch polizei.leitstellenspiel.de ohne manuelle Codeänderungen.",
-        "Die zusätzliche @match-Regel https://polizei.leitstellenspiel.de/* wurde ergänzt.",
-        "API-Aufrufe, Profil- und Verbandslinks, Coin-Shop, Kontakt sowie Bild-Fallbacks verwenden automatisch die aktuell geöffnete Spiel-Domain.",
-        "Der bisherige Menüpunkt Fahrzeuge heißt jetzt Fuhrpark & Standorte.",
-        "Die Gebäudestatistik wurde deutlich erweitert und zeigt Wachentypen, Organisationsbereiche, Personal, Zellen, Lagerausbauten sowie gebaute, aktive und im Bau befindliche Ausbauten.",
-        "Die Zahl in der Mitte des Fahrzeugdiagramms verwendet jetzt die jeweilige Theme-Schriftfarbe und bleibt auch im Sommerdesign lesbar.",
-        "Ergebnisse und gespeicherte Tipps im WM-Spielplan wurden im Sommerthema deutlich kontrastreicher gestaltet; insbesondere der Ändern-Button ist nun klar erkennbar.",
-        "Der WM-Spielplan wurde kompakter aufgebaut und zeigt Uhrzeit, Runde, Teams, Stadion, TV und Status platzsparender in einer professionelleren Zeile.",
-        "Einklappbare Gruppentabellen für alle zwölf WM-Gruppen ergänzt; Punkte, Spiele, Tordifferenz und Platzierung werden automatisch aus den geladenen Ergebnissen berechnet.",
-        "Die WM-Gruppentabellen wurden professioneller und deutlich lesbarer gestaltet; Siege, Unentschieden, Niederlagen, Tore, Tordifferenz und Punkte sind jetzt vollständig sichtbar.",
-        "Die Kontraste der Gruppentabellen sowie der Leitstellenspiel-Live-Events unter dem Spielerprofil wurden speziell für das Sommerdesign verbessert.",
-        "Neue Spracheinstellung ergänzt: Das Dashboard kann auf Deutsch, Englisch oder Französisch angezeigt werden.",
-        "Die Wettersuche unterstützt jetzt Deutschland, Österreich, Schweiz, Frankreich und Niederlande über eine eigene Länderauswahl.",
-        "Die Teamseite wurde mit Kennzahlen, Rollenerkennung, Mitgliedersuche, Rollenfilter und direkten Profillinks neu aufgebaut.",
-        "Der Menüpunkt Verlauf erklärt nun transparent, welche lokalen Credit-Stände gespeichert werden und wo die Grenzen dieser Historie liegen.",
-        "Die Lehrgangsseite wurde um Suche, Filter für freie Plätze, Aktualisierung und direkte Links zu den Lehrgängen erweitert.",
-        "Das Wetter zeigt zusätzlich zur Stundenansicht einen 7-Tage-Trend mit Wetterlage, Höchst- und Tiefsttemperatur, Regenwahrscheinlichkeit und maximalem Wind.",
-        "Neues Summer Dark 2026 Theme mit animiertem Mond, funkelndem Sternenhimmel und ruhigen Sternschnuppen ergänzt.",
-        "Die Theme-Auswahl wurde auf Light, Dark, Summer 2026 und Summer Dark 2026 reduziert.",
-        "Die Teamseite sortiert Mitglieder nach Owner, Administrator, Co. Administrator, Lehrgangsmeister, Sprechwunsch Admin, Aufsichtsrat, Finanzminister, Personal und Eventmanager; jede Rolle besitzt eine feste Farbe.",
-        "WM-Gruppentabellen stehen jetzt übersichtlich untereinander und lassen sich pro Gruppe einzeln ein- und ausklappen.",
-        "Schwarze Tabellenflächen und abgeschnittene Ländernamen im hellen Sommerdesign wurden behoben.",
-        "WM-2026, Coin-Sales, Credit-Boosts und weitere Leitstellenspiel-Events werden im Header jetzt als getrennte Live-Badges dargestellt.",
-        "Das Spielerprofil zeigt die erkannten Verbandsrollen als farbige, dezent animierte Rollen-Badges an.",
-        "Das bisherige Bildlogo im Dashboard und im Spiel-Header wurde durch ein modernes, codebasiertes VS-Markenzeichen ersetzt.",
-        "Die Versionsnummer wurde aus dem Dashboard-Header in die untere Statusleiste verschoben.",
-        "Der Tagesverdienst in der Übersicht zeigt jetzt den heutigen Verbandsverdienst; der persönliche Tagesverdienst bleibt in der oberen Schnellanzeige.",
-        "Für deutsche Wetterorte werden Stunden- und 7-Tage-Prognose jetzt gezielt aus dem DWD-ICON-Modell über Open-Meteo geladen; Warnungen stammen weiterhin direkt vom DWD.",
-        "Stundenprognose und 7-Tage-Ausblick sind klar getrennt, beginnen an der aktuellen Stunde und zeigen ihre jeweilige Datenquelle sichtbar an.",
-        "Das Sommerdesign wird beim ersten Start von v9.0.1 einmalig aktiviert und bleibt anschließend frei über die Einstellungen wechselbar.",
-        "Version und Patch-Notes wurden auf v9.0.1 aktualisiert.",
-      ],
-    },
-    {
-      title:"v9.0.0 — Dashboard-Komplettausbau",
-      items:[
-        "Das Verbands-Dashboard wurde als dauerhaft nutzbare Layout-Box und als frei skalierbares Floating-Menü ausgebaut.",
-        "Spielerprofil mit Benutzername, Profilbild, Dienstgrad, Credits, Level-Fortschritt, Prozentanzeige und verbleibenden Credits bis zur Beförderung ergänzt.",
-        "Übersicht um Platzierungsumfeld, 7-Tage-Verbandsverdienst, Kreditverlauf und Verbandsprognose [BETA] erweitert.",
-        "Die Verbandsprognose berechnet aus den lokal gespeicherten Tageswerten Restbetrag, Durchschnitt, voraussichtliche Resttage und das erwartete Erreichungsdatum eines Meilensteins.",
-        "Wettermodul mit Orts- und PLZ-Suche, Stundenprognose, Wetterdetails, DWD-Warnstufen, Warntexten und optionalem Warnton ergänzt.",
-        "WM-Eventbereich mit Spielplan, Ergebnissen, Spielorten, lokalen Tipps, Torschützen und unterstützten Karteninformationen ergänzt.",
-        "Leitstellenspiel-Live-Events, Credit-Boosts, Einsatzrabatte und Coin-Sales werden automatisch aus der Spielnavigation erkannt und mit Countdown angezeigt.",
-        "Spielzeit mit Tageswechsel, 7-Tage-Historie, Ein-/Ausschalter und manueller Rücksetzung ergänzt.",
-        "Lehrgänge, AAO, Team, Verlauf und umfangreiche Darstellungs-, Wetter-, Event- und Update-Einstellungen wurden in einer gemeinsamen Oberfläche zusammengeführt.",
-        "Lokale Speicherung für Einstellungen, Spielzeit, Tipps, Tageswerte, Prognosedaten und den letzten bekannten Verbandsstand stabilisiert.",
-        "Automatische Updates über Tampermonkey-Metadaten sowie eine manuelle Update-Prüfung in den Einstellungen ergänzt.",
-        "Version und Patch-Notes wurden auf v9.0.0 aktualisiert."
-      ]
-    }
-  ];
-  groups.splice(0,groups.length,{
-    title:"v9.5.3 — Großes Dashboard-, WM- und Prognose-Update",
+  const groups=[{
+    title:"v9.6.0 — Maximale Sicherheit, Backup & Stabilität",
     items:[
-      "Der WM-2026-Liveticker wurde professionell in der Mitte des Headers platziert und zeigt heutige beziehungsweise kommende Spiele nebeneinander mit Flaggen, Uhrzeit, Live-Ergebnis und Spielstatus.",
-      "Beendete WM-Spiele bleiben für sechs Stunden mit Endergebnis sichtbar; anschließend wechselt der Header automatisch zurück zu den kommenden Spielen.",
-      "Live-Spielstände werden regelmäßig aktualisiert und neue Tore können als sichtbarer Hinweis gemeldet werden.",
-      "Das Event-Menü wurde zu einem umfangreichen WM Match Center mit Spielplan, Ergebnissen, Stadien, TV-Informationen, Gruppenübersichten und Tipps ausgebaut.",
-      "Die K.-o.-Phase enthält Runde der 32, Achtelfinale, Viertelfinale, Halbfinale, Finale und Spiel um Platz 3 und kann vollständig ein- und ausgeklappt werden.",
-      "Der K.-o.-Plan wurde kompakter und stabiler aufgebaut; feste Riesenhöhen, fehlerhafte Abstände und abgeschnittene Turnierbereiche wurden entfernt.",
-      "Dark, Light, Summer 2026, Summer Dark 2026 und LCARS wurden mit klareren Kontrasten, hochwertigeren Flächen, einheitlicher Typografie und professionelleren Karten überarbeitet.",
-      "Credit-Eingänge können als animierte Buchungs-Popups mit Betrag, Tagesverdienst, Uhrzeit und Ablaufanzeige eingeblendet werden.",
-      "Position, Animation, Anzeigedauer, Mindestbetrag und Popup-Größe Klein, Mittel oder Groß sind individuell einstellbar.",
-      "Mehrere synthetische Benachrichtigungsklänge, Klangvorschau und ein Lautstärkeregler wurden ergänzt; die Wiedergabe wurde für Laptop-Lautsprecher deutlich verstärkt.",
-      "Die Einstellungen wurden in verständliche Bereiche für Oberfläche, Benachrichtigungen, Prognosen, Datenpflege und Hilfe gegliedert.",
-      "Die Übersicht wurde in Verbandskennzahlen, Aktivität, Potenzial sowie Entwicklung und Prognose gegliedert und dadurch deutlich lesbarer gestaltet.",
-      "Der mögliche Gesamtverdienst aller aktuell offenen Einsätze wird kompakt neben dem heutigen Verbandsverdienst angezeigt.",
-      "Die Verdienstschätzung berücksichtigt durchschnittliche Einsatzcredits sowie mögliche Patientenbehandlungen und erwartete Transporte.",
-      "Teure Einsatzberechnungen wurden gebündelt, Metadaten werden indexiert und die Einsatzliste wird nur noch bei tatsächlichen Änderungen neu dargestellt.",
-      "Die Verbandsprognose zeigt das konkrete voraussichtliche Erreichungsdatum, Resttage, Zielfortschritt, aktuellen Stand, Zielwert, fehlende Credits und den Tagesdurchschnitt deutlich hervorgehoben.",
-      "Wochen- und 30-Tage-Tempo, Trend, Datenqualität, Zieltempo und eine grafische Hochrechnung ergänzen die Verbandsprognose.",
-      "Die Spielerprognose besitzt eine große Fokuskarte für das voraussichtliche Beförderungsdatum sowie Resttage, Datenbasis und Fortschritt zum nächsten Dienstgrad.",
-      "Persönliche Rekorde zeigen den besten Tag, den Durchschnitt der gespeicherten Tage, die aktive Verdienstserie und die beste Tagesplatzierung.",
-      "Eine Meilensteinleiste zeigt erreichte Dienstgrade und die unmittelbar nächste Beförderung mit benötigten Credits.",
-      "Die Oberfläche wurde auf unnötige Dopplungen, verwaiste Anzeigen und Performanceprobleme geprüft und an mehreren Stellen stabilisiert.",
-      "Alle in diesem Entwicklungsstand enthaltenen Änderungen werden gemeinsam als Version v9.5.3 geführt."
+      "Der WM-Plan inklusive externem Spielplan-/Zusatzmodul wurde vollständig entfernt: API-Verbindung, Header-Anzeigen, externe Zeitpläne, Ergebnisdaten, Tipps, Hinweise, Sounds, Cache, Styles und Start-Timer sind raus.",
+      "Der Event-Bereich zeigt ausschließlich echte Leitstellenspiel-Events wie Credit-Boosts, Coin-Sales und Einsatz-Events, die direkt aus der Spielnavigation erkannt werden.",
+      "API-Aufrufe besitzen jetzt eine strengere Sicherheits-Allowlist, Retry-Logik, Timeout, Backoff, Request-Deduplizierung und leichtes Rate-Limiting pro Quelle.",
+      "Unsichere oder zu lange URLs sowie nicht erlaubte externe Quellen werden blockiert und in der Diagnose protokolliert.",
+      "In den Einstellungen gibt es ein komplettes JSON-Backup und eine Wiederherstellung für Verlauf, Einstellungen, Prognosedaten, Spielzeit, Aktivitätswerte und Diagnoseinformationen.",
+      "Der Backup-Import ist gehärtet: Dateigrößenlimit, JSON-Prüfung, Backup-Typ, Herkunfts-Domain, Top-Level-Allowlist und Normalisierung aller Werte.",
+      "Support- und Diagnosedateien werden stärker anonymisiert: Namen, IDs, URLs, E-Mails und potenziell sensible Felder werden entfernt, gekürzt oder gehasht.",
+      "Dynamische Profil- und Nachrichtenlinks werden zusätzlich gegen unsichere Protokolle und fremde Origins normalisiert.",
+      "Die Mitgliederansicht rendert große Kategorien gebündelt statt Karte für Karte direkt in den DOM und läuft dadurch bei größeren Verbänden ruhiger.",
+      "Der Ein-/Ausklapp-Button wurde auf die kompakteren Zustände „Offen“ und „Zu“ gekürzt.",
+      "Die Verbandsprognose erklärt die Farbsemantik der Fortschrittsanzeige jetzt direkt mit einer kleinen Legende.",
+      "Alle Patchnotes wurden bereinigt und in diesem aktuellen v9.6.0-Sicherheitsblock zusammengeführt."
     ]
-  });
+  }];
   return groups.map((g,i)=>`<details class="patch-ver"${i===0?" open":""}>
     <summary>${escHtml(g.title)}</summary>
     <div class="patch-ver-body">
@@ -8520,7 +7235,6 @@ GM_addStyle(`
 #lss7.theme-light .ltab[data-tab="tp-event"].active,#lss7.theme-summer .ltab[data-tab="tp-event"].active{color:#fff!important;background:linear-gradient(135deg,#bd6811,#bd2847)!important;}
 @keyframes lss7-event-tab{0%,100%{box-shadow:0 0 0 rgba(245,158,11,0)}50%{box-shadow:0 0 14px rgba(245,158,11,.24)}}
 @media(prefers-reduced-motion:reduce){.ltab[data-tab="tp-event"]{animation:none!important}}
-#lss7.theme-summer .hd-event-badge.event-wm{color:#fff!important;background:#147a45!important;border-color:#0d5d34!important;box-shadow:0 4px 13px rgba(20,122,69,.26)!important;text-shadow:0 1px 1px rgba(0,0,0,.18);}
 .brand-emblem{position:relative;display:inline-flex;align-items:center;justify-content:space-between;gap:6px;overflow:hidden;box-sizing:border-box;border:1px solid rgba(96,165,250,.42);border-radius:9px;background:linear-gradient(120deg,#071426 0%,#12385b 48%,#075e70 100%);box-shadow:0 6px 18px rgba(2,12,27,.30),inset 0 1px rgba(255,255,255,.17),inset 0 -1px rgba(2,12,27,.32);}
 .brand-emblem::before{content:'';position:absolute;inset:0;background:linear-gradient(110deg,transparent 18%,rgba(255,255,255,.16) 46%,transparent 72%);transform:translateX(-120%);animation:lss7-brand-sheen 5.4s ease-in-out infinite;}
 .brand-emblem::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,#38bdf8,#2dd4bf,#4ade80);box-shadow:0 0 8px rgba(45,212,191,.5);}
@@ -8603,8 +7317,6 @@ GM_addStyle(`
 .nav-style-preview .brand-emblem{width:52px;height:29px;padding:0 6px}.nav-style-preview .brand-letter{font-size:12px}.nav-style-preview .brand-signal{width:17px;height:15px}.nav-style-preview-copy{min-width:0;display:flex;flex-direction:column;gap:2px}.nav-style-preview-copy b{font-size:10px}.nav-style-preview-copy span{color:#86efac;font-size:7.5px}.nav-style-preview.preview-logo .nav-style-preview-copy,.nav-style-preview.preview-name .nav-style-preview-copy span,.nav-style-preview.preview-no-event .nav-style-preview-copy span{display:none}.nav-style-preview.preview-name .brand-emblem{display:none}
 .prof-placement{display:flex!important;max-width:none!important;min-height:78px!important;padding:12px 14px 12px 54px!important;border-radius:11px!important;font-size:inherit!important;white-space:normal!important;overflow:hidden!important;}
 .prof-placement-main{display:flex!important;align-items:center!important;gap:9px!important;min-width:0!important;}
-.wm-row.finished .wm-status,.wm-mini-row.finished .wm-mini-s{color:#4ade80!important}.wm-row.planned .wm-status,.wm-mini-row.planned .wm-mini-s{color:#fbbf24!important}.wm-status{font-weight:900}.wm-row.finished{border-left:3px solid rgba(34,197,94,.62)}.wm-row.planned{border-left:3px solid rgba(245,158,11,.62)}
-#lss7.theme-summer .wm-row.finished .wm-status{color:#146b3b!important;background:#e1f6e9;border-color:#58a978}#lss7.theme-summer .wm-row.planned .wm-status{color:#754600!important;background:#fff1bd;border-color:#c58a19}
 @media(max-width:900px){.fleet-status-layout{grid-template-columns:1fr}}
 @media(max-width:920px){#lss7-tabs,#lss7-tabs.player-menu-hidden{display:flex;overflow-x:auto}.lss7-nav-group{flex:0 0 auto;max-width:78vw}}
 @media(max-width:760px){.asset-kpis.asset-kpis-pro{grid-template-columns:repeat(2,minmax(0,1fr))}.building-detail-row{grid-template-columns:minmax(140px,1fr) repeat(3,60px)}.building-detail-row .building-detail-stat:nth-last-child(-n+2){display:none}.nav-style-showcase{grid-template-columns:1fr}.fleet-command{align-items:stretch;flex-direction:column}.fleet-command-badge{align-self:flex-start}.fleet-panel{padding:9px}}
@@ -8684,33 +7396,18 @@ GM_addStyle(`
 #lss7 .hd-sub{margin-top:3px;font-size:9px;font-weight:600;letter-spacing:.18px;}
 #lss7 .hd-meta{gap:8px;}
 #lss7 .hd-events{gap:10px;}
-#lss7 .wm-header-match{
   min-width:248px;max-width:286px;min-height:50px;
   grid-template-columns:minmax(150px,1fr) auto;gap:11px;
   padding:7px 10px 7px 13px;border-radius:11px;
   box-shadow:0 10px 24px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.055);
 }
-#lss7 .wm-header-match::before{width:3px;}
-#lss7 .wm-header-teams{gap:6px;font-size:10.5px;letter-spacing:.05px;}
-#lss7 .wm-header-flag{font-size:16px;}
-#lss7 .wm-header-vs{font-size:7px;opacity:.9;}
-#lss7 .wm-header-state{font-size:8px;letter-spacing:.12px;}
-#lss7 .wm-header-score{min-width:48px;padding:8px 7px;font-size:14px;border-radius:8px;}
-#lss7 .wm-header-match.planned .wm-header-score{font-size:10.5px;}
-#lss7.theme-dark .wm-header-match{--wm-card:#101b2c;--wm-border:rgba(116,164,234,.26);--wm-accent:#5f9cff;--wm-score-bg:#172b47;}
-#lss7.theme-light .wm-header-match{background:linear-gradient(145deg,#fff,#edf2f8);box-shadow:0 10px 25px rgba(35,58,88,.11),inset 0 1px #fff;}
-#lss7.theme-summer .wm-header-match{background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(229,246,247,.96));box-shadow:0 10px 25px rgba(24,100,125,.12),inset 0 1px #fff;}
-#lss7.theme-summer-dark .wm-header-match{background:linear-gradient(145deg,var(--wm-card),#080f20);box-shadow:0 10px 26px rgba(0,0,0,.27),inset 0 1px rgba(255,255,255,.045);}
 #lss7 .prof-strip,#lss7 .sc,#lss7 .set-group,#lss7 .asset-section,#lss7 .fleet-panel,
 #lss7 .event-card,#lss7 .vehicle-summary-card,#lss7 .forecast-controls,#lss7 .forecast-chart-box,
-#lss7 .quality-card,#lss7 .wm-command,#lss7 .wm-focus-card,#lss7 .wm-day,#lss7 .wm-knockout,
-#lss7 .wm-groups,#lss7 .team-category,#lss7 .player-daily-panel{
   border-color:var(--premium-border);
   border-radius:var(--premium-radius);
   background:var(--premium-surface);
   box-shadow:var(--premium-card-shadow);
 }
-#lss7 .sc:hover,#lss7 .vehicle-summary-card:hover,#lss7 .wm-focus-card:hover,#lss7 .team-card:hover{
   border-color:var(--premium-border-strong);
   box-shadow:0 14px 32px rgba(0,0,0,.16),inset 0 1px var(--premium-highlight);
 }
@@ -8726,67 +7423,48 @@ GM_addStyle(`
 #lss7 .lss7-nav-group .ltab.active{background:linear-gradient(135deg,var(--premium-accent),var(--premium-accent-2));box-shadow:0 7px 17px color-mix(in srgb,var(--premium-accent) 25%,transparent);}
 #lss7 .qs-cell{background:transparent;}
 #lss7 .qs-cell:hover{background:var(--premium-highlight);}
-#lss7 .lbtn,#lss7 .wm-filter,#lss7 .wm-groups-toggle,#lss7 .wm-knockout-toggle{
   min-height:32px;border-color:var(--premium-border-strong);border-radius:8px;
   background:linear-gradient(180deg,var(--premium-surface-strong),var(--premium-surface));
   box-shadow:inset 0 1px var(--premium-highlight),0 5px 14px rgba(0,0,0,.08);
   font-weight:850;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease,background .15s ease;
 }
-#lss7 .lbtn:hover,#lss7 .wm-filter:hover,#lss7 .wm-groups-toggle:hover,#lss7 .wm-knockout-toggle:hover{transform:translateY(-1px);border-color:var(--premium-accent);box-shadow:0 8px 18px rgba(0,0,0,.13);}
-#lss7 .lbtn.prime,#lss7 .wm-filter.active{color:#fff;background:linear-gradient(135deg,var(--premium-accent),var(--premium-accent-2));border-color:transparent;}
 #lss7 .lss7-select,#lss7 input,#lss7 select,#lss7 textarea{
   border-color:var(--premium-border-strong)!important;border-radius:8px!important;
   background:var(--premium-surface-strong)!important;color:var(--t1)!important;
   box-shadow:inset 0 1px 2px rgba(0,0,0,.08),0 1px var(--premium-highlight);
 }
 #lss7 .lss7-select:focus,#lss7 input:focus,#lss7 select:focus,#lss7 textarea:focus{outline:none!important;border-color:var(--premium-accent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--premium-accent) 16%,transparent)!important;}
-#lss7 .wm-row,#lss7 .game-event-row,#lss7 .sch-row,#lss7 .arr-row,#lss7 .hist-row,
-#lss7 .rank-mini-row,#lss7 .team-card,#lss7 .wm-ko-match,#lss7 .wm-group-card{
   border-color:var(--premium-border);background:var(--premium-surface);box-shadow:0 5px 15px rgba(0,0,0,.07);
 }
-#lss7 .wm-command,#lss7 .fleet-command,#lss7 .team-command{
   background:linear-gradient(135deg,color-mix(in srgb,var(--premium-accent) 11%,var(--premium-surface)),var(--premium-surface));
   border-color:color-mix(in srgb,var(--premium-accent) 25%,var(--premium-border));
 }
-#lss7 .wm-day-head,#lss7 .wm-groups-head,#lss7 .wm-knockout-head,#lss7 .team-category-head,#lss7 .asset-section-head{
   background:linear-gradient(90deg,var(--premium-highlight),transparent);
   border-color:var(--premium-border);
 }
 #lss7 table th{background:var(--premium-surface-strong)!important;color:var(--t3)!important;border-color:var(--premium-border)!important;}
 #lss7 table td{border-color:var(--premium-border)!important;}
 #lss7 #lss7-ft{background:var(--premium-body);border-color:var(--premium-border);padding:9px 13px;}
-#lss7.theme-light .sc,#lss7.theme-light .set-group,#lss7.theme-light .event-card,#lss7.theme-light .wm-command,
-#lss7.theme-light .wm-focus-card,#lss7.theme-light .wm-day,#lss7.theme-light .wm-knockout,#lss7.theme-light .wm-groups{
   background:rgba(255,255,255,.86);
 }
-#lss7.theme-summer .sc,#lss7.theme-summer .set-group,#lss7.theme-summer .event-card,#lss7.theme-summer .wm-command,
-#lss7.theme-summer .wm-focus-card,#lss7.theme-summer .wm-day,#lss7.theme-summer .wm-knockout,#lss7.theme-summer .wm-groups{
   background:rgba(255,255,255,.79);
 }
 #lss7.theme-lcars{border-radius:18px 8px 8px 18px;}
 #lss7.theme-lcars #lss7-hd{min-height:92px;background:radial-gradient(circle at 86% 20%,rgba(133,214,255,.08),transparent 34%),linear-gradient(145deg,#0b0d12,#050609);border-color:rgba(232,169,88,.22);}
 #lss7.theme-lcars #lss7-hd .hd-row{margin-top:19px;}
-#lss7.theme-lcars .wm-header-match{min-width:248px;max-width:286px;min-height:48px;border-radius:18px 7px 7px 18px;background:linear-gradient(145deg,#11151d,#080a0e);box-shadow:inset 6px 0 var(--wm-accent),0 10px 25px rgba(0,0,0,.30);}
 #lss7.theme-lcars .sc,#lss7.theme-lcars .set-group,#lss7.theme-lcars .asset-section,#lss7.theme-lcars .fleet-panel,
 #lss7.theme-lcars .event-card,#lss7.theme-lcars .vehicle-summary-card,#lss7.theme-lcars .forecast-controls,
-#lss7.theme-lcars .forecast-chart-box,#lss7.theme-lcars .quality-card,#lss7.theme-lcars .wm-command,
-#lss7.theme-lcars .wm-focus-card,#lss7.theme-lcars .wm-day,#lss7.theme-lcars .wm-knockout,#lss7.theme-lcars .wm-groups{
   border-radius:18px 7px 7px 18px;background:#0c0f15;border-color:rgba(232,169,88,.18);
   box-shadow:inset 5px 0 rgba(232,169,88,.75),var(--premium-card-shadow);
 }
 #lss7.theme-lcars .lss7-nav-group{border-radius:18px 7px 7px 18px;background:#0c0f15;}
 #lss7.theme-lcars .lss7-nav-group .ltab{border-radius:13px 5px 5px 13px;background:#10141b;border-color:rgba(232,169,88,.17);}
 #lss7.theme-lcars .lss7-nav-group .ltab.active{color:#ffe2aa!important;background:#241b11!important;border-color:rgba(232,169,88,.52);box-shadow:inset 5px 0 #e8a958;}
-#lss7.theme-lcars .lbtn,#lss7.theme-lcars .wm-filter,#lss7.theme-lcars .wm-groups-toggle,#lss7.theme-lcars .wm-knockout-toggle{border-radius:14px 5px 5px 14px;background:#11151d;color:#fff7e8;border-color:rgba(232,169,88,.28);box-shadow:inset 4px 0 #e8a958;}
-#lss7.theme-lcars .lbtn.prime,#lss7.theme-lcars .wm-filter.active{color:#dff5ff;background:#101c28;border-color:rgba(133,214,255,.42);box-shadow:inset 4px 0 #85d6ff;}
 @media(max-width:1180px){
   #lss7 .hd-events{position:static;transform:none;margin-right:auto;overflow-x:auto;justify-content:flex-start;}
-  #lss7 .wm-header-match{min-width:226px;max-width:255px;}
 }
 @media(max-width:760px){
   #lss7 #lss7-hd{padding:12px;}
-  #lss7 .wm-header-match{min-width:210px;max-width:235px;}
-  #lss7 .wm-header-teams{font-size:9.5px;}
 }
 
 /* Credit income notifications */
@@ -8982,7 +7660,7 @@ function upgradeUi910(){
     $("#tp-settings .settings-intro").first().after(`<div class="set-group set-wide nav-style-setting" id="lss7-nav-style-setting">
       <div class="set-head">Kopfzeilen-Button</div>
       <div class="nav-style-showcase">
-        <div class="nav-style-preview-shell"><div id="lss7-nav-style-preview" class="nav-style-preview">${brandMarkHtml()}<span class="nav-style-preview-copy"><b>Dein Verband</b><span>WM-2026 LIVE</span></span></div></div>
+        <div class="nav-style-preview-shell"><div id="lss7-nav-style-preview" class="nav-style-preview">${brandMarkHtml()}<span class="nav-style-preview-copy"><b>Dein Verband</b><span>Live-Events</span></span></div></div>
         <div><label class="tog-row"><span class="tog-lbl">Darstellung</span>
         <select id="sb-nav-style" class="lss7-select">
           <option value="logo">Nur Logo</option><option value="standard">Standard</option>
@@ -9129,16 +7807,9 @@ function checkUpdate({manual=false}={}){
   if(S.update.checking)return;
   S.update.checking=true;S.update.error="";
   if(manual)setUpdateSettings(`<strong>Update-Prüfung läuft</strong><span>Die aktuelle GitHub-Version wird geprüft...</span>`,"",false);
-  GM_xmlhttpRequest({
-    method:"GET",url:`${UPDATE_URL}?t=${Date.now()}`,timeout:15000,
-    onload(r){
+  requestTextWithRetry(`${UPDATE_URL}?t=${Date.now()}`,{timeout:15000,retries:1,label:"update"},txt=>{
       S.update.checking=false;S.update.lastCheck=Date.now();
-      if(r.status!==200){
-        S.update.error=`HTTP ${r.status}`;
-        if(manual)setUpdateSettings(`<strong>Update-Prüfung fehlgeschlagen</strong><span>GitHub antwortete mit Status ${r.status}. Bitte später erneut versuchen.</span>`,"warn",false);
-        return;
-      }
-      const m=r.responseText.match(/@version\s+([\d.]+)/);
+      const m=String(txt||"").match(/@version\s+([\d.]+)/);
       if(!m){
         if(manual)setUpdateSettings(`<strong>Version nicht erkannt</strong><span>Die Update-Datei wurde geladen, aber die Versionsnummer konnte nicht ermittelt werden.</span>`,"warn",false);
         return;
@@ -9151,15 +7822,9 @@ function checkUpdate({manual=false}={}){
       }else if(manual){
         setUpdateSettings(`<strong>Alles aktuell</strong><span>Installiert ist v${escHtml(V)}. Es ist kein neueres Update verfügbar.</span>`,"good",false);
       }
-    },
-    onerror(){
-      S.update.checking=false;S.update.error="Netzwerkfehler";
-      if(manual)setUpdateSettings(`<strong>Update-Prüfung fehlgeschlagen</strong><span>Die GitHub-Datei konnte nicht erreicht werden. Bitte später erneut versuchen.</span>`,"warn",false);
-    },
-    ontimeout(){
-      S.update.checking=false;S.update.error="Zeitüberschreitung";
-      if(manual)setUpdateSettings(`<strong>Update-Prüfung abgebrochen</strong><span>Die Anfrage dauerte zu lange. Bitte später erneut versuchen.</span>`,"warn",false);
-    }
+  },err=>{
+    S.update.checking=false;S.update.error=String(err||"Netzwerkfehler");
+    if(manual)setUpdateSettings(`<strong>Update-Prüfung fehlgeschlagen</strong><span>Die GitHub-Datei konnte nicht erreicht werden oder wurde blockiert. Bitte später erneut versuchen.</span>`,"warn",false);
   });
 }
 // â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
@@ -9198,8 +7863,7 @@ $(document).ready(()=>{
   fetchWeather();
   renderWeather();
   scanGameEvents();
-  fetchWmEvent();
-  renderWmEvent();
+  renderEventPage();
 
   document.addEventListener("visibilitychange",()=>{
     S.lastTs=Date.now();
@@ -9236,7 +7900,7 @@ $(document).ready(()=>{
   checkUpdate();
 });
 
-window.addEventListener("beforeunload",()=>{clearTimeout(wmRefreshTimer);clearTimeout(creditObserverTimer);clearTimeout(missionEarningsRenderTimer);clearInterval(creditPollTimer);creditObserver?.disconnect();summerSceneCtl?.dispose();save();});
+window.addEventListener("beforeunload",()=>{clearTimeout(creditObserverTimer);clearTimeout(missionEarningsRenderTimer);clearInterval(creditPollTimer);creditObserver?.disconnect();summerSceneCtl?.dispose();save();});
 window.addEventListener("pagehide",save);
 
 })();
