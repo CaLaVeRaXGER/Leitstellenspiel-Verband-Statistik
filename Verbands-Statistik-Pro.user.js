@@ -24,8 +24,8 @@
 // @connect      api.zippopotam.us
 // @connect      www.dwd.de
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
-// @updateURL    https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Verbands-Statistik-Pro
-// @downloadURL  https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Verbands-Statistik-Pro
+// @updateURL    https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Verbands-Statistik-Pro.user.js
+// @downloadURL  https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Verbands-Statistik-Pro.user.js
 // ==/UserScript==
 
 (function () {
@@ -45,7 +45,7 @@ if(/^\/(?:alliances\/\d+|verband(?:\/|$))/i.test(location.pathname))return;
 const V   = "9.6.1";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
-const UPDATE_URL = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Verbands-Statistik-Pro";
+const UPDATE_URL = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Verbands-Statistik-Pro.user.js";
 const SECURITY = {
   maxBackupBytes: 1_500_000,
   maxDiagnosticString: 360,
