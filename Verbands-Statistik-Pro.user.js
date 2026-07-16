@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.6.1
+// @version      9.6.2
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @license      Proprietary - Personal Use Only
@@ -23,9 +23,14 @@
 // @connect      geocoding-api.open-meteo.com
 // @connect      api.zippopotam.us
 // @connect      www.dwd.de
+// @connect      maps.dwd.de
+// @connect      warnung.bund.de
+// @connect      www.tagesschau.de
+// @connect      www.welt.de
+// @connect      www.sportschau.de
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
-// @updateURL    https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Verbands-Statistik-Pro.user.js
-// @downloadURL  https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Verbands-Statistik-Pro.user.js
+// @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
+// @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
 // ==/UserScript==
 
 (function () {
@@ -39,13 +44,13 @@ if(window.top!==window.self)return;
 // Formular-/Beschreibungstexte geraten.
 if(/^\/(?:alliances\/\d+|verband(?:\/|$))/i.test(location.pathname))return;
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  KONFIGURATION                                               â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-const V   = "9.6.1";
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  KONFIGURATION                                               ║
+// ╚══════════════════════════════════════════════════════════════╝
+const V   = "9.6.2";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
-const UPDATE_URL = "https://github.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/raw/refs/heads/main/Verbands-Statistik-Pro.user.js";
+const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
 const SECURITY = {
   maxBackupBytes: 1_500_000,
   maxDiagnosticString: 360,
@@ -65,8 +70,6 @@ const API = {
   vehicles:    `${BASE}/api/v2/vehicles`,
   vDistances:  `${BASE}/api/v1/vehicle_distances.json`,
   pois:        `${BASE}/api/v2/pois`,
-  aaos:        `${BASE}/api/v1/aaos`,
-  aaoCategories:`${BASE}/api/v1/aao_categories`,
   missionTypes:`${BASE}/api/mission_type_data`,
   missionsJson:`${BASE}/einsaetze.json`,
   allianceEventTypes:`${BASE}/alliance_event_types.json`,
@@ -77,6 +80,12 @@ const API = {
   wxForecast: "https://api.open-meteo.com/v1/forecast",
   zipGeo: "https://api.zippopotam.us",
   dwdWarnings: "https://www.dwd.de/DWD/warnungen/warnapp/json/warnings.json",
+};
+const NEWS_SOURCES = {
+  tagesschau:{label:"Tagesschau",category:"Nachrichten",url:"https://www.tagesschau.de/xml/rss2/"},
+  welt:{label:"WELT",category:"Nachrichten",url:"https://www.welt.de/feeds/latest.rss"},
+  sportschau:{label:"Sportschau",category:"Sport",url:"https://www.sportschau.de/index~rss2.xml"},
+  sportschau_fussball:{label:"Sportschau Fußball",category:"Fußball",url:"https://www.sportschau.de/fussball/index~rss2.xml"}
 };
 const DEBUG = false;
 function logDebug(...args){ if(DEBUG) console.debug("[LSS7]",...args); }
@@ -240,13 +249,13 @@ const BUILDING_CATEGORIES = [
   {name:"Organisation",color:"#a855f7",types:[7,14,22,23]}
 ];
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  CSS â€” DESIGN SYSTEM                                         â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  CSS — DESIGN SYSTEM                                         ║
+// ╚══════════════════════════════════════════════════════════════╝
 GM_addStyle(`
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
 
-/* â”€â”€ Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Tokens ─────────────────────────────────────────────────── */
 #lss7 {
   --bg0:#080c12; --bg1:#0d1117; --bg2:#131920; --bg3:#18202a;
   --bg4:#1d2736; --bgh:#1e2d3e; --bgc:#162032;
@@ -272,7 +281,7 @@ GM_addStyle(`
 }
 #lss7 *{box-sizing:border-box;}
 
-/* â”€â”€ Floating Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Floating Panel ──────────────────────────────────────────── */
 #lss7 {
   position:fixed; top:52px; right:14px;
   width:clamp(560px,48vw,860px); max-width:calc(100vw - 24px);
@@ -314,7 +323,7 @@ GM_addStyle(`
   to  {opacity:1;transform:translateY(0)   scale(1)}
 }
 
-/* â”€â”€ Nav Trigger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Nav Trigger ─────────────────────────────────────────────── */
 #lss7-btn {
   display:inline-flex !important;
   align-items:center; gap:7px;
@@ -344,7 +353,7 @@ GM_addStyle(`
 .lss7-nav-lbl{font-size:12px;font-weight:800;color:rgba(255,255,255,.96);letter-spacing:.2px;}
 .lss7-nav-events{display:flex;align-items:center;gap:3px;max-width:250px;overflow:hidden;}
 .lss7-nav-event{font-size:7px;font-weight:900;color:#f9e6a2;letter-spacing:.25px;text-transform:uppercase;white-space:nowrap;}
-.lss7-nav-event+.lss7-nav-event::before{content:"·";margin-right:3px;color:rgba(255,255,255,.38);}
+.lss7-nav-event+.lss7-nav-event::before{content:"/";margin-right:3px;color:rgba(255,255,255,.38);}
 .lss7-nav-arr   { font-size:9px; color:rgba(255,255,255,.45); transition:transform .2s; }
 #lss7-btn.open .lss7-nav-arr { transform:rotate(180deg); }
 #lss7-btn.nav-logo-only{padding:4px 6px;gap:0;}
@@ -364,7 +373,7 @@ GM_addStyle(`
 }
 @keyframes lpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.65)}}
 
-/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Header ──────────────────────────────────────────────────── */
 #lss7-hd {
   flex-shrink:0;
   background:linear-gradient(150deg,#0c1e36 0%,#080c12 65%);
@@ -457,7 +466,7 @@ GM_addStyle(`
 #lss7.emb-collapsed .lacc,
 #lss7.emb-collapsed #lss7-ft{display:none !important;}
 
-/* â”€â”€ Quick-Stats Strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Quick-Stats Strip ───────────────────────────────────────── */
 #lss7-qs {
   flex-shrink:0;
   display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr 1px 1fr 1px 1fr;
@@ -470,6 +479,10 @@ GM_addStyle(`
 .qs-cell{padding:9px 11px;display:flex;flex-direction:column;gap:2px;cursor:default;}
 .qs-cell.clickable{position:relative;cursor:pointer;}
 .qs-cell.clickable:hover{background:rgba(255,255,255,.025);}
+.news-ticker{display:none;align-items:center;gap:9px;min-height:34px;padding:0 10px;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);background:linear-gradient(90deg,rgba(86,204,242,.08),rgba(255,255,255,.02),rgba(34,197,94,.06));overflow:hidden}
+.news-ticker.on{display:flex}.news-ticker-label{flex:0 0 auto;color:var(--cyan);font:950 10px/1 var(--head);text-transform:uppercase;letter-spacing:.8px}.news-ticker-track{position:relative;flex:1;min-width:0;overflow:hidden;white-space:nowrap}.news-ticker-marquee{display:inline-flex;gap:26px;align-items:center;will-change:transform;animation:lss7-news-marquee var(--news-speed,45s) linear infinite}.news-ticker:hover .news-ticker-marquee{animation-play-state:paused}.news-ticker a{color:var(--t2);font-size:11px;font-weight:850;text-decoration:none}.news-ticker a:hover{color:var(--cyan);text-decoration:underline}.news-ticker-source{color:var(--amber);font-weight:950;margin-right:5px}.news-ticker-date{color:var(--t4);font:850 10px/1 var(--mono);margin-right:6px}.news-ticker-empty{color:var(--t4);font-size:11px;font-weight:800}@keyframes lss7-news-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.header-news{border-left:0;border-right:0;background:linear-gradient(90deg,rgba(10,18,36,.64),rgba(255,255,255,.035))}
+.news-source-options{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end}.mini-check{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.035);color:var(--t2);font-size:10px;font-weight:900}.mini-check input{accent-color:var(--cyan)}
 .qs-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t4);}
 .qs-val{font-size:12px;font-weight:700;color:var(--t1);}
 .qs-val.mono{font-family:var(--mono);font-size:12px;letter-spacing:1.2px;color:var(--green);}
@@ -660,7 +673,7 @@ GM_addStyle(`
 }
 .prof-event-strip.idle .prof-event-time{color:var(--t4);}
 
-/* â”€â”€ Notification Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Notification Banner ─────────────────────────────────────── */
 #lss7-notif{flex-shrink:0;display:none;}
 .notif-item{
   display:flex;align-items:center;gap:8px;
@@ -672,7 +685,7 @@ GM_addStyle(`
 .notif-x{margin-left:auto;cursor:pointer;opacity:.6;}
 .notif-x:hover{opacity:1;}
 
-/* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Tabs ────────────────────────────────────────────────────── */
 #lss7-tabs{
   flex-shrink:0;display:flex;
   background:var(--bg1);border-bottom:1px solid var(--b1);
@@ -699,7 +712,7 @@ GM_addStyle(`
 }
 .ltab[data-tab="tp-event"].active{color:#ffe5a8;border-bottom-color:#f6d377;background:rgba(201,146,36,.22);}
 
-/* â”€â”€ Scrollable Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Scrollable Content ──────────────────────────────────────── */
 #lss7-body{
   flex:1;overflow-y:auto;
   scrollbar-width:thin;scrollbar-color:var(--b2) transparent;
@@ -710,7 +723,7 @@ GM_addStyle(`
 .lpanel{display:none;}
 .lpanel.active{display:block;}
 
-/* â”€â”€ Section Label â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Section Label ───────────────────────────────────────────── */
 .lss7-sec{
   padding:6px 14px 3px;
   font-size:9px;font-weight:700;text-transform:uppercase;
@@ -719,7 +732,7 @@ GM_addStyle(`
 }
 .lss7-sec:first-child{border-top:none;margin-top:0;}
 
-/* â”€â”€ Stat Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Stat Grid ───────────────────────────────────────────────── */
 .sg{display:grid;gap:1px;background:var(--b1);}
 .sg2{grid-template-columns:1fr 1fr;}
 .sg3{grid-template-columns:1fr 1fr 1fr;}
@@ -747,18 +760,18 @@ GM_addStyle(`
 .c-cy{color:var(--cyan)  !important;}
 .c-mt{color:var(--t4)    !important;}
 
-/* â”€â”€ Progress Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Progress Bar ────────────────────────────────────────────── */
 .prg{height:3px;border-radius:2px;background:var(--b1);overflow:hidden;margin-top:5px;}
 .prg-fill{height:100%;border-radius:2px;transition:width .6s ease;}
 
-/* â”€â”€ Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Chart ───────────────────────────────────────────────────── */
 #cv-wrap{padding:14px 14px 14px;border-top:1px solid var(--b1);}
 .cv-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .cv-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t4);}
 .cv-meta{font-size:10px;color:var(--t4);}
 #lss7-chart{width:100%;height:96px;display:block;}
 
-/* â”€â”€ Donut â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Donut ───────────────────────────────────────────────────── */
 #donut-wrap{display:flex;align-items:center;gap:14px;padding:14px 14px 10px;}
 #lss7-donut{width:88px;height:88px;flex-shrink:0;}
 #lss7-donut .donut-total{fill:var(--t1);}
@@ -820,7 +833,7 @@ GM_addStyle(`
   .extension-list{grid-template-columns:1fr;}
 }
 
-/* â”€â”€ Vehicle Bars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Vehicle Bars ────────────────────────────────────────────── */
 .vb-wrap{padding:2px 14px 12px;}
 .vb-row{display:flex;align-items:center;gap:7px;margin-bottom:5px;}
 .vb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
@@ -835,7 +848,7 @@ GM_addStyle(`
 }
 .vb-tv{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--t1);}
 
-/* â”€â”€ List Rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── List Rows ───────────────────────────────────────────────── */
 .lrow{
   display:flex;align-items:center;gap:8px;
   padding:7px 14px;border-bottom:1px solid var(--b0);
@@ -989,7 +1002,7 @@ GM_addStyle(`
 @media(max-width:760px){.forecast-details,.forecast-mini.pro .forecast-mini-card,.overview-command{grid-template-columns:1fr}.forecast-mini.pro .forecast-mini-data,.forecast-horizon,.forecast-pro .forecast-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}.overview-command-metrics{min-width:0;grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:560px){.forecast-mini.pro .forecast-mini-data,.forecast-horizon,.forecast-pro .forecast-kpis,.overview-command-metrics{grid-template-columns:1fr}.forecast-canvas{height:130px;}}
 
-/* â”€â”€ Credit History â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Credit History ──────────────────────────────────────────── */
 .hist-row{
   display:flex;gap:8px;padding:5px 14px;
   border-bottom:1px solid var(--b0);font-size:11px;align-items:center;
@@ -1000,7 +1013,7 @@ GM_addStyle(`
 .hist-d{min-width:72px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;}
 .history-explain{margin:10px 12px;}
 
-/* â”€â”€ KM-Tabelle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── KM-Tabelle ──────────────────────────────────────────────── */
 .km-row{
   display:flex;align-items:center;gap:8px;
   padding:5px 14px;border-bottom:1px solid var(--b0);font-size:11px;
@@ -1010,7 +1023,7 @@ GM_addStyle(`
 .km-total{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--t2);min-width:60px;text-align:right;}
 .km-30d  {font-family:var(--mono);font-size:10px;color:var(--green);min-width:58px;text-align:right;}
 
-/* â”€â”€ ARR Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── ARR Table ───────────────────────────────────────────────── */
 .arr-row{
   display:flex;align-items:center;gap:8px;
   padding:6px 14px;border-bottom:1px solid var(--b0);
@@ -1024,7 +1037,7 @@ GM_addStyle(`
 .arr-hk{font-family:var(--mono);font-size:10px;color:var(--t4);background:var(--b1);
   border-radius:3px;padding:1px 5px;flex-shrink:0;}
 
-/* â”€â”€ Team â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Team ────────────────────────────────────────────────────── */
 .tg-head{
   padding:7px 14px 4px;font-size:9px;font-weight:700;
   text-transform:uppercase;letter-spacing:1.2px;color:var(--t4);
@@ -1065,7 +1078,7 @@ GM_addStyle(`
 @media(max-width:1000px){.team-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:640px){.team-summary{grid-template-columns:repeat(2,minmax(0,1fr));}.team-grid{grid-template-columns:1fr;}}
 
-/* â”€â”€ Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Settings ────────────────────────────────────────────────── */
 .set-wrap{padding:14px;display:grid;grid-template-columns:1fr;gap:10px;align-items:start;}
 #lss7.layout .set-wrap{grid-template-columns:repeat(12,minmax(0,1fr));}
 .settings-intro,.set-wide{grid-column:1/-1;}
@@ -1116,11 +1129,58 @@ GM_addStyle(`
 .settings-category-grid>.set-group{grid-column:auto!important;margin:0!important;box-shadow:none!important;}
 .settings-category-grid>.set-group:only-child{grid-column:1/-1!important;}
 .settings-category-grid>.settings-credit-popups,.settings-category-grid>.settings-actions,.settings-category-grid>.settings-export,.settings-category-grid>.settings-diagnostics,.settings-category-grid>.settings-info,.settings-category-grid>.settings-contact,.settings-category-grid>.settings-patch-notes,.settings-category-grid>.settings-updates,.settings-category-grid>.nav-style-setting{grid-column:1/-1!important;}
+.settings-category-grid>.settings-appearance{grid-column:1/-1!important;}
+.settings-appearance{gap:9px!important;}
+.settings-appearance .nav-style-setting{grid-column:1/-1!important;width:100%;margin-top:2px;padding:12px;border-style:solid;background:linear-gradient(135deg,rgba(59,130,246,.075),rgba(14,165,233,.025))!important;}
+.settings-menu{grid-column:1/-1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;position:sticky;top:0;z-index:5;padding:8px;border:1px solid var(--b1);border-radius:12px;background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(30,41,59,.86));backdrop-filter:blur(10px);box-shadow:0 10px 26px rgba(0,0,0,.18)}
+.settings-menu a{display:flex;flex-direction:column;gap:3px;min-height:44px;justify-content:center;padding:7px 9px;border:1px solid rgba(255,255,255,.10);border-radius:9px;background:rgba(255,255,255,.04);color:var(--t2);text-decoration:none;font-size:9px;font-weight:900;line-height:1.15}
+.settings-menu a b{color:var(--t1);font-size:10px}.settings-menu a span{color:var(--t4);font-size:8px;font-weight:800}.settings-menu a:hover{border-color:var(--cyan);color:var(--cyan)}
+.settings-subdivider{display:flex;align-items:center;gap:10px;margin:3px 0 1px;color:var(--t4);font-size:8px;font-weight:950;text-transform:uppercase;letter-spacing:.9px;}
+.settings-subdivider::before,.settings-subdivider::after{content:"";height:1px;background:var(--b1);flex:1;}
 #lss7.theme-light .settings-category,#lss7.theme-summer .settings-category{background:rgba(255,255,255,.52);}
 #lss7.theme-lcars .settings-category{border-radius:18px 7px 7px 18px;background:#090b10;border-color:rgba(232,169,88,.20);box-shadow:inset 5px 0 rgba(232,169,88,.72);}
 #lss7.theme-lcars .settings-category-head{background:#10131a;border-color:rgba(232,169,88,.20);}
+.settings-intro{position:relative;padding:15px 16px 15px 18px;border:1px solid var(--b1);border-radius:12px;background:linear-gradient(135deg,rgba(59,130,246,.11),rgba(34,197,94,.045) 56%,rgba(251,191,36,.055));box-shadow:0 10px 30px rgba(0,0,0,.09),inset 0 1px rgba(255,255,255,.045);}
+.settings-intro::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:0 999px 999px 0;background:linear-gradient(180deg,var(--blue),var(--green),var(--amber));}
+.settings-intro b{display:block;color:var(--t1);font-size:13px;font-weight:950;}
+.settings-intro span{display:block;margin-top:4px;color:var(--t3);font-size:10px;line-height:1.55;}
+.settings-category{border-color:color-mix(in srgb,var(--b2) 80%,transparent);background:linear-gradient(180deg,rgba(255,255,255,.026),rgba(255,255,255,.010));}
+.settings-category-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;background:linear-gradient(90deg,rgba(59,130,246,.12),rgba(34,197,94,.055) 58%,rgba(251,191,36,.045));}
+.settings-category-head b{font-size:13px;letter-spacing:.15px;}
+.settings-category-head span{max-width:620px;font-size:9.5px;}
+.settings-category-grid{gap:12px;padding:12px;background:linear-gradient(180deg,rgba(0,0,0,.035),transparent);}
+.settings-category-grid>.set-group{padding:13px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.014));box-shadow:inset 0 1px rgba(255,255,255,.035),0 8px 20px rgba(0,0,0,.055)!important;}
+.set-head{display:flex;align-items:center;gap:8px;padding-bottom:6px;border-bottom:1px solid var(--b1);font-size:10.5px;letter-spacing:.45px;}
+.set-head::before{content:"";width:7px;height:7px;border-radius:2px;background:linear-gradient(135deg,var(--blue),var(--green));box-shadow:0 0 10px color-mix(in srgb,var(--blue) 45%,transparent);}
+.settings-credit-popups .set-head::before{background:linear-gradient(135deg,var(--amber),var(--green));}
+.settings-diagnostics .set-head::before{background:linear-gradient(135deg,var(--purple),var(--cyan));}
+.settings-updates .set-head::before{background:linear-gradient(135deg,var(--green),var(--cyan));}
+.settings-contact .set-head::before{background:linear-gradient(135deg,var(--pink),var(--amber));}
+.tog-row{border:1px solid transparent;border-radius:8px;padding:7px 8px;background:rgba(255,255,255,.016);}
+.tog-row:hover{border-color:var(--b1);background:rgba(255,255,255,.032);}
+.tog-lbl{font-size:10px;font-weight:850;color:var(--t2);}
+.lss7-select{min-height:32px;border-radius:8px;}
+.settings-feature-grid{gap:10px;}
+.update-actions,.diagnostics-actions{gap:8px;}
+.settings-category .lbtn{min-height:32px;}
+.credit-history-panel,.credit-day-summary-panel{margin-top:2px;border:1px solid var(--b1);border-radius:10px;background:rgba(255,255,255,.018);overflow:hidden;}
+.credit-history-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-bottom:1px solid var(--b1);background:rgba(255,255,255,.025);}
+.credit-history-head b{color:var(--t1);font-size:10px;font-weight:950;}
+.credit-history-head span{color:var(--t4);font-size:8px;text-transform:uppercase;letter-spacing:.6px;}
+.credit-history-list{display:flex;flex-direction:column;gap:5px;max-height:170px;overflow:auto;padding:8px;}
+.credit-history-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:7px 8px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);}
+.credit-history-row span{min-width:0;}
+.credit-history-row b{display:block;color:var(--t1);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.credit-history-row small{display:block;margin-top:2px;color:var(--t4);font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.credit-history-row strong{color:var(--greenh);font:950 9px/1 var(--mono);}
+.credit-history-row em{color:var(--t4);font:850 8px/1 var(--mono);font-style:normal;}
+.credit-day-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;padding:8px;}
+.credit-day-kpi{min-width:0;padding:8px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);}
+.credit-day-kpi span{display:block;color:var(--t4);font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:.55px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.credit-day-kpi b{display:block;margin-top:4px;color:var(--t1);font:950 10px/1.1 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+@media(max-width:760px){.credit-day-summary{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:920px){.settings-feature-grid,.settings-info-grid{grid-template-columns:1fr}.settings-contact .set-note,.diagnostics-actions{grid-template-columns:1fr}.settings-contact .lbtn{width:100%}}
-@media(max-width:760px){#lss7.layout .set-wrap{grid-template-columns:1fr}.set-wide,.settings-intro{grid-column:1}.settings-category-grid{grid-template-columns:1fr}.settings-category-grid>.set-group{grid-column:1!important;}}
+@media(max-width:760px){#lss7.layout .set-wrap{grid-template-columns:1fr}.set-wide,.settings-intro{grid-column:1}.settings-category-grid{grid-template-columns:1fr}.settings-category-grid>.set-group{grid-column:1!important;}.settings-menu{grid-template-columns:1fr 1fr;position:relative}}
 .lbtn{
   display:flex;align-items:center;gap:8px;padding:9px 12px;
   font-size:12px;font-weight:600;font-family:var(--font);
@@ -1276,8 +1336,11 @@ GM_addStyle(`
 .wx-day-temp{display:block;color:var(--t1);font:900 10px/1.3 var(--mono);white-space:nowrap;}
 .wx-day-meta{display:flex;justify-content:center;gap:6px;margin-top:4px;color:var(--t4);font-size:8px;white-space:nowrap;}
 .wx-alert{margin-top:6px;font-size:10px;color:var(--amber);}
+.wx-warnings{grid-column:1/-1;display:flex;flex-direction:column;gap:7px;min-width:0;}
+.wx-warnings-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--t3);font-size:8px;font-weight:900;letter-spacing:.65px;text-transform:uppercase;}
+.wx-warnings-head span{color:var(--t4);font-weight:750;letter-spacing:0;text-transform:none;}
 .wx-warn{
-  grid-column:1/-1;padding:8px 9px;border-radius:7px;border:1px solid var(--b1);font-size:10px;line-height:1.35;display:block;width:auto;
+  padding:8px 9px;border-radius:7px;border:1px solid var(--b1);font-size:10px;line-height:1.35;display:block;width:auto;
 }
 .wx-warn b{font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
 .wx-warn.lvl0{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:#4ade80;}
@@ -1285,11 +1348,40 @@ GM_addStyle(`
 .wx-warn.lvl3{background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.35);color:#fb923c;}
 .wx-warn.lvl4{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#f87171;}
 .wx-warn.lvl5{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.35);color:#c084fc;}
+.wx-warn.pre{background:rgba(239,68,68,.16)!important;border-color:rgba(248,113,113,.58)!important;color:#fecaca!important;box-shadow:inset 4px 0 #ef4444;}
 .wx-src{grid-column:1/-1;font-size:9px;color:var(--t4);text-align:right;opacity:.72;margin-top:-4px;}
 .wx-details{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
 .wx-detail{padding:6px 8px;border-radius:7px;border:1px solid var(--b1);background:rgba(255,255,255,.025);}
 .wx-detail-k{display:block;font-size:8px;color:var(--t4);text-transform:uppercase;letter-spacing:.6px;font-weight:800;}
 .wx-detail-v{display:block;margin-top:2px;font-size:10px;color:var(--t1);font-family:var(--mono);font-weight:800;}
+.weather-center{display:flex;flex-direction:column;gap:10px;}
+.weather-center-hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(240px,.9fr);gap:10px;align-items:stretch;}
+.weather-center-main,.weather-center-panel{border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.025);padding:12px;min-width:0;}
+.weather-center-place{display:flex;align-items:center;gap:10px;min-width:0}.weather-center-place i{font-style:normal;font-size:34px;line-height:1}.weather-center-place b{display:block;color:var(--t1);font:900 18px/1.15 var(--head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.weather-center-place span{display:block;margin-top:3px;color:var(--t3);font-size:10px}
+.weather-center-temp{margin-top:12px;color:var(--cyan);font:950 30px/1 var(--mono)}.weather-center-temp small{color:var(--t4);font-size:11px}
+.weather-center-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.weather-center-kpi{border:1px solid var(--b1);border-radius:8px;background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.018));padding:9px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}.weather-center-kpi span{display:block;color:var(--t4);font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.55px}.weather-center-kpi b{display:block;margin-top:5px;color:var(--t1);font:900 12px/1.15 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.weather-report{color:var(--t2);font-size:11px;line-height:1.55}.weather-report b{color:var(--t1)}
+.weather-link-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.weather-link-row a{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:0 10px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.035);color:var(--t2);font-size:10px;font-weight:900;text-decoration:none}.weather-link-row a:hover{border-color:var(--cyan);color:var(--cyan)}
+.weather-center-search{display:grid;grid-template-columns:minmax(180px,1fr) 150px auto;gap:8px;align-items:end}.weather-center-search label{display:flex;flex-direction:column;gap:5px;color:var(--t4);font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.55px}.weather-center-search .lss7-select{width:100%;max-width:none}
+.weather-media-grid{display:grid;grid-template-columns:minmax(320px,.95fr) minmax(420px,1.35fr);gap:10px;align-items:stretch}
+.weather-radar{height:520px;border:1px solid var(--b1);border-radius:8px;overflow:hidden;background:#07111f}.weather-radar.resizable{resize:both;min-height:360px;min-width:320px;max-width:100%;overflow:auto}.weather-warning-map{height:520px;position:relative;display:flex;flex-direction:column;gap:10px;padding:12px;background:radial-gradient(circle at 20% 20%,rgba(91,141,239,.14),transparent 28%),linear-gradient(135deg,rgba(7,17,31,.98),rgba(18,28,52,.98))}.weather-warning-official{padding:0;background:#eef3f8}.weather-warning-img{width:100%;max-height:260px;object-fit:contain;border:1px solid rgba(15,23,42,.18);border-radius:8px;background:#fff}.weather-warning-img.is-hidden{display:none}.weather-radar iframe{width:100%;height:100%;border:0;display:block}.weather-radar-empty{height:100%;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:11px;text-align:center;padding:20px}
+.dwd-map-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.dwd-map-head b{display:block;color:var(--t1);font:900 15px/1.2 var(--head)}.dwd-map-head span{display:block;margin-top:3px;color:var(--t4);font-size:10px;font-weight:800}.dwd-map-badge{border:1px solid var(--b1);border-radius:7px;padding:6px 8px;color:var(--t2);font:900 11px/1 var(--mono);background:rgba(255,255,255,.04)}
+.dwd-map-area{position:relative;flex:1;min-height:260px;border:1px solid rgba(255,255,255,.12);border-radius:8px;overflow:hidden;background:linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(0deg,rgba(255,255,255,.035) 1px,transparent 1px),radial-gradient(circle at 52% 46%,rgba(47,196,170,.18),transparent 34%);background-size:42px 42px,42px 42px,auto}
+.dwd-map-marker{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:var(--cyan);box-shadow:0 0 0 8px rgba(86,204,242,.15),0 0 24px rgba(86,204,242,.45)}
+.dwd-warning-stack{display:flex;flex-direction:column;gap:7px;max-height:210px;overflow:auto;padding-right:3px}.dwd-warning-card{border:1px solid var(--b1);border-left:4px solid var(--green);border-radius:8px;padding:8px;background:rgba(255,255,255,.04)}.dwd-warning-card.lvl1{border-left-color:#facc15}.dwd-warning-card.lvl2{border-left-color:#fb923c}.dwd-warning-card.lvl3,.dwd-warning-card.lvl4{border-left-color:#ef4444}.dwd-warning-card.pre{border-left-color:#dc2626;background:rgba(127,29,29,.24)}.dwd-warning-card b{display:block;color:var(--t1);font-size:11px}.dwd-warning-card span{display:block;margin-top:3px;color:var(--t3);font-size:10px;line-height:1.35}
+.dwd-local-list{margin-top:10px}.dwd-local-list .dwd-warning-stack{max-height:160px}
+.dwd-click-details{margin-top:10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.03);padding:10px}.dwd-click-details-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;color:var(--t1);font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:.5px}.dwd-click-details-head span{color:var(--t4);font-size:10px}.dwd-click-details-body{display:flex;flex-direction:column;gap:7px;max-height:260px;overflow:auto}
+.dwd-legend{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:8px 18px;margin-top:10px;padding:10px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.03)}
+.dwd-legend-col{display:flex;flex-direction:column;gap:8px}
+.dwd-legend-item{display:flex;align-items:center;gap:9px;color:var(--t2);font-size:11px;font-weight:800;min-width:0}.dwd-legend-swatch{width:14px;height:14px;border:1px solid rgba(255,255,255,.45);box-shadow:0 0 0 1px rgba(0,0,0,.18) inset;flex:0 0 auto}.dwd-legend-swatch.purple{background:#7a0045}.dwd-legend-swatch.red{background:#e53935}.dwd-legend-swatch.orange{background:#f59e0b}.dwd-legend-swatch.yellow{background:#fff04a}.dwd-legend-swatch.pre{background:repeating-linear-gradient(135deg,#f7c7c7 0 2px,#8b1d1d 2px 4px)}.dwd-legend-swatch.hotx{background:#a020f0}.dwd-legend-swatch.hot{background:#c084fc}.dwd-legend-swatch.uv{background:#f04adb}.dwd-legend-swatch.green{background:#b7ef6a}
+.weather-map-note{margin-top:7px;color:var(--t4);font-size:10px;font-weight:800}
+.weather-radar-controls{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.weather-radar-mode{min-height:28px;padding:0 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.035);color:var(--t2);font-size:10px;font-weight:900;cursor:pointer}
+.weather-radar-mode:hover{border-color:var(--cyan);color:var(--cyan)}
+.weather-radar-mode.active{border-color:rgba(94,234,212,.7);background:linear-gradient(135deg,rgba(45,212,191,.22),rgba(96,165,250,.14));color:var(--t1);box-shadow:0 0 0 1px rgba(94,234,212,.12) inset}
+.weather-center .weather-forecast,.weather-center .wx-trend{overflow-x:auto}.weather-center .wx-warnings{margin-top:0}
+@media(max-width:1100px){.weather-media-grid{grid-template-columns:1fr}.weather-radar,.weather-warning-map{height:420px}}
+@media(max-width:900px){.weather-center-hero{grid-template-columns:1fr}.weather-center-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.weather-center-search{grid-template-columns:1fr}.weather-radar,.weather-warning-map{height:320px}}
 #lss7:not(.layout) .wx-card{grid-template-columns:1fr;max-width:none;}
 #lss7:not(.layout) .weather-forecast{grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible;}
 #lss7:not(.layout) .wx-details{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -1806,7 +1898,7 @@ body.lss7-lcars-global .panel,body.lss7-lcars-global .well,body.lss7-lcars-globa
 }
 .patch-ver summary::-webkit-details-marker{display:none;}
 .patch-ver summary::before{
-  content:"›";display:inline-flex;align-items:center;justify-content:center;
+  content:">";display:inline-flex;align-items:center;justify-content:center;
   width:16px;height:16px;border-radius:5px;border:1px solid var(--b1);
   color:var(--t3);transition:transform .16s ease;
 }
@@ -1914,7 +2006,7 @@ a.rank-mini-n:hover{color:var(--blueh);text-decoration:underline;}
 .player-forecast-kpi{padding:11px;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.02);min-width:0;}
 .player-forecast-kpi span{display:block;font-size:8px;color:var(--t4);text-transform:uppercase;letter-spacing:.7px;font-weight:850}.player-forecast-kpi b{display:block;margin-top:5px;color:var(--t1);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .player-forecast-progress{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid var(--b1);}.player-forecast-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green));transition:width .35s ease;}
-.player-rank-context{display:flex;flex-direction:column;gap:5px}.player-rank-row{display:grid;grid-template-columns:56px minmax(0,1fr) 150px;gap:8px;padding:7px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.02);font-size:10px;}.player-rank-row.me{border-color:rgba(59,130,246,.42);background:var(--blue3)}.player-rank-row span:last-child{text-align:right;color:var(--greenh);font-family:var(--mono)}.player-rank-row a,.player-rank-row b{color:var(--t1);font-weight:850;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none}.player-rank-row a:hover{color:var(--blueh);text-decoration:underline}
+.player-rank-context{display:flex;flex-direction:column;gap:5px;}.player-rank-row{display:grid;grid-template-columns:56px minmax(0,1fr) 150px;gap:8px;padding:7px 9px;border:1px solid var(--b1);border-radius:7px;background:rgba(255,255,255,.02);font-size:10px;}.player-rank-row.me{border-color:rgba(59,130,246,.42);background:var(--blue3);box-shadow:0 0 0 1px rgba(59,130,246,.18),inset 4px 0 var(--blue)}.player-rank-row span:last-child{text-align:right;color:var(--greenh);font-family:var(--mono)}.player-rank-row a,.player-rank-row b{color:var(--t1);font-weight:850;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none}.player-rank-row a:hover{color:var(--blueh);text-decoration:underline}
 .rank-delta.up,.prof-placement-history.up{color:#86efac!important}.rank-delta.down,.prof-placement-history.down{color:#fca5a5!important}.rank-delta.neutral,.prof-placement-history.neutral{color:var(--t3)!important}
 .rank-delta,.prof-placement-history{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-weight:950;line-height:1.2;max-width:100%;flex-wrap:nowrap;transform:none!important;writing-mode:horizontal-tb!important;}
 .player-forecast-kpi b.rank-delta{display:flex!important;align-items:center!important;gap:6px!important;margin-top:5px!important;overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important;min-height:18px;}
@@ -1952,9 +2044,9 @@ a.rank-mini-n:hover{color:var(--blueh);text-decoration:underline;}
 @media(max-width:560px){.player-forecast.pro .player-forecast-grid,.player-forecast-hero-grid{grid-template-columns:1fr;}}
 `);
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  STATE                                                       â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  STATE                                                       ║
+// ╚══════════════════════════════════════════════════════════════╝
 const S = {
   playtime:0, lastTs:Date.now(),
   lastAlliCreds:0, dailyEarn:0,
@@ -1969,8 +2061,9 @@ const S = {
   playerRanking:{rank:null,status:"",rows:[],lastTs:0,loading:false},
   playerRankHistory:{date:"",startRank:null,lastRank:null,bestRank:null,worstRank:null,updates:0,lastTs:0},
   allianceId:null, allianceName:"", allianceRank:null, allianceCredits:0,
-  weather:null, weatherTs:0, weatherLoc:"",
+  weather:null, weatherTs:0, weatherLoc:"", weatherLoading:"",
   gameEvents:[],
+  news:{items:[],lastTs:0,loading:false,error:""},
   profile:{name:"-",since:"-",avatar:"",rank:"-",progress:0,progressText:"-",reward:"",needText:"",roles:[],totalCredits:0},
   weatherAlertKey:"",
   lastApiTs:null,
@@ -1978,7 +2071,8 @@ const S = {
   allianceActivity:{date:"",missions:0,patients:0,prisoners:0,seen:[]},
   allianceActivityLive:{},
   currentMissions:{},
-  dataCache:{vehicles:{},buildings:[],schoolings:[],aaos:[],aaoCategories:[],pois:[],missionTypes:null,missions:[],missionMetaById:{},missionMetaByName:{},allianceEventTypes:[],lastMetaTs:0},
+  creditPopupHistory:[],
+  dataCache:{vehicles:{},buildings:[],schoolings:[],pois:[],missionTypes:null,missions:[],missionMetaById:{},missionMetaByName:{},allianceEventTypes:[],lastMetaTs:0},
   update:{previousVersion:"",justUpdated:false,availableVersion:"",checking:false,lastCheck:0,error:""},
   diagnostics:{errors:[],created:0,lastReportTs:0,lastAnalysis:null},
   settings:{
@@ -1997,12 +2091,17 @@ const S = {
     weatherMode:"off", // off | settings | overview
     weatherSound:false,
     weatherTone:"beep",
+    weatherRadarMode:"radar",
     eventMode:"overview", // off | overview
+    newsTicker:false,
+    newsSources:["tagesschau"],
+    newsSpeed:90,
     creditPopupEnabled:true,
     creditPopupSound:true,
     creditPopupSoundType:"kaching",
     creditPopupVolume:65,
     creditPopupSize:"medium",
+    creditPopupDesign:"premium",
     creditPopupPosition:"right-center",
     creditPopupAnimation:"slide",
     creditPopupDuration:5000,
@@ -2016,9 +2115,9 @@ const S = {
   },
 };
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  PERSISTENCE                                                 â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  PERSISTENCE                                                 ║
+// ╚══════════════════════════════════════════════════════════════╝
 function save(){
   const today=todayStr();
   GM_setValue("v7_pt",  S.playtime);
@@ -2034,6 +2133,7 @@ function save(){
   GM_setValue("v7_player_rank",JSON.stringify(S.playerRanking));
   GM_setValue("v7_player_rank_hist",JSON.stringify(S.playerRankHistory));
   GM_setValue("v7_alliance_activity",JSON.stringify(S.allianceActivity));
+  GM_setValue("v7_credit_popup_history",JSON.stringify(S.creditPopupHistory));
   GM_setValue("v7_diag",JSON.stringify(S.diagnostics));
   GM_setValue("v7_set", JSON.stringify(S.settings));
 }
@@ -2052,7 +2152,7 @@ function loadWeatherCache(){
   try{
     const cache=JSON.parse(GM_getValue("v7_wx_cache","null"));
     if(!cache || cache.loc!==locKey || !cache.data) return;
-    if(Date.now()-(Number(cache.ts)||0)>10800000) return;
+    if(Date.now()-(Number(cache.ts)||0)>86400000) return;
     S.weather=cache.data;
     S.weatherTs=Number(cache.ts)||Date.now();
     S.weatherLoc=locKey;
@@ -2076,6 +2176,7 @@ function load(){
   try{Object.assign(S.playerRanking,JSON.parse(GM_getValue("v7_player_rank","{}"))||{});}catch{}
   try{Object.assign(S.playerRankHistory,JSON.parse(GM_getValue("v7_player_rank_hist","{}"))||{});}catch{}
   try{Object.assign(S.allianceActivity,JSON.parse(GM_getValue("v7_alliance_activity","{}"))||{});}catch{}
+  try{S.creditPopupHistory=JSON.parse(GM_getValue("v7_credit_popup_history","[]"))||[];}catch{S.creditPopupHistory=[];}
   try{Object.assign(S.diagnostics,JSON.parse(GM_getValue("v7_diag","{}"))||{});}catch{}
   S.diagnostics.errors=Array.isArray(S.diagnostics.errors)?S.diagnostics.errors.slice(0,40):[];
   S.diagnostics.created=Math.max(0,Number(S.diagnostics.created)||0);
@@ -2087,6 +2188,7 @@ function load(){
   S.allianceActivity.prisoners=Math.max(0,Number(S.allianceActivity.prisoners)||0);
   S.allianceActivity.seen=Array.isArray(S.allianceActivity.seen)?S.allianceActivity.seen.map(String).slice(-500):[];
   if(S.allianceActivity.date!==today)S.allianceActivity={date:today,missions:0,patients:0,prisoners:0,seen:[]};
+  S.creditPopupHistory=Array.isArray(S.creditPopupHistory)?S.creditPopupHistory.slice(0,20):[];
   S.playerRanking.loading=false;
   normalizePlayerRankHistory();
   if(newDay && saved && storedPlaytime>0)recordPlaytimeDay(saved,storedPlaytime);
@@ -2117,8 +2219,13 @@ function load(){
   }
   const validWeatherModes=["off","settings","overview"];
   if(!validWeatherModes.includes(S.settings.weatherMode)) S.settings.weatherMode="off";
+  if(!["radar","rain","thunder","wind"].includes(S.settings.weatherRadarMode))S.settings.weatherRadarMode="radar";
   const validEventModes=["off","overview"];
   if(!validEventModes.includes(S.settings.eventMode)) S.settings.eventMode="overview";
+  if(typeof S.settings.newsTicker!=="boolean")S.settings.newsTicker=false;
+  S.settings.newsSources=(Array.isArray(S.settings.newsSources)?S.settings.newsSources:["tagesschau"]).filter(id=>NEWS_SOURCES[id]);
+  if(!S.settings.newsSources.length)S.settings.newsSources=["tagesschau"];
+  S.settings.newsSpeed=[45,65,90].includes(Number(S.settings.newsSpeed))?Number(S.settings.newsSpeed):90;
   if(typeof S.settings.weatherSound!=="boolean") S.settings.weatherSound=false;
   if(typeof S.settings.creditPopupEnabled!=="boolean")S.settings.creditPopupEnabled=true;
   if(typeof S.settings.creditPopupSound!=="boolean")S.settings.creditPopupSound=true;
@@ -2126,6 +2233,7 @@ function load(){
   const creditVolume=Number(S.settings.creditPopupVolume);
   S.settings.creditPopupVolume=Number.isFinite(creditVolume)?Math.max(0,Math.min(100,Math.round(creditVolume))):65;
   if(!["small","medium","large"].includes(S.settings.creditPopupSize))S.settings.creditPopupSize="medium";
+  if(!["premium","compact","glass","classic","contrast","terminal"].includes(S.settings.creditPopupDesign))S.settings.creditPopupDesign="premium";
   if(!["right-top","right-center","right-bottom","left-top","left-center","left-bottom"].includes(S.settings.creditPopupPosition))S.settings.creditPopupPosition="right-center";
   if(!["slide","float","scale","bounce","fade"].includes(S.settings.creditPopupAnimation))S.settings.creditPopupAnimation="slide";
   S.settings.creditPopupDuration=Math.max(2000,Math.min(12000,Number(S.settings.creditPopupDuration)||5000));
@@ -2150,9 +2258,9 @@ function load(){
   if(newDay)save();
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  UTILITIES                                                   â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  UTILITIES                                                   ║
+// ╚══════════════════════════════════════════════════════════════╝
 function todayStr(){return localDateKey();}
 function uiLocale(){return S.settings.language==="fr"?"fr-FR":S.settings.language==="en"?"en-GB":"de-DE";}
 function tr(text){return I18N[S.settings.language]?.[String(text)]||String(text);}
@@ -2280,7 +2388,7 @@ function refreshHotkeyButtons(){
     const key=String($(this).data("hotkey-key")||"");
     $(this).toggleClass("recording",activeHotkeyCapture===key);
     $(this).find(".hotkey-value").text(activeHotkeyCapture===key?"Taste drücken...":hotkeyLabel(S.settings[key]));
-    $(this).find(".hotkey-hint").text(activeHotkeyCapture===key?"Esc bricht ab · Entf löscht":"Klicken zum Ändern");
+    $(this).find(".hotkey-hint").text(activeHotkeyCapture===key?"Esc bricht ab - Entf löscht":"Klicken zum Ändern");
   });
 }
 function startHotkeyCapture(key){
@@ -2492,7 +2600,8 @@ function shouldRetryStatus(status){return status===0||status===-1||status===408|
 function requestAllowedOrigins(){
   return new Set([
     location.origin,BASE,"https://raw.githubusercontent.com","https://github.com",
-    "https://api.open-meteo.com","https://geocoding-api.open-meteo.com","https://api.zippopotam.us","https://www.dwd.de"
+    "https://api.open-meteo.com","https://geocoding-api.open-meteo.com","https://api.zippopotam.us","https://www.dwd.de",
+    "https://warnung.bund.de","https://www.tagesschau.de","https://www.welt.de","https://www.sportschau.de"
   ]);
 }
 function normalizeRequestUrl(url){
@@ -2607,6 +2716,71 @@ function jsonGet(url,cb,onErr){
     catch{fallback();}
   },()=>fallback());
 }
+function parseNewsFeed(xml,source){
+  const doc=new DOMParser().parseFromString(String(xml||""),"text/xml");
+  const nodes=[...doc.querySelectorAll("item, entry")].slice(0,8);
+  return nodes.map(node=>{
+    const title=node.querySelector("title")?.textContent?.trim()||"";
+    let link=node.querySelector("link")?.textContent?.trim()||node.querySelector("guid")?.textContent?.trim()||"";
+    const atomLink=node.querySelector("link[href]")?.getAttribute("href");
+    if(atomLink)link=atomLink;
+    const dateText=node.querySelector("pubDate, updated, published")?.textContent?.trim()||"";
+    const ts=Date.parse(dateText)||Date.now();
+    const cfg=NEWS_SOURCES[source]||{};
+    return title&&link?{source:cfg.label||source,category:cfg.category||"",title,link,ts}:null;
+  }).filter(Boolean);
+}
+function formatNewsTimestamp(ts){
+  const d=new Date(Number(ts)||Date.now());
+  if(Number.isNaN(d.getTime()))return "";
+  const sameDay=d.toDateString()===new Date().toDateString();
+  const time=d.toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit"});
+  return sameDay?`Heute ${time}`:`${d.toLocaleDateString(uiLocale(),{day:"2-digit",month:"2-digit"})} ${time}`;
+}
+function activeNewsSources(){
+  const list=Array.isArray(S.settings.newsSources)?S.settings.newsSources:["tagesschau"];
+  return list.filter(id=>NEWS_SOURCES[id]);
+}
+function renderNewsTicker(){
+  const box=$("#lss7-news-ticker");
+  const inner=$("#news-ticker-marquee");
+  if(!box.length)return;
+  box.toggleClass("on",!!S.settings.newsTicker);
+  box.css("--news-speed",`${Math.max(20,Number(S.settings.newsSpeed)||65)}s`);
+  if(!S.settings.newsTicker)return;
+  const items=(S.news.items||[]).slice(0,18);
+  if(!items.length){
+    inner.html(`<span class="news-ticker-empty">${escHtml(S.news.error||"News werden geladen...")}</span>`);
+    return;
+  }
+  const html=items.map(item=>`<a href="${escHtml(item.link)}" target="_blank" rel="noopener"><span class="news-ticker-source">${escHtml(item.source)}</span><span class="news-ticker-date">${escHtml(formatNewsTimestamp(item.ts))}</span>${escHtml(item.title)}</a>`).join("");
+  inner.html(html+html);
+}
+function fetchNewsTicker(force=false){
+  if(!S.settings.newsTicker){renderNewsTicker();return;}
+  if(S.news.loading)return;
+  if(!force && S.news.items.length && Date.now()-S.news.lastTs<600000){renderNewsTicker();return;}
+  const sources=activeNewsSources();
+  if(!sources.length){S.news.items=[];S.news.error="Keine News-Quelle ausgewählt.";renderNewsTicker();return;}
+  S.news.loading=true;S.news.error="";
+  let pending=sources.length;
+  const all=[];
+  const done=()=>{
+    pending--;
+    if(pending>0)return;
+    S.news.loading=false;
+    S.news.items=all.sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,24);
+    S.news.lastTs=Date.now();
+    if(!S.news.items.length)S.news.error="Keine News abrufbar.";
+    renderNewsTicker();
+  };
+  sources.forEach(id=>{
+    requestTextWithRetry(NEWS_SOURCES[id].url,{timeout:10000,retries:1,record:false,label:"news"},txt=>{
+      all.push(...parseNewsFeed(txt,id));
+      done();
+    },()=>done());
+  });
+}
 function apiArray(data,...keys){
   if(Array.isArray(data))return data;
   for(const key of keys){
@@ -2667,7 +2841,7 @@ function backupPayload(){
       playtime:S.playtime,lastTs:S.lastTs,lastAlliCreds:S.lastAlliCreds,dailyEarn:S.dailyEarn,lastDate:S.lastDate,
       creditHist:S.creditHist,allianceDaily:S.allianceDaily,allianceSnapshot:S.allianceSnapshot,playtimeDaily:S.playtimeDaily,
       playerDaily:S.playerDaily,playerRanking:S.playerRanking,playerRankHistory:S.playerRankHistory,
-      allianceActivity:S.allianceActivity,diagnostics:S.diagnostics,settings:S.settings,weatherCache:S.weather?{loc:S.weatherLoc,ts:S.weatherTs,data:S.weather}:null
+      allianceActivity:S.allianceActivity,creditPopupHistory:S.creditPopupHistory,diagnostics:S.diagnostics,settings:S.settings,weatherCache:S.weather?{loc:S.weatherLoc,ts:S.weatherTs,data:S.weather}:null
     }
   };
 }
@@ -2721,6 +2895,7 @@ function restoreBackupPayload(payload){
   GM_setValue("v7_player_rank",JSON.stringify(sanitizeBackupObject(d.playerRanking,{})));
   GM_setValue("v7_player_rank_hist",JSON.stringify(sanitizeBackupObject(d.playerRankHistory,{})));
   GM_setValue("v7_alliance_activity",JSON.stringify(sanitizeBackupObject(d.allianceActivity,{})));
+  GM_setValue("v7_credit_popup_history",JSON.stringify(sanitizeBackupArray(d.creditPopupHistory,20)));
   GM_setValue("v7_diag",JSON.stringify(sanitizeBackupObject(d.diagnostics,{})));
   GM_setValue("v7_set",JSON.stringify(sanitizeBackupSettings(d.settings)));
   if(d.weatherCache?.data)GM_setValue("v7_wx_cache",JSON.stringify(sanitizeBackupObject(d.weatherCache,{})));
@@ -2759,8 +2934,150 @@ let lastCreditBalance=0;
 let creditObserver=null;
 let creditObserverTimer=null;
 let creditPollTimer=null;
+let creditPopupContextQueue=[];
+let creditOverviewContextKeys=[];
+function pushCreditPopupContext(type,missionName,details=""){
+  const name=String(missionName||"Einsatz").replace(/\s+/g," ").trim()||"Einsatz";
+  creditPopupContextQueue.unshift({
+    ts:Date.now(),
+    type:String(type||"Einsatz"),
+    mission:name.slice(0,90),
+    details:String(details||"").replace(/\s+/g," ").trim().slice(0,80)
+  });
+  creditPopupContextQueue=creditPopupContextQueue
+    .filter(item=>Date.now()-Number(item.ts)<45000)
+    .slice(0,12);
+}
+function takeCreditPopupContext(){
+  const now=Date.now();
+  creditPopupContextQueue=creditPopupContextQueue.filter(item=>now-Number(item.ts)<45000);
+  return creditPopupContextQueue.shift()||null;
+}
+function creditOverviewContextType(description){
+  const text=String(description||"").toLowerCase();
+  if(/gefang|polizei/.test(text))return "Gefangene";
+  if(/patient|krankentransport|rettungsdienst/.test(text))return "Patient";
+  if(/\[verband\]/i.test(description||""))return "Verbandseinsatz";
+  return "Einsatz";
+}
+function parseCreditOverviewRows(html){
+  const doc=new DOMParser().parseFromString(String(html||""),"text/html");
+  return Array.from(doc.querySelectorAll("table.table tbody tr")).map(row=>{
+    const cells=Array.from(row.querySelectorAll("td"));
+    if(cells.length<3)return null;
+    const amount=parseCreditsValue(cells[0]?.textContent||"");
+    const description=String(cells[1]?.textContent||"").replace(/\s+/g," ").trim();
+    const date=String(cells[2]?.textContent||"").replace(/\s+/g," ").trim();
+    if(amount===null||amount<=0||!description)return null;
+    return {amount,description,date,key:`${amount}|${description}|${date}`};
+  }).filter(Boolean);
+}
+function markCreditOverviewContext(row){
+  if(!row?.key)return;
+  creditOverviewContextKeys=[row.key,...creditOverviewContextKeys.filter(key=>key!==row.key)].slice(0,60);
+}
+function contextFromCreditOverviewRow(row,details="Creditübersicht"){
+  if(!row)return null;
+  return {
+    type:creditOverviewContextType(row.description),
+    mission:row.description,
+    details
+  };
+}
+function resolveCreditOverviewContext(amount,cb,attempt=0){
+  const value=Math.max(0,Math.round(Number(amount)||0));
+  if(!value){cb&&cb(null);return;}
+  pageGet(API.creditsOverview,html=>{
+    const rows=parseCreditOverviewRows(html);
+    if(!rows.length){
+      if(attempt<1){setTimeout(()=>resolveCreditOverviewContext(amount,cb,attempt+1),850);return;}
+      cb&&cb(null);return;
+    }
+    const unused=rows.filter(row=>!creditOverviewContextKeys.includes(row.key));
+    let row=unused.find(item=>item.amount===value)||rows.find(item=>item.amount===value);
+    if(row){
+      markCreditOverviewContext(row);
+      cb&&cb(contextFromCreditOverviewRow(row,"aus Creditübersicht"));
+      return;
+    }
+    let sum=0,group=[];
+    for(const item of unused.slice(0,8)){
+      sum+=item.amount;group.push(item);
+      if(sum>=value)break;
+    }
+    if(group.length>1&&sum===value){
+      group.forEach(markCreditOverviewContext);
+      cb&&cb(contextFromCreditOverviewRow(group[0],`${fmt(group.length)} Buchungen aus Creditübersicht`));
+      return;
+    }
+    if(attempt<1){setTimeout(()=>resolveCreditOverviewContext(amount,cb,attempt+1),850);return;}
+    cb&&cb(null);
+  },()=>{
+    if(attempt<1){setTimeout(()=>resolveCreditOverviewContext(amount,cb,attempt+1),850);return;}
+    cb&&cb(null);
+  });
+}
+function showCreditPopupResolved(amount){
+  const fallback=takeCreditPopupContext();
+  let done=false;
+  const timer=setTimeout(()=>{
+    if(done)return;
+    done=true;
+    showCreditPopup(amount,{context:fallback});
+  },2200);
+  resolveCreditOverviewContext(amount,context=>{
+    if(done)return;
+    done=true;
+    clearTimeout(timer);
+    showCreditPopup(amount,{context:context||fallback});
+  });
+}
 function creditPopupTheme(){
   return ["dark","light","summer","summer-dark","lcars"].includes(S.settings.panelTheme)?S.settings.panelTheme:"dark";
+}
+function creditPopupDesign(){
+  return ["premium","compact","glass","classic","contrast","terminal"].includes(S.settings.creditPopupDesign)?S.settings.creditPopupDesign:"premium";
+}
+function rememberCreditPopupHistory(amount,context=null){
+  const value=Math.max(0,Math.round(Number(amount)||0));
+  if(!value)return;
+  S.creditPopupHistory=[
+    {ts:Date.now(),amount:value,type:context?.type||"Credits",mission:context?.mission||"Unbekannte Buchung",details:context?.details||""},
+    ...(Array.isArray(S.creditPopupHistory)?S.creditPopupHistory:[])
+  ].slice(0,20);
+  save();
+}
+function renderCreditPopupHistory(){
+  const root=$("#credit-popup-history");
+  if(!root.length)return;
+  const rows=(Array.isArray(S.creditPopupHistory)?S.creditPopupHistory:[]).slice(0,8);
+  if(!rows.length){
+    root.html(`<div class="lss7-empty">Noch keine Credit-Eingänge gespeichert.</div>`);
+    return;
+  }
+  root.html(rows.map(row=>`
+    <div class="credit-history-row">
+      <span><b>${escHtml(row.mission||"Unbekannte Buchung")}</b><small>${escHtml(row.type||"Credits")}${row.details?` - ${escHtml(row.details)}`:""}</small></span>
+      <strong>+${escHtml(fmt(row.amount))}</strong>
+      <em>${escHtml(new Date(Number(row.ts)||Date.now()).toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit"}))}</em>
+    </div>`).join(""));
+}
+function renderCreditDaySummary(){
+  const root=$("#credit-day-summary");
+  if(!root.length)return;
+  const today=todayStr();
+  const historyToday=(Array.isArray(S.creditPopupHistory)?S.creditPopupHistory:[]).filter(row=>new Date(Number(row.ts)||0).toISOString().slice(0,10)===today);
+  const popupTotal=historyToday.reduce((sum,row)=>sum+(Number(row.amount)||0),0);
+  let openPotential=0;
+  try{openPotential=missionEarningsModel().total||0;}catch{}
+  const items=[
+    ["Tagesverdienst",fmtMoney(Math.max(0,Number(S.dailyEarn)||0))],
+    ["Popup-Eingänge",fmtMoney(popupTotal)],
+    ["Einsätze",fmt(Math.max(0,Number(S.allianceActivity?.missions)||0))],
+    ["Patienten / Gefangene",`${fmt(Math.max(0,Number(S.allianceActivity?.patients)||0))} / ${fmt(Math.max(0,Number(S.allianceActivity?.prisoners)||0))}`],
+    ["Offen möglich",fmtMoney(openPotential)]
+  ];
+  root.html(items.map(([label,value])=>`<div class="credit-day-kpi"><span>${escHtml(label)}</span><b>${escHtml(value)}</b></div>`).join(""));
 }
 function creditPopupContainer(){
   const position=S.settings.creditPopupPosition||"right-center";
@@ -2863,7 +3180,7 @@ function playCreditSound(force=false){
     setTimeout(()=>ctx.close?.(),Math.ceil((profile.duration+.25)*1000));
   }catch{}
 }
-function showCreditPopup(amount,{preview=false}={}){
+function showCreditPopup(amount,{preview=false,context=null}={}){
   const value=Math.max(0,Math.round(Number(amount)||0));
   if(!preview && (!S.settings.creditPopupEnabled || value<S.settings.creditPopupMinimum))return;
   const box=creditPopupContainer();
@@ -2871,18 +3188,30 @@ function showCreditPopup(amount,{preview=false}={}){
   const animation=S.settings.creditPopupAnimation||"slide";
   const duration=Math.max(2000,Number(S.settings.creditPopupDuration)||5000);
   const visibleDuration=preview?Math.min(duration,3500):duration;
-  item.className=`lss7-credit-popup theme-${creditPopupTheme()} popup-${S.settings.creditPopupSize||"medium"} anim-${animation}`;
+  const ctx=context||(
+    preview
+      ?{type:"Testbuchung",mission:"Beispiel: Wohnungsbrand",details:"Patienten und Gefangene werden hier angezeigt"}
+      :null
+  );
+  if(!preview)rememberCreditPopupHistory(value,ctx);
+  const contextHtml=ctx?`<span class="credit-popup-mission"><i>${escHtml(ctx.type||"Einsatz")}</i><b>${escHtml(ctx.details||"gebucht")}</b></span>`:"";
+  const titleHtml=`<strong class="credit-popup-title">${escHtml(ctx?.mission||"Credit-Eingang")}</strong>`;
+  item.className=`lss7-credit-popup theme-${creditPopupTheme()} design-${creditPopupDesign()} popup-${S.settings.creditPopupSize||"medium"} anim-${animation}`;
   item.innerHTML=`
     <span class="credit-popup-rail" aria-hidden="true"></span>
     <span class="credit-popup-icon" aria-hidden="true"><i>¢</i><em>+</em></span>
     <span class="credit-popup-content">
       <span class="credit-popup-head"><small>${preview?"Popup-Vorschau":"Credit-Eingang"}</small><span class="credit-popup-live"><i></i>${preview?"TEST":"GEBUCHT"}</span></span>
+      ${titleHtml}
       <strong class="credit-popup-amount"><b>+</b>${escHtml(fmt(value))}<small>Credits</small></strong>
+      ${contextHtml}
       <span class="credit-popup-details"><span><i>Tagesstand</i><b>${escHtml(fmtMoney(Math.max(0,Number(S.dailyEarn)||0)))}</b></span><span><i>Zeit</i><b>${escHtml(new Date().toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit"}))}</b></span></span>
     </span>
     <span class="credit-popup-spark" aria-hidden="true">✦</span>
     <span class="credit-popup-progress" aria-hidden="true" style="--credit-duration:${visibleDuration}ms"></span>`;
   box.prepend(item);
+  renderCreditPopupHistory();
+  renderCreditDaySummary();
   while(box.children.length>4)box.lastElementChild?.remove();
   requestAnimationFrame(()=>item.classList.add("show"));
   if(S.settings.creditPopupSound)playCreditSound();
@@ -2907,7 +3236,7 @@ function handleCreditBalance(value){
     S.dailyEarn=Math.max(0,Number(S.dailyEarn)||0)+delta;
     setV("#qs-daily",fmtMoney(S.dailyEarn));
     save();
-    showCreditPopup(delta);
+    showCreditPopupResolved(delta);
   }
 }
 function installCreditPopupObserver(){
@@ -3131,8 +3460,6 @@ function buildDiagnosticReport(userNote=""){
       vehicleStates:diagnosticCount(cache.vehicles),
       buildings:diagnosticCount(cache.buildings),
       schoolings:diagnosticCount(cache.schoolings),
-      aaos:diagnosticCount(cache.aaos),
-      aaoCategories:diagnosticCount(cache.aaoCategories),
       pois:diagnosticCount(cache.pois),
       missionTypes:cache.missionTypes?diagnosticCount(cache.missionTypes):0,
       missions:diagnosticCount(cache.missions),
@@ -3177,8 +3504,8 @@ function updateDiagnosticStatus(){
   const count=Array.isArray(S.diagnostics.errors)?S.diagnostics.errors.length:0;
   const last=count?new Date(S.diagnostics.errors[0].ts).toLocaleString(uiLocale()):"kein Fehler gespeichert";
   const analysis=S.diagnostics.lastAnalysis;
-  const analysisText=analysis?` · letzte Analyse: ${analysis.summary==="error"?"Fehler":analysis.summary==="warn"?"Hinweise":"OK"} (${new Date(analysis.ts).toLocaleString(uiLocale())})`:"";
-  box.html(`<strong>Diagnose bereit</strong><span>${fmt(count)} gespeicherte Skriptfehler · letzter Eintrag: ${escHtml(last)}${escHtml(analysisText)}</span>`);
+  const analysisText=analysis?` - letzte Analyse: ${analysis.summary==="error"?"Fehler":analysis.summary==="warn"?"Hinweise":"OK"} (${new Date(analysis.ts).toLocaleString(uiLocale())})`:"";
+  box.html(`<strong>Diagnose bereit</strong><span>${fmt(count)} gespeicherte Skriptfehler - letzter Eintrag: ${escHtml(last)}${escHtml(analysisText)}</span>`);
 }
 function exportDashboardData(kind){
   const stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
@@ -3362,30 +3689,59 @@ function mapWarnLevel(level){
   if(n===2 || n===1) return 2;
   return 0;
 }
+function dwdWarningEntries(data){
+  const buckets=[
+    {kind:"warning",data:data?.warnings},
+    {kind:"pre",data:data?.vorabInformation},
+    {kind:"pre",data:data?.advanceWarnings},
+    {kind:"pre",data:data?.preliminaryWarnings}
+  ].filter(bucket=>bucket.data);
+  const rows=buckets.flatMap(bucket=>Object.values(bucket.data||{}).flat().filter(Boolean).map(row=>({...row,_kind:bucket.kind})));
+  const seen=new Set();
+  return rows.filter(w=>{
+    const key=[
+      w.identifier,
+      w.event,
+      w.headline,
+      w.description,
+      w.regionName,
+      w.start,
+      w.end
+    ].map(x=>String(x||"").trim()).join("|");
+    if(seen.has(key))return false;
+    seen.add(key);
+    return true;
+  });
+}
 function fetchDwdWarning(ctx,cb){
   pageGet(API.dwdWarnings,rawTxt=>{
     const data=parseDwdWarningsPayload(rawTxt);
-    const warnings=data?.warnings||{};
-    const all=Object.values(warnings).flat().filter(Boolean);
+    const all=dwdWarningEntries(data);
     const base=[ctx.place,ctx.admin1,ctx.zip].filter(Boolean).map(normalizeTxt);
     const extra=base.flatMap(v=>v.split(/[,/ -]+/g).filter(x=>x.length>=4));
     const tokens=Array.from(new Set([...base,...extra]));
-    const hit=all.filter(w=>{
+    const hits=all.filter(w=>{
       const rg=normalizeTxt(w.regionName||"");
       return tokens.some(t=>t && (rg.includes(t) || t.includes(rg)));
-    }).sort((a,b)=>(Number(b.level)||0)-(Number(a.level)||0))[0];
-    if(!hit){
-      cb({level:0,title:"Keine Warnung",desc:"Aktuell liegt keine DWD-Warnung für den Ort vor.",src:"DWD"});
+    }).sort((a,b)=>(Number(b.level)||0)-(Number(a.level)||0));
+    if(!hits.length){
+      const none={level:0,title:"Keine Warnung",desc:"Aktuell liegt keine DWD-Warnung für den Ort vor.",src:"DWD"};
+      cb({...none,warnings:[none]});
       return;
     }
-    cb({
+    const mapped=hits.map(hit=>({
       level:mapWarnLevel(hit.level),
-      title:hit.event || "Wetterwarnung",
-      desc:hit.description || hit.instruction || "Keine Detailbeschreibung verfügbar.",
-      src:"DWD"
-    });
+      title:hit._kind==="pre"?`Vorabinformation: ${hit.event || hit.headline || "Wetterwarnung"}`:(hit.event || hit.headline || "Wetterwarnung"),
+      desc:hit.description || hit.instruction || hit.headline || "Keine Detailbeschreibung verfügbar.",
+      src:"DWD",
+      kind:hit._kind||"warning",
+      start:Number(hit.start)||0,
+      end:Number(hit.end)||0
+    }));
+    cb({...mapped[0],warnings:mapped});
   },()=>{
-    cb({level:0,title:"Keine Warnung",desc:"DWD-Warnungen derzeit nicht erreichbar.",src:"DWD"});
+    const unavailable={level:0,title:"Keine Warnung",desc:"DWD-Warnungen derzeit nicht erreichbar.",src:"DWD"};
+    cb({...unavailable,warnings:[unavailable]});
   });
 }
 function renderWeather(){
@@ -3421,14 +3777,21 @@ function renderWeather(){
     </div>`;
   }).join("");
   const warn=S.weather.warn||{level:0,title:tr("Keine Warnung"),desc:tr("Aktuell liegt keine DWD-Warnung für den Ort vor."),src:"DWD"};
+  const warnList=(Array.isArray(S.weather.warnings)&&S.weather.warnings.length?S.weather.warnings:[warn])
+    .filter(Boolean)
+    .sort((a,b)=>(Number(b.level)||0)-(Number(a.level)||0));
   const details=[
     [tr("Gefühlt"),`${S.weather.feels ?? "-"}°C`],
     [tr("Feuchte"),`${S.weather.humidity ?? "-"}%`],
     [tr("Niederschlag"),`${S.weather.precip ?? 0} mm`],
     [tr("Wind"),`${S.weather.wind} km/h`],
   ].map(([k,v])=>`<div class="wx-detail"><span class="wx-detail-k">${k}</span><span class="wx-detail-v">${escHtml(v)}</span></div>`).join("");
-  const alert=`<div class="wx-warn lvl${warn.level}">
-    <b>${escHtml(warn.title)}</b><br>${escHtml(warn.desc)}
+  const activeWarnCount=warnList.filter(item=>Number(item.level)>0).length;
+  const alert=`<div class="wx-warnings">
+    <div class="wx-warnings-head">Aktive Warnungen<span>${fmt(activeWarnCount||warnList.length)}</span></div>
+    ${warnList.map(item=>`<div class="wx-warn lvl${Number(item.level)||0}${item.kind==="pre"?" pre":""}">
+      <b>${escHtml(item.title||tr("Keine Warnung"))}</b><br>${escHtml(item.desc||"")}
+    </div>`).join("")}
   </div>`;
   const provider=escHtml(S.weather.provider||(S.weather.country==="DE"?"DWD ICON via Open-Meteo":"Open-Meteo Best Match"));
   const full=`<div class="wx-card">
@@ -3443,17 +3806,305 @@ function renderWeather(){
     ${trend?`<div class="wx-trend-block"><div class="wx-section-title">7-Tage-Ausblick<span>Tageswerte: Min / Max</span></div><div class="wx-trend">${trend}</div></div>`:""}
     <div class="wx-details">${details}</div>
     ${alert}
-    <div class="wx-src">${S.weather.country==="DE"?`Wetter: ${provider} · Warnungen: Deutscher Wetterdienst (DWD)`:`Wetter: ${provider}`}</div>
+    <div class="wx-src">${S.weather.country==="DE"?`Wetter: ${provider} - Warnungen: Deutscher Wetterdienst (DWD)`:`Wetter: ${provider}`}</div>
   </div>`;
   elSet.html(full);elOv.html(full);
   applyTranslations(elSet.get(0));applyTranslations(elOv.get(0));
+  renderWeatherCenter();
 }
-function fetchWeather(){
+function weatherRadarModes(){
+  return {
+    radar:{label:"Live-Radar",hint:"Radarfilm",overlay:"radar",product:"radar",radarRange:"-1"},
+    rain:{label:"Regen-Prognose",hint:"Niederschlagsmodell",overlay:"rain",product:"ecmwf"},
+    thunder:{label:"Gewitter-Prognose",hint:"Gewitterrisiko",overlay:"thunder",product:"ecmwf"},
+    wind:{label:"Wind + Regen",hint:"Windmodell",overlay:"wind",product:"ecmwf"}
+  };
+}
+function weatherRadarMode(){
+  const modes=weatherRadarModes();
+  return modes[S.settings.weatherRadarMode]?S.settings.weatherRadarMode:"radar";
+}
+function weatherRadarModeButtons(){
+  const active=weatherRadarMode();
+  return `<div class="weather-radar-controls">${Object.entries(weatherRadarModes()).map(([id,cfg])=>`<button class="weather-radar-mode${id===active?" active":""}" type="button" data-radar-mode="${escHtml(id)}" title="${escHtml(cfg.hint)}">${escHtml(cfg.label)}</button>`).join("")}</div>`;
+}
+function weatherRadarEmbedUrl(mode=weatherRadarMode()){
+  const lat=Number(S.weather?.lat),lon=Number(S.weather?.lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon))return "";
+  const cfg=weatherRadarModes()[mode]||weatherRadarModes().radar;
+  const params=new URLSearchParams({
+    lat:lat.toFixed(4),lon:lon.toFixed(4),detailLat:lat.toFixed(4),detailLon:lon.toFixed(4),
+    width:"650",height:"450",zoom:"8",level:"surface",overlay:cfg.overlay,product:cfg.product,
+    menu:"",message:"true",marker:"true",calendar:"now",pressure:"",type:"map",location:"coordinates",
+    detail:"",metricWind:"km/h",metricTemp:"°C"
+  });
+  if(cfg.radarRange)params.set("radarRange",cfg.radarRange);
+  return `https://embed.windy.com/embed2.html?${params.toString()}`;
+}
+function dwdWarnMapUrl(){
+  return "https://www.dwd.de/DE/leistungen/webmodul_warnungen/webmodul_warnungen.html";
+}
+function dwdWarnImageUrl(){
+  return "https://www.dwd.de/DWD/warnungen/warnstatus/SchilderWetter.png";
+}
+function dwdWarnWebmoduleSrcdoc(){
+  const lat=Number(S.weather?.lat),lon=Number(S.weather?.lon);
+  const centerLat=Number.isFinite(lat)?lat:51.1657;
+  const centerLon=Number.isFinite(lon)?lon:10.4515;
+  const zoom=Number.isFinite(lat)&&Number.isFinite(lon)?8:6;
+  return `<!doctype html><html><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+    <style>
+      html,body,#map{height:100%;width:100%;margin:0;background:#101827;font-family:Arial,sans-serif}
+      .leaflet-control-layers,.leaflet-popup-content{font-size:12px}
+      .leaflet-tile-pane{filter:saturate(.92) contrast(1.04)}
+      .dwd-click-hint{position:absolute;left:10px;bottom:10px;z-index:600;background:linear-gradient(145deg,rgba(15,23,42,.92),rgba(30,41,59,.84));color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:7px 9px;box-shadow:0 10px 24px rgba(15,23,42,.28);backdrop-filter:blur(8px);font:800 10px/1.25 Arial,sans-serif}
+      .dwd-click-hint b{display:block;color:#93c5fd;text-transform:uppercase;letter-spacing:.65px;font-size:9px;margin-bottom:2px}
+      .pulse-marker{width:18px;height:18px;border-radius:50%;background:#38bdf8;border:2px solid #fff;box-shadow:0 0 0 8px rgba(56,189,248,.22),0 0 22px rgba(56,189,248,.55)}
+    </style></head><body><div id="map"></div><div class="dwd-click-hint"><b>Klick-Info</b>Warngebiet anklicken</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"><\/script>
+    <script>
+      const map=L.map('map',{center:[${centerLat.toFixed(5)},${centerLon.toFixed(5)}],zoom:${zoom},zoomControl:true,attributionControl:true});
+      const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'Map data: &copy; OpenStreetMap'});
+      const topo=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'Map data: &copy; OpenTopoMap'});
+      osm.addTo(map);
+      const dwdUrl='https://maps.dwd.de/geoproxy_warnungen/service/';
+      const warn=L.tileLayer.wms(dwdUrl,{layers:'Warnungen_Gemeinden_vereinigt',format:'image/png',transparent:true,opacity:.82,attribution:'Warndaten: &copy; DWD'});
+      const borders=L.tileLayer.wms(dwdUrl,{layers:'Warngebiete_Gemeinden',format:'image/png',styles:'',transparent:true,opacity:.45,attribution:'Geobasisdaten Gemeinden: &copy; BKG'});
+      warn.addTo(map); borders.addTo(map);
+      const marker=L.marker([${centerLat.toFixed(5)},${centerLon.toFixed(5)}],{icon:L.divIcon({className:'',html:'<div class="pulse-marker"></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
+      marker.bindPopup('Ausgewählter Wetterstandort');
+      L.control.layers({'OpenStreetMap':osm,'Topografisch':topo},{'DWD Warnungen':warn,'Gemeindegrenzen':borders},{collapsed:false}).addTo(map);
+      function esc(v){return String(v||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+      function getFeatureInfoUrl(latlng){
+        const point=map.latLngToContainerPoint(latlng,map.getZoom());
+        const size=map.getSize();
+        const params={
+          request:'GetFeatureInfo',service:'WMS',srs:'EPSG:4326',version:'1.1.1',
+          styles:'',transparent:true,format:'image/png',
+          bbox:map.getBounds().toBBoxString(),height:size.y,width:size.x,
+          layers:'Warnungen_Gemeinden_vereinigt',query_layers:'Warnungen_Gemeinden_vereinigt',
+          info_format:'text/javascript',propertyName:'EVENT,HEADLINE,DESCRIPTION,INSTRUCTION,ONSET,EXPIRES,SEVERITY,EC_AREA_COLOR',FEATURE_COUNT:50,
+          x:Math.round(point.x),y:Math.round(point.y),callback:'parseResponse'
+        };
+        return dwdUrl+L.Util.getParamString(params,dwdUrl,true);
+      }
+      window.parseResponse=function(data){
+        const features=(data&&data.features)||[];
+        const html=features.length?features.map(function(f){
+          const p=f.properties||{};
+          const raw=String(p.EC_AREA_COLOR||'').trim();
+          const rgb=raw.match(/^(\\d{1,3})\\s+(\\d{1,3})\\s+(\\d{1,3})$/);
+          const color=rgb?'rgb('+rgb[1]+','+rgb[2]+','+rgb[3]+')':'#22c55e';
+          const bg=rgb?'rgba('+rgb[1]+','+rgb[2]+','+rgb[3]+',.13)':'rgba(34,197,94,.10)';
+          return '<div class="dwd-warning-card" style="border-left-color:'+color+';background:'+bg+'"><b>'+esc(p.HEADLINE||p.EVENT||'Amtliche Warnung')+'</b><span>'+esc(p.DESCRIPTION||'Keine Beschreibung vorhanden.')+'</span><span>'+esc(p.INSTRUCTION||'')+'</span></div>';
+        }).join(''):'<div class="lss7-empty">An dieser Stelle liegt keine DWD-Warnung vor.</div>';
+        parent.postMessage({type:'lss7-dwd-warning-info',html:html,count:features.length},'*');
+      };
+      map.on('click',function(evt){
+        parent.postMessage({type:'lss7-dwd-warning-info',html:'<div class="lss7-empty">Warnungen werden geladen...</div>',count:0},'*');
+        const s=document.createElement('script');
+        s.src=getFeatureInfoUrl(evt.latlng)+'&_ts='+Date.now();
+        s.onerror=function(){parent.postMessage({type:'lss7-dwd-warning-info',html:'<div class="lss7-empty">Warninformationen konnten nicht geladen werden.</div>',count:0},'*')};
+        document.body.appendChild(s);
+        setTimeout(function(){s.remove()},12000);
+      });
+      setTimeout(()=>map.invalidateSize(),250);
+    <\/script></body></html>`;
+}
+function formatWeatherTime(value){
+  if(!value)return "-";
+  const d=new Date(value);
+  if(Number.isNaN(d.getTime()))return "-";
+  return d.toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit"});
+}
+function windDirectionText(deg){
+  const n=Number(deg);
+  if(!Number.isFinite(n))return "-";
+  const dirs=["N","NO","O","SO","S","SW","W","NW"];
+  return `${dirs[Math.round((((n%360)+360)%360)/45)%8]} (${Math.round(n)}°)`;
+}
+function renderDwdWarningMap(warnList){
+  const active=warnList.filter(item=>Number(item.level)>0);
+  const highest=Math.max(0,...active.map(item=>Number(item.level)||0));
+  const place=compactWeatherPlace(S.weather?.place||S.settings.weatherLocation||"");
+  const imageUrl=dwdWarnImageUrl();
+  const cards=(active.length?active:warnList).map(item=>`<div class="dwd-warning-card lvl${Number(item.level)||0}${item.kind==="pre"?" pre":""}">
+    <b>${escHtml(item.title||tr("Keine Warnung"))}</b>
+    <span>${escHtml(item.desc||"Aktuell liegt keine DWD-Warnung für diesen Ort vor.")}</span>
+  </div>`).join("");
+  return `<div class="weather-radar weather-warning-map">
+    <div class="dwd-map-head">
+      <div><b>DWD-Warnlage ${escHtml(place||"")}</b><span>Lokale Warnübersicht aus den geladenen DWD-Warndaten</span></div>
+      <div class="dwd-map-badge">Stufe ${fmt(highest)}</div>
+    </div>
+    <img class="weather-warning-img" src="${escHtml(imageUrl)}" alt="DWD Warnkarte Deutschland" loading="lazy" onerror="this.classList.add('is-hidden')">
+    <div class="dwd-map-area">
+      <span class="dwd-map-marker" title="${escHtml(place||"Standort")}"></span>
+    </div>
+    <div class="dwd-warning-stack">${cards}</div>
+  </div>`;
+}
+function renderDwdWarningList(warnList){
+  const active=warnList.filter(item=>Number(item.level)>0);
+  const cards=(active.length?active:warnList).map(item=>`<div class="dwd-warning-card lvl${Number(item.level)||0}${item.kind==="pre"?" pre":""}">
+    <b>${escHtml(item.title||tr("Keine Warnung"))}</b>
+    <span>${escHtml(item.desc||"Aktuell liegt keine DWD-Warnung für diesen Ort vor.")}</span>
+  </div>`).join("");
+  return `<div class="dwd-local-list"><div class="wx-section-title">Lokale Warnungen<span>aus DWD-Daten</span></div><div class="dwd-warning-stack">${cards}</div></div>`;
+}
+function installDwdWarningMessageBridge(){
+  if(window.__lss7DwdWarningBridge)return;
+  window.__lss7DwdWarningBridge=true;
+  window.addEventListener("message",ev=>{
+    const data=ev?.data||{};
+    if(!data||data.type!=="lss7-dwd-warning-info")return;
+    const body=$("#dwd-click-details-body");
+    const count=$("#dwd-click-count");
+    if(!body.length)return;
+    body.html(String(data.html||""));
+    count.text(Number(data.count)>0?`${fmt(Number(data.count))} Warnung(en)`:"Keine aktive Warnung");
+  });
+}
+function dwdLegendMarkup(){
+  const left=[
+    ["purple","Warnungen vor extremem Unwetter (Stufe 4)"],
+    ["red","Unwetterwarnungen (Stufe 3)"],
+    ["orange","Warnungen vor markantem Wetter (Stufe 2)"],
+    ["yellow","Wetterwarnungen (Stufe 1)"]
+  ];
+  const right=[
+    ["pre","Vorabinformation Unwetter"],
+    ["hotx","Hitzewarnung (extrem)"],
+    ["hot","Hitzewarnung"],
+    ["uv","UV-Warnung"],
+    ["green","Keine Warnungen"]
+  ];
+  const col=items=>`<div class="dwd-legend-col">${items.map(([cls,label])=>`<div class="dwd-legend-item"><span class="dwd-legend-swatch ${cls}"></span><span>${escHtml(label)}</span></div>`).join("")}</div>`;
+  return `<div class="dwd-legend">${col(left)}${col(right)}</div>`;
+}
+function dwdClickDetailsMarkup(){
+  return `<div class="dwd-click-details"><div class="dwd-click-details-head">Warnfenster<span id="dwd-click-count">Karte anklicken</span></div><div id="dwd-click-details-body" class="dwd-click-details-body"><div class="lss7-empty">Klicke auf ein Warngebiet in der Karte. Mehrere Warnungen werden hier untereinander angezeigt.</div></div></div>`;
+}
+function weatherCenterSearchMarkup(){
+  const countryOptions=Object.entries(WEATHER_COUNTRIES).map(([key,cfg])=>`<option value="${escHtml(key)}"${(S.settings.weatherCountry||"DE")===key?" selected":""}>${escHtml(cfg.label)}</option>`).join("");
+  const currentLoc=String(S.settings.weatherLocation||"").replace(/"/g,"&quot;");
+  return `<div class="weather-center-panel">
+    <form class="weather-center-search" id="weather-center-search">
+      <label>Ort / PLZ<input id="weather-center-loc" class="lss7-select" value="${currentLoc}" placeholder="z.B. Stuttgart oder 70173"></label>
+      <label>Land<select id="weather-center-country" class="lss7-select">${countryOptions}</select></label>
+      <button class="lbtn prime" type="submit">Wetter laden</button>
+    </form>
+  </div>`;
+}
+function weatherReportText(){
+  if(!S.weather||S.weather.error)return "Noch keine Wetterdaten verfügbar.";
+  const warnList=Array.isArray(S.weather.warnings)?S.weather.warnings:[S.weather.warn].filter(Boolean);
+  const active=warnList.filter(item=>Number(item.level)>0);
+  const rain=(S.weather.dailyTrend||[])[0]?.rain;
+  const today=(S.weather.dailyTrend||[])[0]||{};
+  const parts=[
+    `<b>${escHtml(compactWeatherPlace(S.weather.place))}</b>: ${escHtml(weatherCodeToText(S.weather.code))} bei ${escHtml(S.weather.temp)}°C, gefühlt ${escHtml(S.weather.feels ?? "-")}°C.`,
+    `Wind ${escHtml(S.weather.wind)} km/h aus ${escHtml(windDirectionText(S.weather.windDir))}, Böen bis ${escHtml(S.weather.gust ?? "-")} km/h.`,
+    `Feuchte ${escHtml(S.weather.humidity ?? "-")}%, Luftdruck ${escHtml(S.weather.pressure ?? "-")} hPa, Wolken ${escHtml(S.weather.cloud ?? "-")}%, Niederschlag aktuell ${escHtml(S.weather.precip ?? 0)} mm.`,
+    Number.isFinite(Number(rain))?`Heute liegt die Niederschlagswahrscheinlichkeit bei ${escHtml(rain)}%.`:"",
+    today.rainSum?`Erwartete Tagesmenge: ${escHtml(today.rainSum)} mm, UV-Maximum ${escHtml(today.uv ?? "-")}.`:"",
+    active.length?`${fmt(active.length)} aktive Warnung(en), höchste Stufe ${fmt(Math.max(...active.map(x=>Number(x.level)||0)))}.`:"Aktuell keine aktive amtliche Warnung."
+  ].filter(Boolean);
+  return parts.join(" ");
+}
+function renderWeatherCenter(){
+  const root=$("#weather-center-view");
+  if(!root.length)return;
+  if(!S.weather){
+    root.html(`${weatherCenterSearchMarkup()}<div class="lss7-empty">Noch keine Wetterdaten. Bitte Ort oder PLZ setzen.</div>`);
+    return;
+  }
+  if(S.weather.error){
+    root.html(`${weatherCenterSearchMarkup()}<div class="lss7-empty">${escHtml(S.weather.error)}</div>`);
+    return;
+  }
+  const warn=S.weather.warn||{level:0,title:tr("Keine Warnung"),desc:tr("Aktuell liegt keine DWD-Warnung für den Ort vor."),src:"DWD"};
+  const warnList=(Array.isArray(S.weather.warnings)&&S.weather.warnings.length?S.weather.warnings:[warn])
+    .filter(Boolean)
+    .sort((a,b)=>(Number(b.level)||0)-(Number(a.level)||0));
+  const alert=`<div class="wx-warnings">
+    <div class="wx-warnings-head">Warnbericht<span>${fmt(warnList.filter(item=>Number(item.level)>0).length||warnList.length)}</span></div>
+    ${warnList.map(item=>`<div class="wx-warn lvl${Number(item.level)||0}${item.kind==="pre"?" pre":""}">
+      <b>${escHtml(item.title||tr("Keine Warnung"))}</b><br>${escHtml(item.desc||"")}
+    </div>`).join("")}
+  </div>`;
+  const details=[
+    ["Temperatur",`${S.weather.temp}°C`],
+    ["Gefühlt",`${S.weather.feels ?? "-"}°C`],
+    ["Luftfeuchte",`${S.weather.humidity ?? "-"}%`],
+    ["Niederschlag",`${S.weather.precip ?? 0} mm`],
+    ["Wind",`${S.weather.wind} km/h`],
+    ["Windrichtung",windDirectionText(S.weather.windDir)],
+    ["Böen",S.weather.gust?`${S.weather.gust} km/h`:"-"],
+    ["Bewölkung",S.weather.cloud!=null?`${S.weather.cloud}%`:"-"],
+    ["Luftdruck",S.weather.pressure?`${S.weather.pressure} hPa`:"-"],
+    ["UV-Index",(S.weather.dailyTrend||[])[0]?.uv||"-"],
+    ["Sonnenaufgang",formatWeatherTime((S.weather.dailyTrend||[])[0]?.sunrise)],
+    ["Sonnenuntergang",formatWeatherTime((S.weather.dailyTrend||[])[0]?.sunset)],
+    ["Wettercode",String(S.weather.code)],
+    ["Quelle",S.weather.provider||"Open-Meteo"]
+  ].map(([k,v])=>`<div class="weather-center-kpi"><span>${escHtml(k)}</span><b>${escHtml(v)}</b></div>`).join("");
+  const hourly=(S.weather.forecast||[]).map(x=>`<span class="wx-chip"><b>${escHtml(x.t)}</b><span>${weatherCodeToIcon(x.c)} ${escHtml(x.temp)}°</span>${Number.isFinite(Number(x.rain))?`<em>Regen ${escHtml(x.rain)}%</em>`:""}</span>`).join("");
+  const trend=(S.weather.dailyTrend||[]).map((day,index)=>{
+    const dt=new Date(`${day.date}T12:00:00`);
+    const label=index===0?tr("Heute"):dt.toLocaleDateString(uiLocale(),{weekday:"short",day:"2-digit",month:"2-digit"});
+    return `<div class="wx-day" title="${escHtml(weatherCodeToText(day.code))}">
+      <span class="wx-day-name">${escHtml(label)}</span><span class="wx-day-icon">${weatherCodeToIcon(day.code)}</span>
+      <span class="wx-day-temp">${escHtml(day.max)}° / ${escHtml(day.min)}°</span>
+      <span class="wx-day-meta"><span>💧 ${escHtml(day.rain)}% / ${escHtml(day.rainSum||"0")} mm</span><span>↗ ${escHtml(day.wind)} km/h</span><span>Böen ${escHtml(day.gust||"-")} km/h</span></span>
+    </div>`;
+  }).join("");
+  const radarUrl=weatherRadarEmbedUrl();
+  const radarMode=weatherRadarMode();
+  const radarCfg=weatherRadarModes()[radarMode]||weatherRadarModes().radar;
+  const radarTitle=radarMode==="radar"?"Live-Radar":"Radar & Prognose";
+  const warnMapUrl=dwdWarnMapUrl();
+  const localWarnList=renderDwdWarningList(warnList);
+  const dwdWebmodule=dwdWarnWebmoduleSrcdoc();
+  const dwdLegend=dwdLegendMarkup();
+  const dwdClickDetails=dwdClickDetailsMarkup();
+  root.html(`<div class="weather-center">
+    ${weatherCenterSearchMarkup()}
+    <div class="weather-center-hero">
+      <div class="weather-center-main">
+        <div class="weather-center-place"><i>${weatherCodeToIcon(S.weather.code)}</i><div><b>${escHtml(compactWeatherPlace(S.weather.place))}</b><span>${escHtml(weatherCodeToText(S.weather.code))}</span></div></div>
+        <div class="weather-center-temp">${escHtml(S.weather.temp)}°C <small>gefühlt ${escHtml(S.weather.feels ?? "-")}°C</small></div>
+      </div>
+      <div class="weather-center-panel"><div class="weather-report">${weatherReportText()}</div></div>
+    </div>
+    <div class="weather-center-grid">${details}</div>
+    ${alert}
+    <div class="weather-center-panel"><div class="wx-section-title">Nächste Stunden<span>Kurzfristige Vorhersage</span></div><div class="weather-forecast">${hourly}</div></div>
+    <div class="weather-center-panel"><div class="wx-section-title">7-Tage-Ausblick<span>Min / Max, Regen, Wind</span></div><div class="wx-trend">${trend}</div></div>
+    <div class="weather-media-grid">
+      <div class="weather-center-panel"><div class="wx-section-title">Warnkarte<span>DWD WMS Webmodul</span></div><div class="weather-radar weather-warning-map weather-warning-official"><iframe srcdoc="${escHtml(dwdWebmodule)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>${dwdLegend}${dwdClickDetails}${localWarnList}<div class="weather-map-note">Klicke auf ein Warngebiet in der Karte. Das Warnfenster öffnet sich unter der Legende und zeigt mehrere Warnungen untereinander.</div><div class="weather-link-row"><a href="${escHtml(warnMapUrl)}" target="_blank" rel="noopener">DWD-Webmodul öffnen</a><a href="https://warnung.bund.de/" target="_blank" rel="noopener">Bundeswarnportal öffnen</a><a href="https://www.katwarn.de/" target="_blank" rel="noopener">KATWARN öffnen</a></div></div>
+      <div class="weather-center-panel"><div class="wx-section-title">${escHtml(radarTitle)}<span id="weather-radar-subtitle">Windy ${escHtml(radarCfg.label)} · frei skalierbar</span></div>${weatherRadarModeButtons()}<div class="weather-radar resizable">${radarUrl?`<iframe id="weather-windy-frame" src="${escHtml(radarUrl)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`:`<div class="weather-radar-empty">Radar wird angezeigt, sobald der Standort mit Koordinaten geladen wurde.</div>`}</div><div class="weather-map-note">Live-Radar zeigt die aktuelle Radar-Animation. Die Prognose-Modi nutzen Windy-Wettermodelle für die erwartete Entwicklung. Die Box kann unten rechts größer gezogen werden.</div></div>
+    </div>
+    <div class="weather-center-panel"><div class="wx-section-title">Profi-Links<span>Radar, Blitz, Spezialkarten</span></div><div class="weather-report">Für Quellen ohne stabile freie Browser-API sind Direktlinks eingebunden, damit keine kaputten oder rechtlich unsauberen Datenabfragen entstehen.</div><div class="weather-link-row"><a href="https://www.windy.com/" target="_blank" rel="noopener">Windy öffnen</a><a href="https://kachelmannwetter.com/de/regenradar" target="_blank" rel="noopener">Kachelmann Radar</a><a href="https://www.dwd.de/DE/wetter/wetterundklima_vorort/_node.html" target="_blank" rel="noopener">DWD Wetter vor Ort</a></div></div>
+  </div>`);
+}
+function fetchWeather(force=false){
   const loc=(S.settings.weatherLocation||"").trim();
   const country=WEATHER_COUNTRIES[S.settings.weatherCountry] ? S.settings.weatherCountry : "DE";
   const countryCfg=WEATHER_COUNTRIES[country];
   const locKey=`${country}|${loc}`;
   if(!loc){ S.weather=null; S.weatherLoc=""; renderWeather(); return; }
+  if(!force && S.weather && S.weatherLoc===locKey && !S.weather.error && S.weatherTs && Date.now()-S.weatherTs<ITV.weather){
+    renderWeather();
+    return;
+  }
+  if(S.weatherLoading===locKey){
+    renderWeather();
+    return;
+  }
+  S.weatherLoading=locKey;
   if(S.weather && S.weatherLoc===locKey) renderWeather();
   const zipMatch=loc.match(countryCfg.zip);
   const cleanCity=loc.replace(countryCfg.zip,"").split(/[,(]/)[0].trim();
@@ -3461,7 +4112,7 @@ function fetchWeather(){
   const loadByLatLon=(lat,lon,place,admin1="",zip="")=>{
     const modelParam=country==="DE"?"&models=icon_seamless":"";
     const provider=country==="DE"?"DWD ICON via Open-Meteo":"Open-Meteo Best Match";
-    const url=`${API.wxForecast}?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&forecast_days=7&forecast_hours=24&timezone=auto${modelParam}`;
+    const url=`${API.wxForecast}?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,cloud_cover&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation_probability,visibility&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset&forecast_days=7&forecast_hours=24&timezone=auto${modelParam}`;
     jsonGet(url,w=>{
       const c=w?.current||{};
       const h=w?.hourly||{};
@@ -3485,15 +4136,26 @@ function fetchWeather(){
         max:Math.round(Number(daily.temperature_2m_max?.[i]||0)),
         min:Math.round(Number(daily.temperature_2m_min?.[i]||0)),
         rain:Math.round(Number(daily.precipitation_probability_max?.[i]||0)),
+        rainSum:Number(daily.precipitation_sum?.[i]||0).toLocaleString(uiLocale(),{maximumFractionDigits:1}),
+        gust:Math.round(Number(daily.wind_gusts_10m_max?.[i]||0)),
+        uv:Number(daily.uv_index_max?.[i]||0).toLocaleString(uiLocale(),{maximumFractionDigits:1}),
+        sunrise:daily.sunrise?.[i]||"",
+        sunset:daily.sunset?.[i]||"",
         wind:Math.round(Number(daily.wind_speed_10m_max?.[i]||0))
       }));
       const alert=computeWeatherAlert(c,h);
       const alertKey=`${place}|${alert}|${zip}`;
       S.weather={
         place,
+        lat:Number(lat),
+        lon:Number(lon),
         temp: Math.round(Number(c.temperature_2m)||0),
         feels: Math.round(Number(c.apparent_temperature)||Number(c.temperature_2m)||0),
         humidity: Math.round(Number(c.relative_humidity_2m)||0),
+        pressure: Math.round(Number(c.surface_pressure)||0),
+        cloud: Math.round(Number(c.cloud_cover)||0),
+        windDir: Math.round(Number(c.wind_direction_10m)||0),
+        gust: Math.round(Number(c.wind_gusts_10m)||0),
         precip: Number(c.precipitation||0).toLocaleString(uiLocale(),{maximumFractionDigits:1}),
         wind: Math.round(Number(c.wind_speed_10m)||0),
         code: Number(c.weather_code)||0,
@@ -3504,7 +4166,10 @@ function fetchWeather(){
         provider,
         warn:country==="DE"
           ? {level:0,title:"DWD wird geprüft",desc:"Warnungen werden im Hintergrund geladen.",src:"DWD"}
-          : {level:alert?2:0,title:alert?"Lokaler Wetterhinweis":"Keine amtliche Warnung",desc:alert||tr("Amtliche Warnungen sind derzeit nur für Deutschland angebunden."),src:"Open-Meteo"}
+          : {level:alert?2:0,title:alert?"Lokaler Wetterhinweis":"Keine amtliche Warnung",desc:alert||tr("Amtliche Warnungen sind derzeit nur für Deutschland angebunden."),src:"Open-Meteo"},
+        warnings:country==="DE"
+          ? [{level:0,title:"DWD wird geprüft",desc:"Warnungen werden im Hintergrund geladen.",src:"DWD"}]
+          : [{level:alert?2:0,title:alert?"Lokaler Wetterhinweis":"Keine amtliche Warnung",desc:alert||tr("Amtliche Warnungen sind derzeit nur für Deutschland angebunden."),src:"Open-Meteo"}]
       };
       S.weatherLoc=locKey;
       saveWeatherCache();
@@ -3513,24 +4178,28 @@ function fetchWeather(){
         playWeatherTone(S.settings.weatherTone||"beep");
       }
       S.weatherAlertKey=alertKey;
-      if(country!=="DE")return;
+      if(country!=="DE"){ if(S.weatherLoading===locKey)S.weatherLoading=""; return; }
       fetchDwdWarning({place,admin1,zip},warn=>{
         S.weather.warn=warn;
+        S.weather.warnings=Array.isArray(warn.warnings)&&warn.warnings.length?warn.warnings:[warn];
         saveWeatherCache();
-        if(warn.level>=2 && S.settings.weatherSound){
-          const wk=`${place}|${warn.level}|${warn.title}`;
+        const highest=S.weather.warnings.reduce((top,item)=>(Number(item.level)||0)>(Number(top.level)||0)?item:top,warn);
+        if(highest.level>=2 && S.settings.weatherSound){
+          const wk=`${place}|${highest.level}|${highest.title}|${S.weather.warnings.length}`;
           if(S.weatherAlertKey!==wk){ playWeatherTone(S.settings.weatherTone||"beep"); S.weatherAlertKey=wk; }
         }
         renderWeather();
+        if(S.weatherLoading===locKey)S.weatherLoading="";
       });
     },()=>{
       if(!(S.weather && S.weatherLoc===locKey)) S.weather={error:"Wetterdaten konnten nicht geladen werden"};
+      if(S.weatherLoading===locKey)S.weatherLoading="";
       renderWeather();
     });
   };
   const lookupByName=(queries,idx=0)=>{
     const qRaw=queries[idx];
-    if(!qRaw){ if(!(S.weather && S.weatherLoc===locKey)) S.weather={error:"Ort/PLZ nicht gefunden"}; renderWeather(); return; }
+    if(!qRaw){ if(!(S.weather && S.weatherLoc===locKey)) S.weather={error:"Ort/PLZ nicht gefunden"}; if(S.weatherLoading===locKey)S.weatherLoading=""; renderWeather(); return; }
     const q=encodeURIComponent(qRaw);
     jsonGet(`${API.wxGeo}?name=${q}&count=5&language=${encodeURIComponent(S.settings.language||countryCfg.language)}&countryCode=${country}&format=json`,g=>{
       const results=(g?.results||[]).filter(p=>Number.isFinite(Number(p.latitude))&&Number.isFinite(Number(p.longitude)));
@@ -3625,13 +4294,13 @@ function renderEventPage(){
   const list=liveEvents.length?liveEvents.map(ev=>gameEventRowHtml(ev,false)).join(""):`<div class="lss7-empty">Aktuell ist kein Leitstellenspiel-Event aktiv. Sobald ein Event in der Spielnavigation erscheint, wird es hier automatisch angezeigt.</div>`;
   $("#event-live-list").html(list);
   $("#event-live-count").text(fmt(liveEvents.length));
-  $("#event-source").text(`Quelle: Leitstellenspiel-Navigation · aktualisiert ${new Date().toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit",second:"2-digit"})}`);
+  $("#event-source").text(`Quelle: Leitstellenspiel-Navigation - aktualisiert ${new Date().toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit",second:"2-digit"})}`);
   renderEventOverview();
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  TIMER / CLOCK                                               â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  TIMER / CLOCK                                               ║
+// ╚══════════════════════════════════════════════════════════════╝
 function normalizePlaytimeDaily(){
   const map=new Map();
   (Array.isArray(S.playtimeDaily)?S.playtimeDaily:[]).forEach(x=>{
@@ -3784,6 +4453,11 @@ function updateCurrentMissionPerson(type,data={}){
     previousPersonCount!==currentPersonCount||
     !S.currentMissions[id];
   S.currentMissions[id]=row;
+  if(changed){
+    const label=type==="patient"?"Patient":"Gefangener";
+    const count=type==="patient"?Number(row.patients)||0:Number(row.prisoners)||0;
+    pushCreditPopupContext(label,row.caption,count>1?`${fmt(count)} erfasst`:"erfasst");
+  }
   if(changed)scheduleMissionEarningsRender();
 }
 function removeCurrentMission(id){
@@ -3818,30 +4492,67 @@ function scanCurrentMissionsFromDom(){
   });
   if(changed)scheduleMissionEarningsRender();
 }
+function firstFiniteNumber(...values){
+  for(const value of values){
+    const n=Number(value);
+    if(Number.isFinite(n))return n;
+  }
+  return 0;
+}
+function chancePercent(...values){
+  const raw=firstFiniteNumber(...values);
+  if(raw<=0)return 0;
+  return raw<=1?Math.round(raw*100):Math.min(100,raw);
+}
+function missionAdditionalValue(additional,...keys){
+  const obj=additional&&typeof additional==="object"?additional:{};
+  for(const key of keys){
+    if(obj[key]!==undefined)return Number(obj[key])||0;
+  }
+  return 0;
+}
 function missionEarningsModel(){
   const rows=Object.values(S.currentMissions||{}).map(m=>{
     const meta=missionMetaById(m.typeId,m.caption)||{};
-    const base=Math.max(0,Number(m.averageCredits)||Number(meta.average_credits)||0);
+    const additional=meta.additional||{};
+    const chances=meta.chances||{};
+    const base=Math.max(0,firstFiniteNumber(
+      m.averageCredits,
+      meta.average_credits,
+      meta.averageCredits,
+      meta.credits,
+      meta.reward,
+      meta.average
+    ));
     const currentPatients=Math.max(0,Number(m.patients)||0);
-    const possiblePatients=Math.max(currentPatients,Number(meta?.additional?.possible_patient)||0);
-    const transportChance=Math.max(0,Math.min(100,Number(meta?.chances?.patient_transport)||0));
-    const patientCount=currentPatients||possiblePatients;
+    const currentPrisoners=Math.max(0,Number(m.prisoners)||0);
+    const possiblePatients=Math.max(currentPatients,missionAdditionalValue(additional,"possible_patient","possible_patients","max_patients","patients"));
+    const possiblePrisoners=Math.max(currentPrisoners,missionAdditionalValue(additional,"possible_prisoners","possible_prisoner","max_prisoners","prisoners"));
+    const patientChance=chancePercent(chances.patient,chances.patient_chance,chances.patient_probability,additional.patient_chance,additional.patient_probability);
+    const prisonerChance=chancePercent(chances.prisoner,chances.prisoner_chance,chances.prisoner_probability,additional.prisoner_chance,additional.prisoner_probability);
+    const transportChance=chancePercent(chances.patient_transport,chances.patient_transport_chance,chances.transport,additional.patient_transport);
+    const patientCount=currentPatients||Math.round(possiblePatients*(patientChance?patientChance:100)/100);
+    const prisonerCount=currentPrisoners||Math.round(possiblePrisoners*(prisonerChance?prisonerChance:100)/100);
     const treatment=patientCount*250;
     const transport=Math.round(patientCount*(transportChance/100)*500);
+    const prisoners=prisonerCount*250;
     return {
       id:m.id,name:m.caption||meta.name||"Einsatz",alliance:!!m.allianceId,
       base,patients:patientCount,currentPatients,possiblePatients,transportChance,
-      treatment,transport,total:base+treatment+transport
+      prisoners:prisonerCount,currentPrisoners,possiblePrisoners,
+      treatment,transport,prisonerCredits:prisoners,total:base+treatment+transport+prisoners
     };
-  }).filter(row=>row.base>0||row.patients>0);
+  }).filter(row=>row.base>0||row.patients>0||row.prisoners>0);
   return {
     rows,
     missions:rows.length,
     alliance:rows.filter(r=>r.alliance).length,
     patients:rows.reduce((s,r)=>s+r.patients,0),
+    prisoners:rows.reduce((s,r)=>s+r.prisoners,0),
     base:rows.reduce((s,r)=>s+r.base,0),
     treatment:rows.reduce((s,r)=>s+r.treatment,0),
     transport:rows.reduce((s,r)=>s+r.transport,0),
+    prisonerCredits:rows.reduce((s,r)=>s+r.prisonerCredits,0),
     total:rows.reduce((s,r)=>s+r.total,0)
   };
 }
@@ -3849,13 +4560,18 @@ function renderMissionEarnings(){
   const totalEl=$("#mission-earn-total");
   if(!totalEl.length)return;
   const model=missionEarningsModel();
-  const signature=[model.missions,model.alliance,model.patients,model.base,model.treatment,model.transport,model.total].join("|");
+  const signature=[model.missions,model.alliance,model.patients,model.prisoners,model.base,model.treatment,model.transport,model.prisonerCredits,model.total].join("|");
   const totalText=fmtMoney(model.total);
-  const noteText=model.missions?`${fmt(model.missions)} offene Einsätze berücksichtigt`:"Noch keine offenen Einsätze erkannt";
+  const extras=[
+    model.patients?`${fmt(model.patients)} Pat.`:"",
+    model.prisoners?`${fmt(model.prisoners)} Gef.`:""
+  ].filter(Boolean).join(" - ");
+  const noteText=model.missions?`${fmt(model.missions)} offene Einsätze${extras?` - ${extras}`:""} geschätzt`:"Noch keine offenen Einsätze erkannt";
   if(signature===missionEarningsSignature&&totalEl.text()===totalText&&$("#mission-earn-note").text()===noteText)return;
   missionEarningsSignature=signature;
   totalEl.text(totalText);
   $("#mission-earn-note").text(noteText);
+  renderCreditDaySummary();
 }
 function rememberAllianceMission(data={}){
   rememberCurrentMission({...data,sourceDom:false});
@@ -3883,6 +4599,8 @@ function updateAllianceMissionPerson(type,data={}){
   }
 }
 function finishAllianceMission(id){
+  const current=S.currentMissions?.[String(id||"")];
+  if(current)pushCreditPopupContext("Einsatz",current.caption||"Einsatz","abgeschlossen");
   removeCurrentMission(id);
   ensureAllianceActivityDay();
   const key=String(id||"");
@@ -3971,9 +4689,9 @@ function checkMidnight(){
   }
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  CREDIT HISTORY                                              â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  CREDIT HISTORY                                              ║
+// ╚══════════════════════════════════════════════════════════════╝
 function normalizeAllianceDaily(){
   const map=new Map();
   (Array.isArray(S.allianceDaily)?S.allianceDaily:[]).forEach(x=>{
@@ -4143,7 +4861,7 @@ function allianceForecastModel(){
   const sampleCount=Math.min(samples.length,7);
   const qualityScore=Math.max(0,Math.min(100,Math.round((sampleCount/7)*100)));
   const qualityText=`${fmt(sampleCount)}/7 Tage`;
-  const qualityDetail=`${qualityText}${estimatedCount?` · ${fmt(estimatedCount)} geschätzt`:""}${usedToday?" · heute hochgerechnet":""}`;
+  const qualityDetail=`${qualityText}${estimatedCount?` - ${fmt(estimatedCount)} geschätzt`:""}${usedToday?" - heute hochgerechnet":""}`;
   const quality=samples.length>=7?"Starke lokale Datenbasis":samples.length>=3?"Solide Tendenz":"Frühe Schätzung";
   const sampleRows=completed.length?completed:(todayProjected?[{date:today,label:"Heute",earn:todayProjected,estimated:true}]:[]);
   const total7=completed.reduce((sum,row)=>sum+row.earn,0);
@@ -4175,7 +4893,7 @@ function forecastOverviewHtml(m){
   const eta=forecastDaysText(m.days);
   const predicted=m.predicted?formatForecastDate(m.predicted):"Sobald genügend Daten vorliegen";
   return `<div class="forecast-mini pro">
-    <div class="forecast-beta"><b>LIVE</b><span>${escHtml(m.quality)} · ${escHtml(m.qualityText)} Datenbasis · ${m.usedToday?"heutiges Tempo hochgerechnet":"vollständige Tage bevorzugt"}</span></div>
+    <div class="forecast-beta"><b>LIVE</b><span>${escHtml(m.quality)} - ${escHtml(m.qualityText)} Datenbasis - ${m.usedToday?"heutiges Tempo hochgerechnet":"vollständige Tage bevorzugt"}</span></div>
     <div class="forecast-mini-card">
       <div class="forecast-mini-hero">
         <span class="forecast-mini-label">Voraussichtlich erreicht in</span>
@@ -4199,7 +4917,7 @@ function forecastFullHtml(m){
   const eta=m.days===null?"Nicht berechenbar":m.days===0?"Bereits erreicht":`${fmt(m.days)} Tage`;
   const predicted=m.predicted?formatForecastDate(m.predicted):"Noch offen";
   const etaState=m.days===0?"reached":m.predicted?"active":"waiting";
-  const note=`${m.quality}${m.estimatedCount?` · ${m.estimatedCount} geschätzte Offline-Tage`:""}${m.usedToday?" · heutiges Tempo hochgerechnet":""}`;
+  const note=`${m.quality}${m.estimatedCount?` - ${m.estimatedCount} geschätzte Offline-Tage`:""}${m.usedToday?" - heutiges Tempo hochgerechnet":""}`;
   return `<div class="forecast-wrap forecast-pro">
     <div class="forecast-beta"><b>LIVE-LAGE</b><span>Die Hochrechnung basiert auf den lokal gespeicherten Verbandsständen. Vollständige Tage zählen stärker als heutige Zwischenstände; Events, Offline-Zeiten und Aktivitätsspitzen können das Ergebnis verschieben.</span></div>
     <div class="forecast-head"><div><div class="forecast-title">Verbandsprognose</div><div class="forecast-sub">Der Meilenstein lässt sich oben oder in den Einstellungen ändern. Resttage und Erreichungsdatum werden automatisch berechnet.<br>${escHtml(note)}</div></div><span class="forecast-status ${m.statusClass}">${escHtml(m.status)}</span></div>
@@ -4232,8 +4950,8 @@ function forecastFullHtml(m){
       <div class="forecast-panel">
         <div class="forecast-panel-title">Datenlage<span>lokal gemessen</span></div>
         <div class="forecast-insights">
-          <div class="forecast-insight"><span>Bester Tag</span><b>${m.bestDay?`${escHtml(m.bestDay.label)} · ${fmtMoney(m.bestDay.earn)}`:"-"}</b></div>
-          <div class="forecast-insight"><span>Schwächster Tag</span><b>${m.weakDay?`${escHtml(m.weakDay.label)} · ${fmtMoney(m.weakDay.earn)}`:"-"}</b></div>
+          <div class="forecast-insight"><span>Bester Tag</span><b>${m.bestDay?`${escHtml(m.bestDay.label)} - ${fmtMoney(m.bestDay.earn)}`:"-"}</b></div>
+          <div class="forecast-insight"><span>Schwächster Tag</span><b>${m.weakDay?`${escHtml(m.weakDay.label)} - ${fmtMoney(m.weakDay.earn)}`:"-"}</b></div>
           <div class="forecast-insight"><span>Heutiger Stand</span><b>${m.todayEarn?fmtMoney(m.todayEarn):"-"}${m.todayProjected?` / ~${fmtMoney(m.todayProjected)}`:""}</b></div>
           <div class="forecast-quality" title="${escHtml(m.qualityDetail)}"><span style="width:${m.qualityScore}%"></span></div>
         </div>
@@ -4293,7 +5011,7 @@ function pushHist(val){
   if(!h.length||now-h[h.length-1].ts>290000){
     h.push({ts:now,v:val});
     if(h.length>48)h.shift();
-    save();drawChart();renderHistTab();
+    save();drawChart();
   }
 }
 
@@ -4362,9 +5080,9 @@ function drawChart(){
   setH("#cv-meta",`<span style="color:${col};font-weight:700">${diff>=0?"+":""}${fmt(diff)} ¢</span> letzte Aenderung`);
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  DONUT CHART                                                 â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  DONUT CHART                                                 ║
+// ╚══════════════════════════════════════════════════════════════╝
 function drawDonut(data){
   const el=document.getElementById("lss7-donut");
   if(!el)return;
@@ -4394,9 +5112,9 @@ function drawDonut(data){
   </svg>`;
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  API â€” FETCH FUNCTIONS                                       â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  API — FETCH FUNCTIONS                                       ║
+// ╚══════════════════════════════════════════════════════════════╝
 function allianceRoleInfo(user){
   const assigned=Array.isArray(user?.roles)?user.roles.map(String).filter(Boolean):[];
   let all=mergeProfileRoles(assigned.map(roleFromLabel).filter(Boolean));
@@ -4422,7 +5140,7 @@ function roleFromLabel(label){
     [...ALLIANCE_ROLE_DEFS].sort((a,b)=>Math.max(...b.aliases.map(x=>x.length))-Math.max(...a.aliases.map(x=>x.length)))
       .find(role=>role.aliases.some(alias=>alias.length>=5&&normalized.includes(alias)));
   if(direct)return direct;
-  if(!raw || !/[A-Za-zÀ-ÿ0-9]/.test(raw))return null;
+  if(!raw || !/[\p{L}\p{N}]/u.test(raw))return null;
   return {id:"other",label:raw,color:"#0891b2",text:"#ffffff",aliases:[normalized]};
 }
 function mergeProfileRoles(...groups){
@@ -4545,10 +5263,10 @@ function playerDailyRows(limit=7){
 
 function playerDailyBoardHtml(){
   const rows=playerDailyRows(7);
-  if(!rows.length)return `<div class="player-daily-panel"><div class="player-daily-head"><b>Persönlicher Verdienst · 7 Tage</b><span>Datensammlung startet</span></div><div class="lss7-empty">Noch keine persönlichen Tageswerte gespeichert.</div></div>`;
+  if(!rows.length)return `<div class="player-daily-panel"><div class="player-daily-head"><b>Persönlicher Verdienst - 7 Tage</b><span>Datensammlung startet</span></div><div class="lss7-empty">Noch keine persönlichen Tageswerte gespeichert.</div></div>`;
   const max=Math.max(...rows.map(row=>row.earn),1);
   const avg=Math.round(rows.reduce((sum,row)=>sum+row.earn,0)/rows.length);
-  return `<div class="player-daily-panel"><div class="player-daily-head"><b>Persönlicher Verdienst · 7 Tage</b><span>${rows.length}/7 Tage · Ø ${fmtMoney(avg)}</span></div>${rows.map(row=>{
+  return `<div class="player-daily-panel"><div class="player-daily-head"><b>Persönlicher Verdienst - 7 Tage</b><span>${rows.length}/7 Tage - Ø ${fmtMoney(avg)}</span></div>${rows.map(row=>{
     const pct=row.earn>0?Math.max(5,Math.round(row.earn/max*100)):0;
     return `<div class="player-daily-row"><span class="player-daily-day">${escHtml(row.label)}</span><span class="player-daily-bar"><i style="width:${pct}%"></i></span><span class="player-daily-val">${fmtMoney(row.earn)}</span></div>`;
   }).join("")}</div>`;
@@ -4655,7 +5373,7 @@ function renderPlayerForecast(){
   const rank=S.playerRanking?.rank;
   const delta=playerRankDelta();
   $("#prof-placement")
-    .attr("title",`Spielerprognose und Platzierungsumfeld öffnen · ${delta.label}`)
+    .attr("title",`Spielerprognose und Platzierungsumfeld öffnen - ${delta.label}`)
     .html(`<span class="prof-placement-kicker">Spielerplatzierung</span><span class="prof-placement-main"><strong>${rank?`#${fmt(rank)}`:"Wird ermittelt"}</strong><small class="prof-placement-history ${delta.cls}">${rankTrendHtml(delta,"compact")}</small></span><span class="prof-placement-caption">${escHtml(delta.label)}</span>`);
   if(!roots.length)return;
   const eta=model.next
@@ -4665,11 +5383,13 @@ function renderPlayerForecast(){
     ?(model.days!==null?`${fmt(model.days)} ${model.days===1?"Tag":"Tage"}`:"Tempo wird ermittelt")
     :"Ziel erreicht";
   const etaState=model.next?(model.eta?"active":"waiting"):"reached";
-  const rows=(S.playerRanking?.rows||[]).map(row=>{
+  const playerRankRowHtml=row=>{
     const href=playerProfileLink(row);
     const nameHtml=href?`<a href="${href}" target="_blank" rel="noopener">${escHtml(row.name)}</a>`:`<b>${escHtml(row.name)}</b>`;
     return `<div class="player-rank-row${row.me?" me":""}"><span>#${fmt(row.rank)}</span>${nameHtml}<span>${fmtMoney(row.credits)}</span></div>`;
-  }).join("");
+  };
+  const rankingRows=S.playerRanking?.rows||[];
+  const rows=rankingRows.map(playerRankRowHtml).join("");
   const progressMeta=model.next?`${model.progress.toFixed(2).replace(".",",")}% im aktuellen Dienstgrad`:"Höchster Rang erreicht";
   const html=`<div class="player-forecast pro">
     <div class="player-forecast-head"><div><div class="player-forecast-title">Spielerprognose</div><div class="player-forecast-sub">Prognose bis zur nächsten Beförderung auf Basis deiner lokal erfassten Tagesverdienste. Ab 3 bis 7 vollständigen Tagen wird die Schätzung belastbarer.</div></div></div>
@@ -4677,7 +5397,7 @@ function renderPlayerForecast(){
       <div class="player-forecast-hero-main">
         <span class="player-forecast-eyebrow">Nächste Beförderung</span>
         <strong class="player-forecast-hero-rank">${escHtml(model.next?.rank||"Höchster Rang")}</strong>
-        <span class="player-forecast-hero-meta">${model.next?`${fmtMoney(model.remaining)} fehlen noch · ${progressMeta}`:"Alle bekannten Beförderungen sind erreicht."}</span>
+        <span class="player-forecast-hero-meta">${model.next?`${fmtMoney(model.remaining)} fehlen noch - ${progressMeta}`:"Alle bekannten Beförderungen sind erreicht."}</span>
       </div>
       <div class="player-forecast-eta ${etaState}">
         <span class="player-forecast-eta-label">Voraussichtliches Erreichungsdatum</span>
@@ -4699,13 +5419,10 @@ function renderPlayerForecast(){
     <div class="player-forecast-grid">
       <div class="player-forecast-kpi"><span>Aktueller Dienstgrad</span><b>${escHtml(model.level.rank)}</b></div>
       <div class="player-forecast-kpi"><span>Nächste Beförderung</span><b>${escHtml(model.next?.rank||"Höchster Rang")}</b></div>
-      <div class="player-forecast-kpi progress"><span>Noch benötigt</span><b>${model.next?fmtMoney(model.remaining):"Erreicht"}</b></div>
       <div class="player-forecast-kpi rank"><span>Spielerplatzierung</span><b>${rank?`#${fmt(rank)}`:escHtml(S.playerRanking?.status||"Wird geladen")}</b></div>
       <div class="player-forecast-kpi rank"><span>Platzänderung heute</span><b class="rank-delta ${delta.cls}">${rankTrendHtml(delta,"short")}</b></div>
-      <div class="player-forecast-kpi progress"><span>Aktueller Creditstand</span><b>${fmtMoney(model.current)}</b></div>
-      <div class="player-forecast-kpi progress"><span>Zielwert Beförderung</span><b>${model.next?fmtMoney(model.target):"Erreicht"}</b></div>
       <div class="player-forecast-kpi data"><span>7 Tage Summe</span><b>${model.total7?fmtMoney(model.total7):"-"}</b></div>
-      <div class="player-forecast-kpi data"><span>Bester Tag</span><b>${model.bestDay?`${escHtml(model.bestDay.label)} · ${fmtMoney(model.bestDay.earn)}`:"-"}</b></div>
+      <div class="player-forecast-kpi data"><span>Bester Tag</span><b>${model.bestDay?`${escHtml(model.bestDay.label)} - ${fmtMoney(model.bestDay.earn)}`:"-"}</b></div>
       <div class="player-forecast-kpi data"><span>Datenbasis</span><b>${escHtml(model.qualityText)}</b></div>
     </div>
     ${playerRecordsHtml(model)}
@@ -4997,8 +5714,8 @@ function fetchBuildings(){
 
 function fetchSchoolings(){
   apiGet(API.schoolings,data=>{
-    const raw=Array.isArray(data)?data:Array.isArray(data?.result)?data.result:null;
-    if(raw===null){fetchSchoolingsFromPage();return;}
+    const raw=apiArray(data,"schoolings","alliance_schoolings","opened_schoolings","allianceSchoolings","courses","education");
+    if(!raw.length){fetchSchoolingsFromPage();return;}
     const list=raw.map(normalizeApiSchooling).filter(Boolean);
     S.dataCache.schoolings=list;
     renderSchoolings(list);
@@ -5007,19 +5724,25 @@ function fetchSchoolings(){
 
 function normalizeApiSchooling(item){
   if(!item||typeof item!=="object")return null;
-  const id=Number(item.id)||0;
-  const finishRaw=item.finish_time??item.end_time??item.finish??0;
+  const id=Number(item.id??item.schooling_id??item.alliance_schooling_id??item.education_id)||0;
+  const finishRaw=item.finish_time??item.end_time??item.ends_at??item.finished_at??item.finish??item.end??0;
   const finishTs=normalizeSchoolingTs(finishRaw);
+  const maxSeats=Number(item.max_participants??item.maxParticipants??item.seats??item.spaces??item.max_spaces??item.participant_count_max)||0;
+  const usedSeats=Number(item.participants_count??item.participant_count??item.occupied_spaces??item.used_spaces??item.usedSeats)||0;
+  const freeSeatsRaw=item.open_spaces??item.free_spaces??item.available_spaces??item.freeSeats??item.free_seats;
+  const freeSeats=freeSeatsRaw!==undefined&&freeSeatsRaw!==null
+    ?String(freeSeatsRaw)
+    :maxSeats?`${Math.max(0,maxSeats-usedSeats)} / ${maxSeats}`:"-";
   const schooling={
     id,
-    caption:String(item.education_title||item.caption||item.name||"Lehrgang").trim(),
-    freeSeats:String(item.open_spaces??item.free_spaces??item.available_spaces??"-"),
-    cost:String(item.price??item.cost??"-"),
+    caption:String(item.education_title||item.education?.title||item.education_name||item.caption||item.name||item.title||"Lehrgang").trim(),
+    freeSeats,
+    cost:String(item.price??item.cost??item.credits??"-"),
     finish:finishTs?formatSchoolingRemaining(finishTs):"-",
-    owner:String(item.owner_name||item.user_name||item.owner||"Verband").trim(),
+    owner:String(item.owner_name||item.user_name||item.owner?.name||item.owner||item.created_by||"Verband").trim(),
     url:id?`${BASE}/schoolings/${id}`:"",
     finishTs,
-    dismissed:item.dismissed===true||item.finished===true||item.completed===true||item.closed===true,
+    dismissed:item.dismissed===true||item.finished===true||item.completed===true||item.closed===true||item.active===false,
     fromHtml:true,
     fromApi:true
   };
@@ -5083,23 +5806,25 @@ function readSchoolingFinishInfo(cell,rowHtml){
 
 function parseSchoolingsHtml(html){
   const doc=new DOMParser().parseFromString(html||"","text/html");
-  const rows=Array.from(doc.querySelectorAll("tr.schooling_opened_table_searchable, table.table-striped tbody tr"));
+  const rows=Array.from(doc.querySelectorAll("tr.schooling_opened_table_searchable, #schooling_opened_table tbody tr, table.table-striped tbody tr, table tbody tr"));
   return rows.map(tr=>{
     const tds=Array.from(tr.querySelectorAll("td"));
-    if(tds.length<4)return null;
-    const link=tds[0].querySelector("a[href*='/schoolings/']");
-    const caption=(cleanSchoolingCellText(link)||cleanSchoolingCellText(tds[0]));
+    if(tds.length<2)return null;
+    const link=tr.querySelector("a[href*='/schoolings/']");
+    const caption=(cleanSchoolingCellText(link)||cleanSchoolingCellText(tds[0])).replace(/\s+/g," ").trim();
+    if(!caption||/lehrgang|plätze|kosten|fertig/i.test(caption)&&tds.length<3)return null;
     const href=link?.getAttribute("href")||"";
-    const owner=cleanSchoolingCellText(tds[4]);
-    const finishInfo=readSchoolingFinishInfo(tds[3],tr.innerHTML);
+    const owner=cleanSchoolingCellText(tds[4]||tds[tds.length-1]);
+    const finishCell=tds[3]||tds.find(td=>/registerEducationTimer|fertig|tage|\d{1,2}:\d{2}/i.test(td.innerHTML||td.textContent||""));
+    const finishInfo=readSchoolingFinishInfo(finishCell,tr.innerHTML);
     return {
       caption,
-      freeSeats:cleanSchoolingCellText(tds[1]),
-      cost:cleanSchoolingCellText(tds[2]),
+      freeSeats:cleanSchoolingCellText(tds[1])||"-",
+      cost:cleanSchoolingCellText(tds[2])||"-",
       finish:finishInfo.finish,
       finishTs:finishInfo.finishTs,
       owner,
-      url:href?`${BASE}${href}`:"",
+      url:href?(href.startsWith("http")?href:`${BASE}${href}`):"",
       fromHtml:true
     };
   }).filter(s=>s&&s.caption&&isActiveSchooling(s));
@@ -5120,12 +5845,7 @@ function fetchVehicleDistances(){
   });
 }
 
-function fetchAAOs(){
-  apiGet(API.aaos,list=>{ S.dataCache.aaos=Array.isArray(list)?list:apiArray(list,"aaos"); renderAAOs(S.dataCache.aaos); });
-}
-
 function fetchAnalysisMeta(){
-  apiGet(API.aaoCategories,data=>{S.dataCache.aaoCategories=apiArray(data,"aao_categories","categories");renderAAOs(S.dataCache.aaos||[]);},()=>{});
   apiGetPaged(API.pois,list=>{S.dataCache.pois=list;renderFleetInsights();},()=>renderFleetInsights(),{keys:["pois"]});
   apiGet(API.missionTypes,data=>{S.dataCache.missionTypes=data||null;renderFleetInsights();},()=>renderFleetInsights());
   jsonGet(API.missionsJson,data=>{S.dataCache.missions=apiArray(data,"missions","result");rebuildMissionMetaIndex();renderFleetInsights();scheduleMissionEarningsRender(true);},()=>{renderFleetInsights();scheduleMissionEarningsRender(true);});
@@ -5135,14 +5855,14 @@ function fetchAnalysisMeta(){
 
 function fetchAllData(){
   fetchAlliance(); fetchUserinfo(); fetchVehicleStates(); fetchBuildings(); fetchFleetVehicles();
-  fetchSchoolings(); fetchAAOs(); fetchAnalysisMeta();
+  fetchSchoolings(); fetchAnalysisMeta();
   fetchDailyEarnFromOverview();
   fetchWeather();
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  RENDER â€” OVERVIEW TAB                                       â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  RENDER — OVERVIEW TAB                                       ║
+// ╚══════════════════════════════════════════════════════════════╝
 function renderOverview(d){
   const domAllianceId=readAllianceIdFromDom();
   const apiAllianceId=Number(d.id)||null;
@@ -5161,14 +5881,14 @@ function renderOverview(d){
   setV("#sv-rank",    d.rank||"-");
   setV("#sv-alliance-daily",fmtMoney(allianceEarnToday()));
   setH("#overview-command-title",`${link}<span class="overview-title-suffix">im Überblick</span>`);
-  $("#overview-command-sub").text(`Platz ${d.rank||"-"} · ${fmt(d.user_count||0)} Mitglieder · ${fmtMoney(d.credits_total||0)} Gesamtcredits · ${fmtMoney(d.credits_current||0)} in der Verbandskasse`);
+  $("#overview-command-sub").text(`Platz ${d.rank||"-"} - ${fmt(d.user_count||0)} Mitglieder - ${fmtMoney(d.credits_total||0)} Gesamtcredits - ${fmtMoney(d.credits_current||0)} in der Verbandskasse`);
   renderAllianceDailyBoard();
   renderForecast();
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  RENDER â€” VEHICLES TAB                                       â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  RENDER — VEHICLES TAB                                       ║
+// ╚══════════════════════════════════════════════════════════════╝
 function renderVehicles(data){
   const total=Object.values(data).reduce((s,v)=>s+(v||0),0);
   S.vehicleTotal=total;
@@ -5201,7 +5921,7 @@ function renderVehicles(data){
       <div class="vb-dot" style="background:${c}"></div>
       <span class="vb-lbl">${l}</span>
       <div class="vb-bg"><div class="vb-fill${cnt?"":" is-zero"}" style="width:${cnt?pct:0}%;background:${c}"></div></div>
-      <span class="vb-num">${fmt(cnt)} · ${pct}%</span></div>`);
+      <span class="vb-num">${fmt(cnt)} - ${pct}%</span></div>`);
   });
 
   bars.append(`<div class="vb-total">
@@ -5265,15 +5985,14 @@ function renderFleetInsights(){
   const apiCards=[
     ["POIs",Array.isArray(S.dataCache.pois)?S.dataCache.pois.length:0,"/api/v2/pois"],
     ["Einsatzdaten",missionTypeCount||missionCount,"mission_type_data / einsaetze.json"],
-    ["Verbandsevents",Array.isArray(S.dataCache.allianceEventTypes)?S.dataCache.allianceEventTypes.length:0,"alliance_event_types.json"],
-    ["AAO-Kategorien",Array.isArray(S.dataCache.aaoCategories)?S.dataCache.aaoCategories.length:0,"/api/v1/aao_categories"]
+    ["Verbandsevents",Array.isArray(S.dataCache.allianceEventTypes)?S.dataCache.allianceEventTypes.length:0,"alliance_event_types.json"]
   ];
   $("#fleet-api-board").html(apiCards.map(([label,value,note])=>`<div class="quality-card info"><span class="quality-label">${escHtml(label)}</span><b>${fmt(value)}</b><span class="quality-note">${escHtml(note)}</span></div>`).join(""));
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  RENDER â€” BUILDINGS TAB                                      â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  RENDER — BUILDINGS TAB                                      ║
+// ╚══════════════════════════════════════════════════════════════╝
 function renderBuildings(list){
   const cont=$("#lss7-bld").empty();
   S.buildingTotal=list.length;
@@ -5367,20 +6086,20 @@ function renderBuildings(list){
   const personnelCoverage=personnelTarget>0?Math.round(personnel/personnelTarget*100):null;
   const operationalRate=list.length?Math.round(enabledLocations/list.length*100):0;
 
-  cont.append(`<div class="asset-subhead"><span>Standortbetrieb</span><span>${fmt(list.length)} Standorte · ${operationalRate}% aktiv</span></div>`);
+  cont.append(`<div class="asset-subhead"><span>Standortbetrieb</span><span>${fmt(list.length)} Standorte - ${operationalRate}% aktiv</span></div>`);
   cont.append(`<div class="asset-kpis asset-kpis-pro">
-    <div class="asset-kpi pro"><span class="asset-kpi-label">Personal</span><span class="asset-kpi-value">${fmt(personnel)}</span><span class="asset-kpi-note">Soll: ${personnelTarget?fmt(personnelTarget):"nicht hinterlegt"}${personnelCoverage!==null?` · ${personnelCoverage}%`:""}</span></div>
+    <div class="asset-kpi pro"><span class="asset-kpi-label">Personal</span><span class="asset-kpi-value">${fmt(personnel)}</span><span class="asset-kpi-note">Soll: ${personnelTarget?fmt(personnelTarget):"nicht hinterlegt"}${personnelCoverage!==null?` - ${personnelCoverage}%`:""}</span></div>
     <div class="asset-kpi pro"><span class="asset-kpi-label">Aktive Standorte</span><span class="asset-kpi-value">${fmt(enabledLocations)}</span><span class="asset-kpi-note">${operationalRate}% des Bestands</span></div>
     <div class="asset-kpi pro"><span class="asset-kpi-label">Eigene Einsätze</span><span class="asset-kpi-value">${fmt(missionGenerators)}</span><span class="asset-kpi-note">Standorte mit Einsatzgenerierung</span></div>
     <div class="asset-kpi pro"><span class="asset-kpi-label">Automatische Werbung</span><span class="asset-kpi-value">${fmt(automaticHiring)}</span><span class="asset-kpi-note">Personalgewinnung aktiv</span></div>
     <div class="asset-kpi pro"><span class="asset-kpi-label">Spezialisierungen</span><span class="asset-kpi-value">${fmt(activeSpecializations)}</span><span class="asset-kpi-note">Aktive Fachausrichtungen</span></div>
     <div class="asset-kpi pro"><span class="asset-kpi-label">Leitstellenbindung</span><span class="asset-kpi-value">${fmt(dispatchAssigned)}</span><span class="asset-kpi-note">an ${fmt(dispatchCenters.size)} Leitstellen zugeordnet</span></div>
-    <div class="asset-kpi pro"><span class="asset-kpi-label">Ausbauten</span><span class="asset-kpi-value">${fmt(enabledExtensions)} / ${fmt(builtExtensions)}</span><span class="asset-kpi-note">aktiv / gebaut · ${fmt(pendingExtensions)} im Bau</span></div>
-    <div class="asset-kpi pro"><span class="asset-kpi-label">Weitere Kapazitäten</span><span class="asset-kpi-value">${fmt(cells)} Zellen</span><span class="asset-kpi-note">${fmt(storageUpgrades)} Lager · ${fmt(smallLocations)} Kleinwachen · ${fmt(sharedLocations)} geteilt</span></div>
+    <div class="asset-kpi pro"><span class="asset-kpi-label">Ausbauten</span><span class="asset-kpi-value">${fmt(enabledExtensions)} / ${fmt(builtExtensions)}</span><span class="asset-kpi-note">aktiv / gebaut - ${fmt(pendingExtensions)} im Bau</span></div>
+    <div class="asset-kpi pro"><span class="asset-kpi-label">Weitere Kapazitäten</span><span class="asset-kpi-value">${fmt(cells)} Zellen</span><span class="asset-kpi-note">${fmt(storageUpgrades)} Lager - ${fmt(smallLocations)} Kleinwachen - ${fmt(sharedLocations)} geteilt</span></div>
   </div>`);
   cont.append(`<div class="asset-subhead"><span>Organisationen</span><span>Ø Ausbaustufe ${(totalLevels/list.length).toFixed(1).replace(".",",")}</span></div>`);
   cont.append(`<div class="building-category-grid">${categoryCards}${otherCount?`<div class="building-category-card" style="--cat:#94a3b8"><span class="building-category-name">Weitere</span><span class="building-category-count">${fmt(otherCount)}</span><span class="building-category-bar"><i style="width:${Math.max(5,Math.round(otherCount/maxCategory*100))}%"></i></span></div>`:""}</div>`);
-  cont.append(`<div class="asset-subhead"><span>Standorte nach Typ</span><span>${sorted.length} Typen · Betriebs- und Personalstatus</span></div>`);
+  cont.append(`<div class="asset-subhead"><span>Standorte nach Typ</span><span>${sorted.length} Typen - Betriebs- und Personalstatus</span></div>`);
 
   const cellTypes=new Set([6,16,19,29]);
   const typeRows=sorted.map(g=>{
@@ -5408,9 +6127,9 @@ function renderBuildings(list){
   renderFleetInsights();
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  RENDER â€” SCHOOLINGS TAB                                     â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  RENDER — SCHOOLINGS TAB                                     ║
+// ╚══════════════════════════════════════════════════════════════╝
 function renderSchoolings(list){
   const cont=$("#lss7-sch").empty();
   const running=list.filter(isActiveSchooling);
@@ -5473,9 +6192,9 @@ function filterSchoolingRows(){
   $("#lss7-sch .schooling-empty-filter").toggle(visible===0);
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  RENDER â€” DISTANCES TAB                                      â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  RENDER — DISTANCES TAB                                      ║
+// ╚══════════════════════════════════════════════════════════════╝
 function renderDistances(arr){
   const cont=$("#lss7-km").empty();
   if(!arr.length){cont.html(`<div class="lss7-empty">Keine Kilometerdaten.</div>`);return;}
@@ -5506,78 +6225,9 @@ function renderDistances(arr){
   cont.append(listDiv);
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  RENDER â€” AAO TAB                                            â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-function renderAAOs(list){
-  const cont=$("#lss7-aao").empty();
-  if(!list.length){cont.html(`<div class="lss7-empty">Keine AAOs gefunden.</div>`);return;}
-
-  S.dataCache.aaos=list;
-  const categories=Array.isArray(S.dataCache.aaoCategories)?S.dataCache.aaoCategories:[];
-  const catMap=Object.fromEntries(categories.map(c=>[String(c.id??c.aao_category_id??""),String(c.caption||c.name||`Kategorie ${c.id}`)]));
-  const sg=$(`<div class="sg sg2" style="margin-bottom:1px"></div>`);
-  sg.append(`<div class="sc"><span class="sl">AAOs gesamt</span><span class="sv c-pu">${list.length}</span></div>`);
-  const withHk=list.filter(a=>a.hotkey).length;
-  sg.append(`<div class="sc"><span class="sl">Mit Hotkey</span><span class="sv">${withHk}</span></div>`);
-  sg.append(`<div class="sc"><span class="sl">Ohne Hotkey</span><span class="sv c-am">${list.length-withHk}</span></div>`);
-  sg.append(`<div class="sc"><span class="sl">Kategorien</span><span class="sv c-bl">${categories.length||new Set(list.map(a=>a.aao_category_id||a.category_id||"")).size}</span></div>`);
-  cont.append(sg);
-
-  const byCat={};
-  list.forEach(a=>{
-    const cid=String(a.aao_category_id||a.category_id||"");
-    const label=catMap[cid]||cid||"Ohne Kategorie";
-    byCat[label]=(byCat[label]||0)+1;
-  });
-  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"de"));
-  cont.append(`<div class="asset-subhead"><span>AAO-Kategorien</span><span>${catRows.length} Gruppen</span></div>`);
-  cont.append(`<div class="fleet-type-board aao-category-board">${catRows.slice(0,12).map(([name,count])=>`<div class="fleet-type-row"><span>${escHtml(name)}</span><i><em style="width:${Math.max(5,Math.round(count/list.length*100))}%"></em></i><b>${fmt(count)}</b></div>`).join("")}</div>`);
-  cont.append(`<div class="asset-subhead"><span>AAO-Liste</span><span>sortiert nach Kategorie und Name</span></div>`);
-  const sorted=[...list].sort((a,b)=>(a.column||0)-(b.column||0)||(a.caption||"").localeCompare(b.caption||""));
-  sorted.forEach(a=>{
-    const col=a.color||"#6b7280";
-    const hk=a.hotkey?`<span class="arr-hk">${a.hotkey}</span>`:"";
-    cont.append(`<div class="arr-row">
-      <div class="arr-color" style="background:${col}"></div>
-      <span class="arr-name">${a.caption||"-"}<small>${escHtml(catMap[String(a.aao_category_id||a.category_id||"")]||"")}</small></span>
-      ${hk}
-    </div>`);
-  });
-}
-
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  RENDER â€” HISTORY TAB                                        â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-function renderHistTab(){
-  const cont=$("#lss7-hist").empty();
-  setV("#sv-hist-cnt",S.creditHist.length);
-  if(!S.creditHist.length){cont.html(`<div class="lss7-empty">Noch keine Verlaufsdaten.</div>`);applyTranslations(cont.get(0));return;}
-
-  const h=[...S.creditHist].reverse();
-
-  const hdr=$(`<div class="sort-hdr" style="grid-template-columns:54px 1fr 80px">
-    <span>Zeit</span><span>Credits</span><span style="text-align:right">Aenderung</span>
-  </div>`);
-  cont.append(hdr);
-
-  h.forEach((p,i)=>{
-    const prev=h[i+1];
-    const diff=prev?p.v-prev.v:0;
-    const sign=diff>0?"+":"";
-    const col=diff>0?"var(--green)":diff<0?"var(--red)":"var(--t4)";
-    cont.append(`<div class="hist-row">
-      <span class="hist-t">${fmtShortTime(p.ts)}</span>
-      <span class="hist-v">${fmt(p.v)} Cr</span>
-      <span class="hist-d" style="color:${col}">${diff!==0?sign+fmt(diff):""}</span>
-    </div>`);
-  });
-  applyTranslations(cont.get(0));
-}
-
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  RENDER â€” TEAM TAB                                           â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  RENDER — AAO TAB                                            ║
+// ╚══════════════════════════════════════════════════════════════╝
 function parseTeamMemberPageDetails(html){
   const doc=new DOMParser().parseFromString(html||"","text/html");
   const details={};
@@ -5852,9 +6502,9 @@ function filterTeamRows(){
   $("#lss7-team .team-empty-filter").toggle(visible===0);
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  FOOTER                                                      â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  FOOTER                                                      ║
+// ╚══════════════════════════════════════════════════════════════╝
 function updateFooter(){ $("#lss7-upd").text(timeAgo(S.lastApiTs)); }
 
 // Lightweight Three.js scene for the Summer 2026 header.
@@ -6031,13 +6681,13 @@ function initSummerScene(){
   setTheme(S.settings.panelTheme);
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  BUILD UI                                                    â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  BUILD UI                                                    ║
+// ╚══════════════════════════════════════════════════════════════╝
 function buildUI(){
   const panel=$(`<div id="lss7"></div>`);
 
-  // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Header ─────────────────────────────────────────────────
   panel.append(`
     <div id="lss7-hd">
       <canvas id="lss7-summer-scene" aria-hidden="true"></canvas>
@@ -6057,6 +6707,8 @@ function buildUI(){
       </div>
       <div id="lss7-update-note" class="lss7-update-note"><span id="lss7-update-note-text"></span><a id="lss7-update-install" class="lss7-update-install" href="${UPDATE_URL}" target="_blank" rel="noopener" style="display:none">Jetzt installieren</a><button id="lss7-update-patches" type="button">Patch-Notes ansehen</button></div>
     </div>`);
+
+  panel.append(`<div id="lss7-news-ticker" class="news-ticker header-news${S.settings.newsTicker?" on":""}" style="--news-speed:${Math.max(20,Number(S.settings.newsSpeed)||65)}s"><span class="news-ticker-label">News</span><div class="news-ticker-track"><div id="news-ticker-marquee" class="news-ticker-marquee"><span class="news-ticker-empty">News werden geladen...</span></div></div></div>`);
 
   panel.append(`
     <div class="prof-strip">
@@ -6080,7 +6732,7 @@ function buildUI(){
       <div id="prof-forecast-panel" class="prof-forecast-panel"><div id="player-profile-forecast-view" class="player-forecast-view"></div></div>
     </div>`);
 
-  // â”€â”€ Quick-Stats Strip (4 Zellen) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Quick-Stats Strip (4 Zellen) ────────────────────────────
   panel.append(`
     <div id="lss7-qs">
       <div class="qs-cell clickable" id="qs-playtime-cell" title="7-Tage-Spielzeit anzeigen">
@@ -6110,16 +6762,15 @@ function buildUI(){
       </div>
     </div>`);
 
-  // â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Tabs ────────────────────────────────────────────────────
   const TABS=[
     {id:"tp-overview",  icon:"", label:"Übersicht"},
     {id:"tp-forecast",  icon:"", label:"Verbandsprognose"},
     {id:"tp-vehicles",  icon:"", label:"Fuhrpark & Standorte"},
     {id:"tp-schoolings",icon:"", label:"Lehrgänge"},
-    {id:"tp-aao",       icon:"", label:"AAO"},
-    {id:"tp-history",   icon:"", label:"Verlauf"},
     {id:"tp-team",      icon:"", label:"Mitglieder"},
     {id:"tp-event",     icon:"", label:"Event"},
+    {id:"tp-weather",   icon:"", label:"Wetterzentrale"},
     {id:"tp-settings",  icon:"", label:"Einstellungen"},
   ];
   const tabBar=$(`<div id="lss7-tabs"></div>`);
@@ -6129,7 +6780,7 @@ function buildUI(){
   panel.append(tabBar);
   enableTabBarScroll(tabBar);
 
-  // â”€â”€ Body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Body ────────────────────────────────────────────────────
   const body=$(`<div id="lss7-body"></div>`);
 
   // TAB: Uebersicht
@@ -6240,7 +6891,7 @@ function buildUI(){
   </div><div id="forecast-full-view"></div>`);
   body.append(tForecast);
 
-  // TAB: Fahrzeuge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // TAB: Fahrzeuge ─────────────────────────────────────────────
   const tVeh=$(`<div id="tp-vehicles" class="lpanel"></div>`);
   tVeh.append(`
     <div class="vehicle-summary">
@@ -6262,7 +6913,7 @@ function buildUI(){
     </section>
     <section class="asset-section">
       <div class="asset-section-head">
-        <div><span class="asset-section-title">Qualitätscheck & API-Lage</span><span class="asset-section-sub">Automatische Hinweise aus v2-Fahrzeugen, v2-Gebäuden, POIs, Einsatzdaten, Verbandsevents und AAO-Kategorien.</span></div>
+        <div><span class="asset-section-title">Qualitätscheck & API-Lage</span><span class="asset-section-sub">Automatische Hinweise aus v2-Fahrzeugen, v2-Gebäuden, POIs, Einsatzdaten und Verbandsevents.</span></div>
         <div class="asset-action-row"><button class="lbtn prime compact" id="fleet-refresh-analysis" type="button">Analyse aktualisieren</button><button class="lbtn compact" data-export="fleet" type="button">CSV Fuhrpark</button></div>
       </div>
       <div id="fleet-quality-board" class="quality-grid"><div class="lss7-empty"><span class="lspin"></span> Lade Qualitätscheck...</div></div>
@@ -6279,37 +6930,18 @@ function buildUI(){
     </section>`);
   body.append(tVeh);
 
-  // TAB: Lehrgänge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // TAB: Lehrgänge ────────────────────────────────────────────
   const tSch=$(`<div id="tp-schoolings" class="lpanel"></div>`);
   tSch.append(`<div id="lss7-sch"><div class="lss7-empty"><span class="lspin"></span> Lade Lehrgänge...</div></div>`);
   body.append(tSch);
 
-  // TAB: AAO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const tAAO=$(`<div id="tp-aao" class="lpanel"></div>`);
-  tAAO.append(`<div id="lss7-aao"><div class="lss7-empty"><span class="lspin"></span> Lade AAOs...</div></div>`);
-  body.append(tAAO);
+  // TAB: AAO ───────────────────────────────────────────────────
+  // TAB: Wetterzentrale ─────────────────────────────────────────
+  const tWeather=$(`<div id="tp-weather" class="lpanel"></div>`);
+  tWeather.append(`<div id="weather-center-view" class="weather-center"><div class="lss7-empty">Wetterzentrale wird geladen...</div></div>`);
+  body.append(tWeather);
 
-  // TAB: Verlauf â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const tHist=$(`<div id="tp-history" class="lpanel"></div>`);
-  tHist.append(`
-    <div class="sg sg2">
-      <div class="sc">
-        <span class="sl">Verlaufspunkte</span>
-        <span class="sv" id="sv-hist-cnt">${S.creditHist.length}</span>
-      </div>
-      <div class="sc">
-        <span class="sl">Erster Eintrag</span>
-        <span class="sv-sm">${S.creditHist.length?fmtShortTime(S.creditHist[0].ts):"-"}</span>
-      </div>
-    </div>
-    <div class="settings-intro history-explain">
-      <b>${tr("Was zeigt der Verlauf?")}</b>
-      <span>${tr("Der Verlauf zeigt regelmäßig gespeicherte Stände der Verbandscredits.")} ${tr("Er ist kein vollständiges Spielprotokoll: Werte entstehen nur, während das Skript Daten abrufen kann.")} ${tr("Daten werden ausschließlich lokal in diesem Browser gespeichert.")}</span>
-    </div>
-    <div id="lss7-hist"></div>`);
-  body.append(tHist);
-
-  // TAB: Team â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // TAB: Team ──────────────────────────────────────────────────
   const tTeam=$(`<div id="tp-team" class="lpanel"><div id="lss7-team"><div class="lss7-empty"><span class="lspin"></span> Lade Mitglieder...</div></div></div>`);
   body.append(tTeam);
   const tEvt=$(`<div id="tp-event" class="lpanel"></div>`);
@@ -6342,7 +6974,7 @@ function buildUI(){
   </div>`);
   body.append(tEvt);
 
-  // TAB: Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // TAB: Settings ──────────────────────────────────────────────
   const tSet=$(`<div id="tp-settings" class="lpanel"></div>`);
   const setWrap=$(`<div class="set-wrap"></div>`);
   setWrap.append(`<div class="settings-intro"><b>Einstellungen</b><span>Anzeige, Prognose, Wetter und Events sind thematisch getrennt. Änderungen werden automatisch lokal in diesem Browser gespeichert.</span></div>`);
@@ -6362,8 +6994,6 @@ function buildUI(){
     </div>
     <label class="tog-row player-forecast-setting"><span class="tog-lbl">Spielerprognose anzeigen</span><select id="sb-player-forecast-place" class="lss7-select"><option value="profile"${S.settings.playerForecastPlacement!=="both"?" selected":""}>Nur im Spielerprofil</option><option value="both"${S.settings.playerForecastPlacement==="both"?" selected":""}>Spielerprofil und Menü</option></select></label>
   </div>`);
-  setWrap.append(grpNav);
-
   const grpAct=$(`<div class="set-group set-wide set-actions settings-actions"><div class="set-head">Schnellaktionen</div></div>`);
   grpAct.append(mkBtn("Akt.","Alle Daten jetzt aktualisieren","id='sb-refresh' class='lbtn prime'"));
   grpAct.append(mkBtn("00:00","Heutige Spielzeit zurücksetzen","id='sb-playtime-reset' class='lbtn'"));
@@ -6406,6 +7036,10 @@ function buildUI(){
   grpOpt.append(mkToggle("tog-notif","Browser-Benachrichtigungen","notifications"));
   grpOpt.append(mkToggle("tog-coins","Coins anzeigen","coins"));
   grpOpt.append(mkToggle("tog-playtime","Spielzeit anzeigen","playtimeEnabled"));
+  grpOpt.append(mkToggle("tog-news","News-Laufschrift anzeigen","newsTicker"));
+  const selectedNews=new Set(Array.isArray(S.settings.newsSources)?S.settings.newsSources:["tagesschau"]);
+  grpOpt.append(`<div class="tog-row" style="align-items:flex-start;gap:12px"><span class="tog-lbl">News-Quellen</span><div class="news-source-options">${Object.entries(NEWS_SOURCES).map(([id,src])=>`<label class="mini-check"><input type="checkbox" class="sb-news-source" value="${escHtml(id)}"${selectedNews.has(id)?" checked":""}> ${escHtml(src.label)}${src.category?` <small>(${escHtml(src.category)})</small>`:""}</label>`).join("")}</div></div>`);
+  grpOpt.append(`<label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">News-Geschwindigkeit</span><select id="sb-news-speed" class="lss7-select"><option value="45"${Number(S.settings.newsSpeed)===45?" selected":""}>Schnell</option><option value="65"${(Number(S.settings.newsSpeed)||65)===65?" selected":""}>Normal</option><option value="90"${Number(S.settings.newsSpeed)===90?" selected":""}>Langsam</option></select></label>`);
   grpOpt.append(mkToggle("tog-hotkeys","Tastenkürzel aktivieren","hotkeysEnabled"));
   grpOpt.append(`<div class="hotkey-grid">
     ${hotkeyCaptureButton("panelHotkey","Menü öffnen / schließen",S.settings.panelHotkey)}
@@ -6428,25 +7062,35 @@ function buildUI(){
       <option value="lcars"${S.settings.panelTheme==="lcars"?" selected":""}>LCARS 2364</option>
     </select>
   </label>`);
+  grpOpt.append(`<div class="settings-subdivider"><span>Kopfzeile</span></div>`);
+  grpOpt.append(grpNav);
   setWrap.append(grpOpt);
 
-  const grpCredits=$(`<div class="set-group set-wide settings-credit-popups"><div class="set-head">Credit-Eingang · Popup & Kassenklang</div></div>`);
+  const grpCredits=$(`<div class="set-group set-wide settings-credit-popups"><div class="set-head">Credit-Eingang - Popup & Kassenklang</div></div>`);
   grpCredits.append(mkToggle("tog-credit-popup","Credit-Eingänge als Popup anzeigen","creditPopupEnabled"));
   grpCredits.append(mkToggle("tog-credit-sound","Credit-Klang abspielen","creditPopupSound"));
   grpCredits.append(`<div class="settings-feature-grid">
     <label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">Klang</span><select id="sb-credit-sound-type" class="lss7-select">
-      <option value="kaching"${S.settings.creditPopupSoundType==="kaching"?" selected":""}>Kaching · Klassische Kasse</option>
-      <option value="coins"${S.settings.creditPopupSoundType==="coins"?" selected":""}>Coins · Münzen</option>
-      <option value="register"${S.settings.creditPopupSoundType==="register"?" selected":""}>Register · Registrierkasse</option>
-      <option value="success"${S.settings.creditPopupSoundType==="success"?" selected":""}>Success · Erfolgsfanfare</option>
-      <option value="soft"${S.settings.creditPopupSoundType==="soft"?" selected":""}>Soft · Dezent</option>
-      <option value="arcade"${S.settings.creditPopupSoundType==="arcade"?" selected":""}>Arcade · Retro-Bonus</option>
+      <option value="kaching"${S.settings.creditPopupSoundType==="kaching"?" selected":""}>Kaching - Klassische Kasse</option>
+      <option value="coins"${S.settings.creditPopupSoundType==="coins"?" selected":""}>Coins - Münzen</option>
+      <option value="register"${S.settings.creditPopupSoundType==="register"?" selected":""}>Register - Registrierkasse</option>
+      <option value="success"${S.settings.creditPopupSoundType==="success"?" selected":""}>Success - Erfolgsfanfare</option>
+      <option value="soft"${S.settings.creditPopupSoundType==="soft"?" selected":""}>Soft - Dezent</option>
+      <option value="arcade"${S.settings.creditPopupSoundType==="arcade"?" selected":""}>Arcade - Retro-Bonus</option>
     </select></label>
     <label class="tog-row credit-volume-row"><span class="tog-lbl">Lautstärke</span><span class="credit-volume-control"><input id="sb-credit-volume" type="range" min="0" max="100" step="5" value="${Math.max(0,Math.min(100,Number.isFinite(Number(S.settings.creditPopupVolume))?Number(S.settings.creditPopupVolume):65))}"><output id="sb-credit-volume-value">${Math.max(0,Math.min(100,Number.isFinite(Number(S.settings.creditPopupVolume))?Number(S.settings.creditPopupVolume):65))}%</output></span></label>
+    <label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">Design</span><select id="sb-credit-design" class="lss7-select">
+      <option value="premium"${S.settings.creditPopupDesign==="premium"?" selected":""}>Premium - Edel</option>
+      <option value="glass"${S.settings.creditPopupDesign==="glass"?" selected":""}>Glass - Modern</option>
+      <option value="classic"${S.settings.creditPopupDesign==="classic"?" selected":""}>Classic - Klar</option>
+      <option value="contrast"${S.settings.creditPopupDesign==="contrast"?" selected":""}>Kontrast - Sehr lesbar</option>
+      <option value="compact"${S.settings.creditPopupDesign==="compact"?" selected":""}>Kompakt - Ruhig</option>
+      <option value="terminal"${S.settings.creditPopupDesign==="terminal"?" selected":""}>Terminal - Technisch</option>
+    </select></label>
     <label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">Größe</span><select id="sb-credit-size" class="lss7-select">
-      <option value="small"${S.settings.creditPopupSize==="small"?" selected":""}>Klein · kompakt</option>
-      <option value="medium"${S.settings.creditPopupSize==="medium"?" selected":""}>Mittel · Standard</option>
-      <option value="large"${S.settings.creditPopupSize==="large"?" selected":""}>Groß · prominent</option>
+      <option value="small"${S.settings.creditPopupSize==="small"?" selected":""}>Klein - kompakt</option>
+      <option value="medium"${S.settings.creditPopupSize==="medium"?" selected":""}>Mittel - Standard</option>
+      <option value="large"${S.settings.creditPopupSize==="large"?" selected":""}>Groß - prominent</option>
     </select></label>
     <label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">Position</span><select id="sb-credit-position" class="lss7-select">
       <option value="right-top"${S.settings.creditPopupPosition==="right-top"?" selected":""}>Rechts oben</option>
@@ -6469,7 +7113,9 @@ function buildUI(){
     <label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">Mindestbetrag</span><input id="sb-credit-minimum" class="lss7-select" type="number" min="1" step="100" value="${Math.max(1,Number(S.settings.creditPopupMinimum)||1)}"></label>
   </div>`);
   grpCredits.append(`<div class="update-actions"><button class="lbtn prime" id="sb-credit-preview" type="button">Popup testen</button><button class="lbtn" id="sb-credit-sound-test" type="button">Klang testen</button></div>`);
-  grpCredits.append(`<div class="set-note">Das Popup reagiert direkt auf steigende Credits in der Spiel-Navigation. Mehrere Einnahmen werden gestapelt; Ausgaben erzeugen keine Meldung. In jeder Größe bleiben Buchungsstatus, Einnahmebetrag, Tagesstand und Uhrzeit vollständig sichtbar.</div>`);
+  grpCredits.append(`<div class="credit-day-summary-panel"><div class="credit-history-head"><b>Tagesüberblick</b><span>heute</span></div><div id="credit-day-summary" class="credit-day-summary"></div></div>`);
+  grpCredits.append(`<div class="credit-history-panel"><div class="credit-history-head"><b>Letzte Credit-Eingänge</b><span>lokal gespeichert</span></div><div id="credit-popup-history" class="credit-history-list"></div></div>`);
+  grpCredits.append(`<div class="set-note">Das Popup reagiert direkt auf steigende Credits in der Spiel-Navigation und zeigt nach Möglichkeit den zugehörigen Einsatz sowie Patient- oder Gefangenen-Kontext. Mehrere Einnahmen werden gestapelt; Ausgaben erzeugen keine Meldung.</div>`);
   setWrap.append(grpCredits);
 
   const grpForecast=$(`<div class="set-group settings-forecast"><div class="set-head">Verbandsprognose</div></div>`);
@@ -6557,35 +7203,43 @@ function buildUI(){
 
   const grpPn=$(`<div class="set-group set-wide settings-patch-notes"><div class="set-head">Patch-Notes</div></div>`);
   grpPn.append(`<div class="set-note"><b>Aktuelle Version v${V}</b><br>Alle Änderungen stehen zusätzlich gesammelt in den ausführlichen Patch-Notes unterhalb des Dashboards.</div>`);
-  const settingsCategory=(title,subtitle,items)=>{
-    const section=$(`<section class="settings-category set-wide"><div class="settings-category-head"><b>${title}</b><span>${subtitle}</span></div><div class="settings-category-grid"></div></section>`);
+  const settingsCategory=(id,title,subtitle,items)=>{
+    const section=$(`<section id="${id}" class="settings-category set-wide"><div class="settings-category-head"><b>${title}</b><span>${subtitle}</span></div><div class="settings-category-grid"></div></section>`);
     section.find(".settings-category-grid").append(...items);
     return section;
   };
+  const settingsMenu=$(`<nav class="settings-menu">
+    <a href="#settings-ui"><b>Oberfläche</b><span>Theme, Kopfzeile, News</span></a>
+    <a href="#settings-alerts"><b>Meldungen</b><span>Popups, Wetter, Events</span></a>
+    <a href="#settings-forecast"><b>Auswertung</b><span>Prognosen & Ziele</span></a>
+    <a href="#settings-data"><b>Daten</b><span>Backup, Export, Diagnose</span></a>
+    <a href="#settings-info"><b>Info</b><span>Patchnotes & Kontakt</span></a>
+  </nav>`);
   setWrap.empty().append(
     `<div class="settings-intro"><b>Einstellungen übersichtlich nach Bereichen</b><span>Jeder Abschnitt erklärt, welche Funktionen zusammengehören. Änderungen werden sofort übernommen und ausschließlich lokal in deinem Browser gespeichert.</span></div>`,
-    settingsCategory("1 · Oberfläche & Bedienung","Theme, Menüposition, Header-Button, Sprache, sichtbare Kennzahlen und Tastenkürzel.",[grpNav,grpOpt]),
-    settingsCategory("2 · Benachrichtigungen & Sounds","Credit-Popups, Lautstärke, Wetterwarnungen sowie Leitstellenspiel-Eventhinweise.",[grpCredits,grpWx,grpEvent]),
-    settingsCategory("3 · Auswertungen & Prognosen","Zielwerte und Berechnungen für die Verbandsentwicklung.",[grpForecast]),
-    settingsCategory("4 · Daten, Wartung & Diagnose","Daten aktualisieren, exportieren, Updates prüfen und Fehlerberichte erstellen.",[grpAct,grpExport,grpUpdate,grpDiag]),
-    settingsCategory("5 · Hilfe & Projektinformationen","Versionshinweise, Kontaktmöglichkeiten und Hintergrund zum Projekt.",[grpPn,grpContact,grpInfo])
+    settingsMenu,
+    settingsCategory("settings-ui","1 - Oberfläche & Bedienung","Theme, Menüposition, Header-Button, Sprache, sichtbare Kennzahlen, News und Tastenkürzel.",[grpOpt]),
+    settingsCategory("settings-alerts","2 - Benachrichtigungen & Sounds","Credit-Popups, Lautstärke, Wetterwarnungen sowie Leitstellenspiel-Eventhinweise.",[grpCredits,grpWx,grpEvent]),
+    settingsCategory("settings-forecast","3 - Auswertungen & Prognosen","Zielwerte und Berechnungen für die Verbandsentwicklung.",[grpForecast]),
+    settingsCategory("settings-data","4 - Daten, Wartung & Diagnose","Daten aktualisieren, exportieren, Updates prüfen und Fehlerberichte erstellen.",[grpAct,grpExport,grpUpdate,grpDiag]),
+    settingsCategory("settings-info","5 - Hilfe & Projektinformationen","Versionshinweise, Kontaktmöglichkeiten und Hintergrund zum Projekt.",[grpPn,grpContact,grpInfo])
   );
 
   tSet.append(setWrap);
   body.append(tSet);
   panel.append(body);
 
-  panel.append(mkAccordion("PN","Patch-Notes v9.6.0",patchHTML()));
+  panel.append(mkAccordion("PN",`Patch-Notes v${V}`,patchHTML()));
 
-  // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Footer ──────────────────────────────────────────────────
   panel.append(`
     <div id="lss7-ft">
       <span class="ft-l">(c) 2025 Fabian (Capt.BobbyNash)</span>
       <span class="ft-r"><span class="ft-version">v${V}</span><span>Aktualisiert: <span id="lss7-upd">-</span></span></span>
     </div>`);
 
-  // â”€â”€ EVENTS: stopPropagation auf allem im Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Dies verhindert dass Bootstrap oder LSS den Click abfÃ¤ngt
+  // ── EVENTS: stopPropagation auf allem im Panel ───────────────
+  // Dies verhindert dass Bootstrap oder LSS den Click abfängt
   panel.on("click mousedown mouseup touchstart", function(e){
     e.stopPropagation();
   });
@@ -6599,14 +7253,13 @@ function buildUI(){
     panel.find(".lpanel").removeClass("active");
     panel.find(`#${id}`).addClass("active");
 
-    // Lazy fetch beim ersten Ã–ffnen
+    // Lazy fetch beim ersten Öffnen
     if(id==="tp-vehicles"  && !panel.data("lv")){panel.data("lv",1);fetchVehicleStates();fetchBuildings();fetchFleetVehicles();fetchAnalysisMeta();}
     if(id==="tp-schoolings"&& !panel.data("ls")){panel.data("ls",1);fetchSchoolings();}
-    if(id==="tp-aao"       && !panel.data("la")){panel.data("la",1);fetchAAOs();fetchAnalysisMeta();}
-    if(id==="tp-history"){renderHistTab();}
     if(id==="tp-forecast"){renderForecast();}
     if(id==="tp-player-forecast"){renderPlayerForecast();fetchPlayerRanking();}
     if(id==="tp-event"){scanGameEvents();renderEventPage();}
+    if(id==="tp-weather"){renderWeatherCenter();fetchWeather();}
     if(id==="tp-overview"){renderForecast();setTimeout(drawChart,50);}
   });
 
@@ -6708,6 +7361,10 @@ function buildUI(){
     S.settings.creditPopupSize=String($(e.currentTarget).val()||"medium");
     save();creditPopupContainer();showCreditPopup(12500,{preview:true});
   });
+  panel.on("change","#sb-credit-design",e=>{
+    S.settings.creditPopupDesign=String($(e.currentTarget).val()||"premium");
+    save();showCreditPopup(12500,{preview:true});
+  });
   panel.on("change","#sb-credit-sound-type",e=>{
     S.settings.creditPopupSoundType=String($(e.currentTarget).val()||"kaching");
     save();playCreditSound(true);
@@ -6777,11 +7434,11 @@ function buildUI(){
   panel.on("change","#sb-weather-country",e=>{
     S.settings.weatherCountry=String($(e.currentTarget).val()||"DE");
     S.weather=null;S.weatherLoc="";
-    save();fetchWeather();
+    save();fetchWeather(true);
   });
   panel.on("change","#sb-weather-loc",e=>{
     S.settings.weatherLocation=String($(e.currentTarget).val()||"").trim();
-    save();fetchWeather();
+    save();fetchWeather(true);
   });
   panel.on("change","#sb-weather-sound",e=>{
     S.settings.weatherSound=String($(e.currentTarget).val()||"off")==="on";
@@ -6795,7 +7452,47 @@ function buildUI(){
     if(e.key!=="Enter") return;
     e.preventDefault();
     S.settings.weatherLocation=String($(e.currentTarget).val()||"").trim();
-    save();fetchWeather();
+    save();fetchWeather(true);
+  });
+  panel.on("submit","#weather-center-search",e=>{
+    e.preventDefault();e.stopPropagation();
+    S.settings.weatherLocation=String($("#weather-center-loc").val()||"").trim();
+    S.settings.weatherCountry=String($("#weather-center-country").val()||"DE");
+    $("#sb-weather-loc").val(S.settings.weatherLocation);
+    $("#sb-weather-country").val(S.settings.weatherCountry);
+    S.weather=null;S.weatherLoc="";
+    save();fetchWeather(true);
+  });
+  panel.on("keydown","#weather-center-loc",e=>{
+    if(e.key!=="Enter")return;
+    e.preventDefault();
+    $("#weather-center-search").trigger("submit");
+  });
+  panel.on("change","#weather-center-country",e=>{
+    e.stopPropagation();
+    $("#weather-center-search").trigger("submit");
+  });
+  panel.on("click",".weather-radar-mode",e=>{
+    e.stopPropagation();e.preventDefault();
+    const mode=String($(e.currentTarget).data("radar-mode")||"radar");
+    if(!weatherRadarModes()[mode])return;
+    S.settings.weatherRadarMode=mode;
+    save();
+    $(".weather-radar-mode").removeClass("active");
+    $(e.currentTarget).addClass("active");
+    const cfg=weatherRadarModes()[mode]||weatherRadarModes().radar;
+    $("#weather-radar-subtitle").text(`Windy ${cfg.label} · frei skalierbar`);
+    const url=weatherRadarEmbedUrl(mode);
+    if(url)$("#weather-windy-frame").attr("src",url);
+  });
+  panel.on("change",".sb-news-source",()=>{
+    S.settings.newsSources=$(".sb-news-source:checked").map((_,el)=>String(el.value)).get().filter(id=>NEWS_SOURCES[id]);
+    if(!S.settings.newsSources.length)S.settings.newsSources=["tagesschau"];
+    save();fetchNewsTicker(true);
+  });
+  panel.on("change","#sb-news-speed",e=>{
+    S.settings.newsSpeed=Number($(e.currentTarget).val())||65;
+    save();renderNewsTicker();
   });
   panel.on("change","#sb-event-mode",e=>{
     S.settings.eventMode=String($(e.currentTarget).val()||"overview");
@@ -6830,6 +7527,7 @@ function buildUI(){
     if(key==="playtimeEnabled")updatePlaytimeUi();
     if(key==="coins")updateCoinsUi();
     if(key==="forecastEnabled")renderForecast();
+    if(key==="newsTicker")fetchNewsTicker(true);
     if(key==="notifications" && S.settings.notifications && "Notification" in window && Notification.permission==="default"){
       Notification.requestPermission().then(permission=>{
         notify(permission==="granted"?"Browser-Benachrichtigungen sind aktiviert.":"Browser-Benachrichtigungen wurden nicht freigegeben.",permission!=="granted");
@@ -6840,10 +7538,12 @@ function buildUI(){
   applyTranslations(panel.get(0));
   $("body").append(panel);
   renderForecast();
+  renderNewsTicker();
+  fetchNewsTicker();
   setTimeout(drawChart,200);
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ─────────────────────────────────────────────────
 function mkBtn(icon,label,attrs){
   return `<button ${attrs}><span class="lbtn-i">${icon}</span><span class="lbtn-t">${label}</span></button>`;
 }
@@ -7007,7 +7707,7 @@ function computeRankContext(list){
   const needed=above?Math.max(0,Math.floor(above.credits-me.credits+1)):0;
   const start=Math.max(0,idx-2), end=Math.min(list.length-1,idx+2);
   const slice=list.slice(start,end+1);
-  return {idx,me,above,needed,slice};
+  return {idx,me,above,needed,slice,list};
 }
 function renderRankSummary(ctx){
   if(!ctx){ setV("#sv-rank-next","Platzierung nicht gefunden"); return; }
@@ -7023,7 +7723,7 @@ function renderRankMini(ctx){
   $("#rank-mini-note").text(ctx.above
     ? `Bis naechster Platz fehlen ${fmtMoney(ctx.needed)}`
     : "Top-Platzierung erreicht");
-  const rows=ctx.slice.map(x=>{
+  const rankRowHtml=x=>{
     const isMe=x===ctx.me;
     const rankTxt=isMe && S.allianceRank ? `#${S.allianceRank}` : `#${x.rank}`;
     const nameHtml=x.id
@@ -7034,17 +7734,22 @@ function renderRankMini(ctx){
       ${nameHtml}
       <div class="rank-mini-c">${fmtMoney(x.credits)}</div>
     </div>`;
-  }).join("");
+  };
+  const rows=(ctx.slice||[]).map(rankRowHtml).join("");
   $("#rank-mini-list").html(rows);
 }
 function loadRankContext(done){
-  const applyRankHtml=(html,pageHint=1,pageSizeHint=25)=>{
-    const parsed=parseAllianceRankingHtml(html||"",pageHint,pageSizeHint);
-    const list=parsed.list||[];
+  const renderParsedList=(list)=>{
     const ctx=computeRankContext(list);
     renderRankSummary(ctx);
     renderRankMini(ctx);
     done && done(ctx);
+    return ctx;
+  };
+  const applyRankHtml=(html,pageHint=1,pageSizeHint=25)=>{
+    const parsed=parseAllianceRankingHtml(html||"",pageHint,pageSizeHint);
+    const list=parsed.list||[];
+    const ctx=renderParsedList(list);
     return {ok:!!ctx,pageSize:parsed.pageSize||pageSizeHint,foundById:!!parsed.foundById};
   };
 
@@ -7054,9 +7759,20 @@ function loadRankContext(done){
     const targetPage=r>0?Math.floor((r-1)/(first.pageSize||25))+1:1;
     if(first.foundById) return;
     if(targetPage<=1){ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); return; }
-    pageGet(`${API.alliancesPage}?page=${targetPage}`,h2=>{
-      const second=applyRankHtml(h2,targetPage,first.pageSize||25);
-      if(!second.foundById && !second.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)");
+    const maxPage=Math.max(1,targetPage+1);
+    const pages=Array.from(new Set([targetPage-1,targetPage,targetPage+1].filter(page=>page>=1&&page<=maxPage)));
+    Promise.all(pages.map(page=>new Promise(resolve=>{
+      pageGet(`${API.alliancesPage}?page=${page}`,html=>resolve(parseAllianceRankingHtml(html||"",page,first.pageSize||25)),()=>resolve({list:[]}));
+    }))).then(parts=>{
+      const combined=parts.flatMap(part=>part.list||[]).sort((a,b)=>a.rank-b.rank);
+      const seen=new Set();
+      const unique=combined.filter(row=>{
+        const key=String(row.id||row.rank||row.name);
+        if(seen.has(key))return false;
+        seen.add(key);return true;
+      });
+      const ctx=renderParsedList(unique);
+      if(!ctx) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)");
     },()=>{ if(!first.ok) $("#rank-mini-note").text("Platzierung geladen (Fallback-Zuordnung aktiv)"); });
   },()=>{
     renderRankSummary(null);
@@ -7078,6 +7794,38 @@ function mkAccordion(icon,title,body){
 }
 function patchHTML(){
   const groups=[{
+    title:"v9.6.2 - Wetterzentrale, News, Popups, Settings & Stabilität",
+    items:[
+      "Der Kopfzeilen-Button ist jetzt als eigener Unterblock in Darstellung & Bedienung integriert.",
+      "Die Darstellung-&-Bedienung-Box nutzt die volle Breite, damit im Einstellungsbereich keine leere Spalte entsteht.",
+      "Die Einstellungen wurden in klare Bereiche mit Schnellnavigation gegliedert: Oberfläche, Meldungen, Auswertung, Daten und Info.",
+      "Credit-Popups besitzen mehrere auswählbare Designs: Premium, Glass, Classic, Kontrast, Kompakt und Terminal.",
+      "Die Popup-Benachrichtigung wurde für bessere Lesbarkeit und professionellere Gewichtung von Betrag, Einsatz und Details nachgeschärft.",
+      "Credit-Popups zeigen Einsatznamen als Titel, wenn diese aus Spiel- oder Credit-Übersichtsdaten erkannt werden.",
+      "Credit-Popups lesen Einsatznamen zusätzlich aus der Credit-Übersicht mit Menge, Beschreibung und Datum, damit mehr Buchungen den richtigen Titel anzeigen.",
+      "Patienten-, Gefangenen- und Credit-Buchungen werden in Popup-Details klarer getrennt und besser lesbar dargestellt.",
+      "Der mögliche Verdienst aus offenen Einsätzen wurde stabilisiert und die Berechnung der offenen Einsatzwerte robuster gemacht.",
+      "Die Spielerprognose wurde bereinigt: überflüssige Boxen wie Noch benötigt, aktueller Credittrend und Zielwert-Beförderung wurden entfernt.",
+      "Das Platzierungsumfeld beim Verband zeigt wieder kompakt die eigene Position mit zwei Einträgen darüber und darunter.",
+      "Die Spieler-Platzierung zeigt wieder kompakt die eigene Position mit zwei Einträgen darüber und darunter.",
+      "Kaputte Symbol-Artefakte in Credit-Popup, Trendanzeige, Header-Optik und Patchnotes wurden behoben und die Originalsymbole werden wieder korrekt angezeigt.",
+      "Umlaute und das Credits-Symbol werden wieder korrekt als UTF-8 ausgegeben.",
+      "Wetterwarnungen zeigen mehrere aktive DWD-Warnungen untereinander an; Vorabinformationen werden rot hervorgehoben.",
+      "Die neue Wetterzentrale wurde unter Sonstiges ergänzt und bündelt Wetterbericht, Warnbericht, Vorhersage, Messwerte, Niederschlag, Feuchte, Luftdruck, Wind, Böen, UV, Sonnenzeiten und Radar.",
+      "Die DWD-Warnkarte nutzt jetzt den offiziellen DWD-WMS-Geoserver aus dem Webmodul statt blockierter DWD-iframes.",
+      "Die DWD-Warnkarte besitzt eine sortierte Farblegende für Warnstufen 1 bis 4, Vorabinformation, Hitze, UV und keine Warnung.",
+      "Beim Klick auf ein Warngebiet öffnet sich unter der Legende ein Warnfenster; mehrere Warnungen werden untereinander angezeigt und farblich passend markiert.",
+      "Das Windy-Radar wurde vergrößert, neben die Warnkarte gesetzt und kann per Box-Griff skaliert werden.",
+      "Die Wetterzentrale besitzt eine eigene Ort-/PLZ-Suche inklusive Länderauswahl.",
+      "AAO und Verlauf wurden aus Menü, sichtbarer Oberfläche und Hintergrundabrufen entfernt.",
+      "Der Menüpunkt Werkzeuge wurde zu Sonstiges umbenannt; Event wurde beim Verband mit Trenner integriert.",
+      "Eine News-Laufschrift wurde ergänzt, ist in den Einstellungen steuerbar, quellenfilterbar und läuft zwischen Header und Spielerprofil.",
+      "News-Quellen können zwischen Tagesschau, WELT, Sportschau und Sportschau Fußball gewählt werden; die Standardgeschwindigkeit steht auf Langsam und News zeigen Datum sowie Uhrzeit.",
+      "NINA/MoWaS wurde testweise geprüft, aber wegen veralteter Treffer wieder aus der Oberfläche entfernt.",
+      "Diverse interne Sicherheitslisten wurden erweitert, damit erlaubte Wetter- und Newsquellen nicht fälschlich blockiert werden.",
+      "Mehrere Syntax-, Darstellungs- und Encoding-Prüfungen wurden durchgeführt, um Artefakte, defekte Symbole und Ladefehler zu vermeiden."
+    ]
+  },{
     title:"v9.6.0 — Maximale Sicherheit, Backup & Stabilität",
     items:[
       "Der WM-Plan inklusive externem Spielplan-/Zusatzmodul wurde vollständig entfernt: API-Verbindung, Header-Anzeigen, externe Zeitpläne, Ergebnisdaten, Tipps, Hinweise, Sounds, Cache, Styles und Start-Timer sind raus.",
@@ -7106,31 +7854,31 @@ function infoHTML(){
     ["Ersteller","Fabian (Capt.BobbyNash)"],
     ["Supporter","m75e, twoyears"],
     ["Version",V],
-    ["APIs","allianceinfo · userinfo · vehicle_states · alliance_schoolings · v2/buildings · v2/vehicles · v2/pois · v1/aaos · mission_type_data"],
+    ["APIs","allianceinfo - userinfo - vehicle_states - alliance_schoolings - v2/buildings - v2/vehicles - v2/pois - mission_type_data - DWD - Open-Meteo - RSS"],
     ["Panel-Typ","Layout-Box Standard, Floating optional"],
     ["Alliance-Interval","60s"],
     ["7-Tage-Verdienst","lokal ab erstem Refresh"],
-    ["Verbandsprognose","lokale Tageswerte · Trendtempo · Zieltempo"],
-    ["Updates","Tampermonkey automatisch · manueller Check verfügbar"],
+    ["Verbandsprognose","lokale Tageswerte - Trendtempo - Zieltempo"],
+    ["Updates","Tampermonkey automatisch - manueller Check verfügbar"],
     ["Spielzeit","lokal, 7 Tage"],
     ["Fahrzeugstatus","90s"],
     ["Lehrgänge","300s"],
-    ["AAO","300s (Lazy)"],
   ];
   return rows.map(([k,v])=>`<div class="info-r"><span class="info-k">${k}</span><span class="info-v">${v}</span></div>`).join("");
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  NAV TRIGGER                                                 â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  NAV TRIGGER                                                 ║
+// ╚══════════════════════════════════════════════════════════════╝
 GM_addStyle(`
 /* v9.2.0 UI refinement */
-#lss7-tabs{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(160px,.62fr) minmax(0,1fr);gap:6px;overflow:visible;padding:7px 9px;background:var(--bg1);}
+#lss7-tabs{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(150px,.52fr) minmax(220px,.78fr);gap:6px;overflow:visible;padding:7px 9px;background:var(--bg1);}
 #lss7-tabs.player-menu-hidden{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);}
 .lss7-nav-group{display:flex;align-items:stretch;min-width:0;overflow-x:auto;border:1px solid var(--b1);border-radius:8px;background:rgba(255,255,255,.018);scrollbar-width:thin;}
 .lss7-nav-group-label{display:flex;align-items:center;padding:0 9px;border-right:1px solid var(--b1);color:var(--t4);font-size:7.5px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;}
 .lss7-nav-group-tabs{display:flex;align-items:stretch;min-width:max-content;}
 .lss7-nav-group .ltab{min-height:34px;padding:8px 10px;font-size:9.5px;display:flex;align-items:center;color:var(--t2);font-weight:800;}
+.lss7-nav-sep{display:flex;align-items:center;padding:0 8px;color:var(--t4);font-weight:950;opacity:.75;}
 .lss7-nav-group .ltab:hover{color:var(--t1)}.lss7-nav-group .ltab.active{color:#fff!important;text-shadow:0 1px 5px rgba(0,0,0,.28)}
 .lss7-nav-alliance{border-color:rgba(59,130,246,.28);background:linear-gradient(90deg,rgba(59,130,246,.07),transparent 38%);}
 .lss7-nav-alliance .lss7-nav-group-label{color:var(--blueh);background:rgba(59,130,246,.08);}
@@ -7485,32 +8233,37 @@ GM_addStyle(`
 .lss7-credit-popup{
   --cp-bg:linear-gradient(145deg,rgba(12,29,24,.985),rgba(7,14,21,.99));
   --cp-border:rgba(74,222,128,.34);--cp-text:#f5fff8;--cp-muted:#9abaaa;--cp-accent:#4ade80;--cp-gold:#f3c85b;
-  position:relative;display:grid;grid-template-columns:48px minmax(0,1fr) 18px;gap:12px;align-items:center;
-  width:100%;min-height:108px;padding:13px 14px 15px 17px;border:1px solid var(--cp-border);border-radius:16px;
-  background:var(--cp-bg);color:var(--cp-text);box-shadow:0 24px 58px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.08),inset 0 -1px rgba(0,0,0,.20);
+  position:relative;display:grid;grid-template-columns:42px minmax(0,1fr);gap:12px;align-items:start;
+  width:100%;min-height:96px;padding:13px 14px 14px 16px;border:1px solid var(--cp-border);border-radius:14px;
+  background:var(--cp-bg);color:var(--cp-text);box-shadow:0 18px 44px rgba(0,0,0,.36),inset 0 1px rgba(255,255,255,.07);
   overflow:hidden;opacity:0;will-change:transform,opacity;transition:opacity .38s ease,transform .48s cubic-bezier(.2,.85,.25,1);
   font-family:'Inter',system-ui,sans-serif;
 }
-.lss7-credit-popup::before{content:"";position:absolute;right:-55px;top:-68px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--cp-accent) 16%,transparent),transparent 68%);pointer-events:none;}
+.lss7-credit-popup::before{content:"";position:absolute;right:-70px;top:-85px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--cp-accent) 10%,transparent),transparent 68%);pointer-events:none;}
 .lss7-credit-popup::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 12%,rgba(255,255,255,.13) 42%,transparent 68%);transform:translateX(-120%);}
 .lss7-credit-popup.show::after{animation:credit-popup-sheen 1.15s .12s ease-out;}
 .credit-popup-rail{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--cp-gold),var(--cp-accent));box-shadow:0 0 16px var(--cp-accent);}
-.credit-popup-icon{position:relative;display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:14px;color:#3b2500;background:linear-gradient(145deg,#fff0ad,#d8a225);border:1px solid rgba(255,240,178,.76);box-shadow:0 9px 22px rgba(220,166,45,.30),inset 0 1px rgba(255,255,255,.82),inset 0 -5px 12px rgba(126,80,0,.12);}
+.credit-popup-icon{position:relative;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:11px;color:#3b2500;background:linear-gradient(145deg,#fff0ad,#d8a225);border:1px solid rgba(255,240,178,.76);box-shadow:0 7px 18px rgba(220,166,45,.24),inset 0 1px rgba(255,255,255,.82);}
 .credit-popup-icon i{font:950 22px/1 'JetBrains Mono',monospace;font-style:normal;}
 .credit-popup-icon em{position:absolute;right:-4px;bottom:-3px;display:flex;align-items:center;justify-content:center;width:17px;height:17px;border:2px solid rgba(8,20,17,.92);border-radius:50%;color:#fff;background:var(--cp-accent);font:950 12px/1 Arial;font-style:normal;box-shadow:0 3px 8px rgba(0,0,0,.28);}
-.credit-popup-content{display:flex;flex-direction:column;min-width:0;gap:5px;}
+.credit-popup-content{display:flex;flex-direction:column;min-width:0;gap:6px;}
 .credit-popup-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .credit-popup-head>small{color:var(--cp-muted);font-size:7.5px;font-weight:950;letter-spacing:1px;text-transform:uppercase;}
 .credit-popup-live{display:inline-flex;align-items:center;gap:4px;padding:3px 6px;border:1px solid color-mix(in srgb,var(--cp-accent) 42%,transparent);border-radius:999px;color:var(--cp-accent);background:color-mix(in srgb,var(--cp-accent) 10%,transparent);font-size:6.5px;font-weight:950;letter-spacing:.55px;}
 .credit-popup-live i{width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 7px currentColor;}
-.credit-popup-amount{display:flex;align-items:baseline;gap:3px;min-width:0;color:var(--cp-text);font:950 22px/1.08 'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.credit-popup-title{display:block;min-width:0;color:var(--cp-text);font-size:13.5px;font-weight:950;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.credit-popup-amount{display:flex;align-items:baseline;gap:3px;min-width:0;color:var(--cp-accent);font:950 21px/1.08 'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .credit-popup-amount>b{color:var(--cp-accent);font-size:16px;}
 .credit-popup-amount>small{margin-left:3px;color:var(--cp-muted);font:850 8px/1 'Inter',sans-serif;text-transform:uppercase;letter-spacing:.55px;}
-.credit-popup-details{display:flex;align-items:center;gap:14px;min-width:0;}
+.credit-popup-mission{display:flex;align-items:center;gap:7px;min-width:0;padding:5px 7px;border:1px solid color-mix(in srgb,var(--cp-accent) 22%,transparent);border-radius:7px;background:color-mix(in srgb,var(--cp-accent) 7%,transparent);}
+.credit-popup-mission i{color:var(--cp-accent);font-size:6.8px;font-style:normal;font-weight:950;text-transform:uppercase;letter-spacing:.65px;}
+.credit-popup-mission b{min-width:0;color:var(--cp-text);font-size:8.5px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.credit-popup-mission em{grid-column:2;color:var(--cp-muted);font-size:7.2px;font-style:normal;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.credit-popup-details{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding-top:2px;}
 .credit-popup-details>span{display:flex;align-items:center;gap:5px;min-width:0;}
 .credit-popup-details i{color:var(--cp-muted);font-size:7px;font-style:normal;text-transform:uppercase;letter-spacing:.4px;}
 .credit-popup-details b{color:var(--cp-text);font:850 8px/1 'JetBrains Mono',monospace;white-space:nowrap;}
-.credit-popup-spark{position:relative;z-index:1;color:var(--cp-gold);font-size:15px;text-shadow:0 0 11px var(--cp-gold);animation:credit-popup-spark 1.4s ease-in-out infinite;}
+.credit-popup-spark{display:none;}
 .credit-popup-progress{position:absolute;left:5px;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--cp-gold),var(--cp-accent));transform-origin:left center;animation:credit-popup-progress var(--credit-duration,5000ms) linear forwards;}
 .pos-left-bottom .credit-popup-progress,.pos-right-bottom .credit-popup-progress{transform-origin:right center;}
 .lss7-credit-popup.theme-light{--cp-bg:linear-gradient(145deg,rgba(255,255,255,.995),rgba(237,247,241,.99));--cp-border:rgba(21,128,61,.27);--cp-text:#142d20;--cp-muted:#5a7164;--cp-accent:#239b55;--cp-gold:#c58b18;box-shadow:0 22px 52px rgba(36,67,49,.20),inset 0 1px #fff;}
@@ -7519,36 +8272,62 @@ GM_addStyle(`
 .lss7-credit-popup.theme-lcars{--cp-bg:linear-gradient(145deg,#121720,#07080b);--cp-border:rgba(232,169,88,.38);--cp-text:#fff7e8;--cp-muted:#c3a77d;--cp-accent:#85d6ff;--cp-gold:#e8a958;border-radius:20px 7px 7px 20px;box-shadow:inset 7px 0 #e8a958,0 24px 58px rgba(0,0,0,.46);}
 .lss7-credit-popup.theme-lcars .credit-popup-rail{display:none;}
 .lss7-credit-popup.theme-lcars .credit-popup-icon{border-radius:18px 6px 6px 18px;background:linear-gradient(90deg,#e8a958,#ffd99b);}
+.lss7-credit-popup{--cp-quiet:color-mix(in srgb,var(--cp-accent) 8%,transparent);}
+.lss7-credit-popup.design-premium{border-radius:16px;background:radial-gradient(circle at 88% 12%,color-mix(in srgb,var(--cp-accent) 18%,transparent),transparent 34%),var(--cp-bg);}
+.lss7-credit-popup.design-glass{--cp-quiet:rgba(255,255,255,.075);background:linear-gradient(145deg,rgba(255,255,255,.16),rgba(255,255,255,.055));border-color:color-mix(in srgb,var(--cp-accent) 36%,rgba(255,255,255,.25));box-shadow:0 22px 54px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.20);}
+.lss7-credit-popup.design-classic{--cp-bg:linear-gradient(145deg,#111827,#0b1220);--cp-border:rgba(148,163,184,.35);--cp-text:#f8fafc;--cp-muted:#cbd5e1;--cp-accent:#38bdf8;--cp-gold:#fbbf24;--cp-quiet:rgba(148,163,184,.10);border-radius:10px;box-shadow:0 18px 42px rgba(0,0,0,.34);}
+.lss7-credit-popup.design-contrast{--cp-bg:#06130f;--cp-text:#ffffff;--cp-muted:#d9fbe9;--cp-accent:#22c55e;--cp-gold:#fde047;--cp-border:#86efac;--cp-quiet:rgba(134,239,172,.16);border-width:2px;box-shadow:0 22px 48px rgba(0,0,0,.48);}
+.lss7-credit-popup.design-compact{min-height:74px;padding:11px 12px 12px 14px;gap:9px;border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.30);}
+.lss7-credit-popup.design-compact .credit-popup-icon{width:38px;height:38px;border-radius:10px;}
+.lss7-credit-popup.design-compact .credit-popup-mission{padding:5px 7px;}
+.lss7-credit-popup.design-terminal{--cp-bg:#050807;--cp-text:#d7ffe9;--cp-muted:#78a98f;--cp-accent:#66ff99;--cp-gold:#b6ff66;--cp-border:rgba(102,255,153,.44);--cp-quiet:rgba(102,255,153,.08);border-radius:6px;font-family:'JetBrains Mono',monospace;box-shadow:0 18px 42px rgba(0,0,0,.50),inset 0 0 0 1px rgba(102,255,153,.08);}
+.lss7-credit-popup.design-terminal .credit-popup-icon{border-radius:5px;background:#0b1d13;color:#66ff99;border-color:rgba(102,255,153,.38);box-shadow:inset 0 0 0 1px rgba(102,255,153,.16);}
+.lss7-credit-popup.design-terminal .credit-popup-icon em{background:#66ff99;color:#051108;border-color:#050807;}
+.lss7-credit-popup.design-terminal .credit-popup-rail{background:#66ff99;box-shadow:0 0 18px #66ff99;}
+.lss7-credit-popup .credit-popup-amount{font-size:24px;line-height:1.05;}
+.lss7-credit-popup .credit-popup-content{gap:6px;}
+.lss7-credit-popup .credit-popup-mission{padding:7px 9px;background:var(--cp-quiet);}
+.lss7-credit-popup .credit-popup-details{justify-content:space-between;gap:10px;}
 .lss7-credit-popup.popup-small{
-  grid-template-columns:39px minmax(0,1fr) 14px;gap:9px;min-height:86px;
-  padding:10px 11px 12px 14px;border-radius:13px;
+  grid-template-columns:34px minmax(0,1fr);gap:9px;min-height:78px;
+  padding:10px 11px 11px 13px;border-radius:12px;
 }
-.lss7-credit-popup.popup-small .credit-popup-icon{width:38px;height:38px;border-radius:11px;}
+.lss7-credit-popup.popup-small .credit-popup-icon{width:34px;height:34px;border-radius:9px;}
 .lss7-credit-popup.popup-small .credit-popup-icon i{font-size:18px;}
 .lss7-credit-popup.popup-small .credit-popup-icon em{width:14px;height:14px;right:-3px;bottom:-2px;font-size:9px;border-width:2px;}
 .lss7-credit-popup.popup-small .credit-popup-content{gap:3px;}
 .lss7-credit-popup.popup-small .credit-popup-head>small{font-size:6.5px;letter-spacing:.7px;}
 .lss7-credit-popup.popup-small .credit-popup-live{padding:2px 5px;font-size:5.5px;}
+.lss7-credit-popup.popup-small .credit-popup-title{font-size:10.5px;}
 .lss7-credit-popup.popup-small .credit-popup-amount{font-size:17px;}
 .lss7-credit-popup.popup-small .credit-popup-amount>b{font-size:13px;}
 .lss7-credit-popup.popup-small .credit-popup-amount>small{font-size:6.5px;}
+.lss7-credit-popup.popup-small .credit-popup-mission{padding:5px 6px;gap:2px 5px;border-radius:7px;}
+.lss7-credit-popup.popup-small .credit-popup-mission i{font-size:5.8px;}
+.lss7-credit-popup.popup-small .credit-popup-mission b{font-size:7.8px;}
+.lss7-credit-popup.popup-small .credit-popup-mission em{font-size:6.2px;}
 .lss7-credit-popup.popup-small .credit-popup-details{gap:8px;}
 .lss7-credit-popup.popup-small .credit-popup-details i{font-size:5.8px;}
 .lss7-credit-popup.popup-small .credit-popup-details b{font-size:6.8px;}
 .lss7-credit-popup.popup-small .credit-popup-spark{font-size:12px;}
 .lss7-credit-popup.popup-large{
-  grid-template-columns:58px minmax(0,1fr) 22px;gap:15px;min-height:128px;
-  padding:16px 17px 18px 20px;border-radius:18px;
+  grid-template-columns:52px minmax(0,1fr);gap:14px;min-height:112px;
+  padding:15px 17px 16px 19px;border-radius:16px;
 }
-.lss7-credit-popup.popup-large .credit-popup-icon{width:56px;height:56px;border-radius:16px;}
+.lss7-credit-popup.popup-large .credit-popup-icon{width:52px;height:52px;border-radius:14px;}
 .lss7-credit-popup.popup-large .credit-popup-icon i{font-size:27px;}
 .lss7-credit-popup.popup-large .credit-popup-icon em{width:20px;height:20px;right:-5px;bottom:-4px;font-size:13px;}
 .lss7-credit-popup.popup-large .credit-popup-content{gap:7px;}
 .lss7-credit-popup.popup-large .credit-popup-head>small{font-size:8.5px;letter-spacing:1.15px;}
 .lss7-credit-popup.popup-large .credit-popup-live{padding:4px 8px;font-size:7px;}
+.lss7-credit-popup.popup-large .credit-popup-title{font-size:15px;}
 .lss7-credit-popup.popup-large .credit-popup-amount{font-size:27px;}
 .lss7-credit-popup.popup-large .credit-popup-amount>b{font-size:20px;}
 .lss7-credit-popup.popup-large .credit-popup-amount>small{font-size:9px;}
+.lss7-credit-popup.popup-large .credit-popup-mission{padding:8px 10px;border-radius:10px;}
+.lss7-credit-popup.popup-large .credit-popup-mission i{font-size:7.5px;}
+.lss7-credit-popup.popup-large .credit-popup-mission b{font-size:10.5px;}
+.lss7-credit-popup.popup-large .credit-popup-mission em{font-size:8px;}
 .lss7-credit-popup.popup-large .credit-popup-details{gap:20px;}
 .lss7-credit-popup.popup-large .credit-popup-details i{font-size:7.5px;}
 .lss7-credit-popup.popup-large .credit-popup-details b{font-size:9px;}
@@ -7610,13 +8389,16 @@ function organizeDashboardTabs(){
   const take=ids=>ids.map(id=>tabs.find(`.ltab[data-tab="${id}"]`).first()).filter(tab=>tab.length);
   const makeGroup=(cls,label,items)=>{
     const group=$(`<div class="lss7-nav-group ${cls}"><span class="lss7-nav-group-label">${label}</span><div class="lss7-nav-group-tabs"></div></div>`);
-    items.forEach(tab=>group.find(".lss7-nav-group-tabs").append(tab));
+    items.forEach(tab=>{
+      if(tab==="|")group.find(".lss7-nav-group-tabs").append(`<span class="lss7-nav-sep">|</span>`);
+      else group.find(".lss7-nav-group-tabs").append(tab);
+    });
     return group;
   };
-  const alliance=makeGroup("lss7-nav-alliance","Verband",take(["tp-overview","tp-forecast","tp-vehicles","tp-schoolings","tp-team"]));
+  const alliance=makeGroup("lss7-nav-alliance","Verband",[...take(["tp-overview","tp-forecast","tp-vehicles","tp-schoolings","tp-team"]),"|",...take(["tp-event"])]);
   const player=makeGroup("lss7-nav-player","Spieler",take(["tp-player-forecast"]));
-  const tools=makeGroup("lss7-nav-tools","Werkzeuge",take(["tp-aao","tp-history","tp-event","tp-settings"]));
-  tabs.empty().append(alliance,player,tools);
+  const misc=makeGroup("lss7-nav-misc","Sonstiges",take(["tp-weather","tp-settings"]));
+  tabs.empty().append(alliance,player,misc);
 }
 
 function applyPlayerForecastPlacement(){
@@ -7713,9 +8495,9 @@ function buildTrigger(){
   applyNavButtonStyle();
 }
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  PANEL TOGGLE                                                â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  PANEL TOGGLE                                                ║
+// ╚══════════════════════════════════════════════════════════════╝
 let panelOpen=false;
 function togglePanel(force){
   panelOpen = force!==undefined ? !!force : !panelOpen;
@@ -7750,7 +8532,7 @@ function installGlobalHotkeys(){
   },true);
 }
 
-// AuÃŸerhalb klicken â†’ schlieÃŸen
+// Außerhalb klicken → schließen
 $(document).on("click.lss7",function(e){
   if((S.settings.panelMode||"floating")==="embedded") return;
   if(panelOpen && !$(e.target).closest("#lss7,#lss7-btn").length){
@@ -7758,9 +8540,9 @@ $(document).on("click.lss7",function(e){
   }
 });
 
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  UPDATE CHECK                                                â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  UPDATE CHECK                                                ║
+// ╚══════════════════════════════════════════════════════════════╝
 function compareVersions(a,b){
   const pa=String(a||"0").split(".").map(x=>parseInt(x,10)||0);
   const pb=String(b||"0").split(".").map(x=>parseInt(x,10)||0);
@@ -7828,13 +8610,15 @@ function checkUpdate({manual=false}={}){
     if(manual)setUpdateSettings(`<strong>Update-Prüfung fehlgeschlagen</strong><span>Die GitHub-Datei konnte nicht erreicht werden oder wurde blockiert. Bitte später erneut versuchen.</span>`,"warn",false);
   });
 }
-// â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-// â•‘  INIT                                                        â•‘
-// â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  INIT                                                        ║
+// ╚══════════════════════════════════════════════════════════════╝
 $(document).ready(()=>{
   load();
   installDiagnosticsHooks();
   buildUI();
+  renderCreditPopupHistory();
+  renderCreditDaySummary();
   updateDiagnosticStatus();
   upgradeUi910();
   initSummerScene();
@@ -7842,6 +8626,7 @@ $(document).ready(()=>{
   installAllianceActivityHooks();
   installCreditPopupObserver();
   installGlobalHotkeys();
+  installDwdWarningMessageBridge();
   applyPanelMode();
   updatePlaytimeUi();
   updateCoinsUi();
@@ -7891,6 +8676,7 @@ $(document).ready(()=>{
   setInterval(fetchAnalysisMeta,  900000);
   setInterval(fetchDailyEarnFromOverview, ITV.dailyEarn);
   setInterval(fetchWeather,       ITV.weather);
+  setInterval(fetchNewsTicker,    900000);
   setInterval(scanGameEvents,     30000);
   setInterval(scanCurrentMissionsFromDom,30000);
   setInterval(updateFooter,       ITV.footer);
