@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.6.2
+// @version      9.6.2.1
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @license      Proprietary - Personal Use Only
@@ -47,7 +47,7 @@ if(/^\/(?:alliances\/\d+|verband(?:\/|$))/i.test(location.pathname))return;
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  KONFIGURATION                                               ║
 // ╚══════════════════════════════════════════════════════════════╝
-const V   = "9.6.2";
+const V   = "9.6.2.1";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
 const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
@@ -2093,8 +2093,8 @@ const S = {
     weatherTone:"beep",
     weatherRadarMode:"radar",
     eventMode:"overview", // off | overview
-    newsTicker:false,
-    newsSources:["tagesschau"],
+    newsTicker:true,
+    newsSources:Object.keys(NEWS_SOURCES),
     newsSpeed:90,
     creditPopupEnabled:true,
     creditPopupSound:true,
@@ -2222,9 +2222,14 @@ function load(){
   if(!["radar","rain","thunder","wind"].includes(S.settings.weatherRadarMode))S.settings.weatherRadarMode="radar";
   const validEventModes=["off","overview"];
   if(!validEventModes.includes(S.settings.eventMode)) S.settings.eventMode="overview";
+  if(!GM_getValue("v9621_news_defaults_done",false)){
+    S.settings.newsTicker=true;
+    S.settings.newsSources=Object.keys(NEWS_SOURCES);
+    GM_setValue("v9621_news_defaults_done",true);
+  }
   if(typeof S.settings.newsTicker!=="boolean")S.settings.newsTicker=false;
-  S.settings.newsSources=(Array.isArray(S.settings.newsSources)?S.settings.newsSources:["tagesschau"]).filter(id=>NEWS_SOURCES[id]);
-  if(!S.settings.newsSources.length)S.settings.newsSources=["tagesschau"];
+  S.settings.newsSources=(Array.isArray(S.settings.newsSources)?S.settings.newsSources:Object.keys(NEWS_SOURCES)).filter(id=>NEWS_SOURCES[id]);
+  if(!S.settings.newsSources.length)S.settings.newsSources=Object.keys(NEWS_SOURCES);
   S.settings.newsSpeed=[45,65,90].includes(Number(S.settings.newsSpeed))?Number(S.settings.newsSpeed):90;
   if(typeof S.settings.weatherSound!=="boolean") S.settings.weatherSound=false;
   if(typeof S.settings.creditPopupEnabled!=="boolean")S.settings.creditPopupEnabled=true;
@@ -2738,7 +2743,7 @@ function formatNewsTimestamp(ts){
   return sameDay?`Heute ${time}`:`${d.toLocaleDateString(uiLocale(),{day:"2-digit",month:"2-digit"})} ${time}`;
 }
 function activeNewsSources(){
-  const list=Array.isArray(S.settings.newsSources)?S.settings.newsSources:["tagesschau"];
+  const list=Array.isArray(S.settings.newsSources)?S.settings.newsSources:Object.keys(NEWS_SOURCES);
   return list.filter(id=>NEWS_SOURCES[id]);
 }
 function renderNewsTicker(){
@@ -7037,7 +7042,7 @@ function buildUI(){
   grpOpt.append(mkToggle("tog-coins","Coins anzeigen","coins"));
   grpOpt.append(mkToggle("tog-playtime","Spielzeit anzeigen","playtimeEnabled"));
   grpOpt.append(mkToggle("tog-news","News-Laufschrift anzeigen","newsTicker"));
-  const selectedNews=new Set(Array.isArray(S.settings.newsSources)?S.settings.newsSources:["tagesschau"]);
+  const selectedNews=new Set(Array.isArray(S.settings.newsSources)?S.settings.newsSources:Object.keys(NEWS_SOURCES));
   grpOpt.append(`<div class="tog-row" style="align-items:flex-start;gap:12px"><span class="tog-lbl">News-Quellen</span><div class="news-source-options">${Object.entries(NEWS_SOURCES).map(([id,src])=>`<label class="mini-check"><input type="checkbox" class="sb-news-source" value="${escHtml(id)}"${selectedNews.has(id)?" checked":""}> ${escHtml(src.label)}${src.category?` <small>(${escHtml(src.category)})</small>`:""}</label>`).join("")}</div></div>`);
   grpOpt.append(`<label class="tog-row" style="justify-content:space-between;"><span class="tog-lbl">News-Geschwindigkeit</span><select id="sb-news-speed" class="lss7-select"><option value="45"${Number(S.settings.newsSpeed)===45?" selected":""}>Schnell</option><option value="65"${(Number(S.settings.newsSpeed)||65)===65?" selected":""}>Normal</option><option value="90"${Number(S.settings.newsSpeed)===90?" selected":""}>Langsam</option></select></label>`);
   grpOpt.append(mkToggle("tog-hotkeys","Tastenkürzel aktivieren","hotkeysEnabled"));
@@ -7487,7 +7492,7 @@ function buildUI(){
   });
   panel.on("change",".sb-news-source",()=>{
     S.settings.newsSources=$(".sb-news-source:checked").map((_,el)=>String(el.value)).get().filter(id=>NEWS_SOURCES[id]);
-    if(!S.settings.newsSources.length)S.settings.newsSources=["tagesschau"];
+    if(!S.settings.newsSources.length)S.settings.newsSources=Object.keys(NEWS_SOURCES);
     save();fetchNewsTicker(true);
   });
   panel.on("change","#sb-news-speed",e=>{
