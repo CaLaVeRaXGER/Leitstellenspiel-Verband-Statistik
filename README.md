@@ -1,26 +1,36 @@
-# 🚒 LSS Verband Statistik Pro (v9.6.0)
+# LSS Verband Statistik Pro
 
+**Version:** 9.6.2.1  
 **Autor:** Fabian (Capt.BobbyNash)  
 **Status:** Aktive Entwicklung  
-**Website:** [Leitstellenspiel](https://www.leitstellenspiel.de/)  
+**Website:** Leitstellenspiel  
 **Lizenz:** Proprietary - Personal Use Only
 
----
+## Beschreibung
 
-## 📌 Beschreibung
+LSS Verband Statistik Pro ist ein umfangreiches Premium-Dashboard fuer das Spiel Leitstellenspiel. Das Userscript erweitert die Verbands- und Spieleruebersicht um moderne Statistiken, Prognosen, Auswertungen, Live-Daten, Wetterinformationen, Fuhrpark-Analysen, Mitgliederuebersichten, News und komfortable Verwaltungsfunktionen.
 
-**LSS Verband Statistik Pro** ist ein umfangreiches Premium-Dashboard für das Spiel **Leitstellenspiel**.  
-Das Skript erweitert die Verbands- und Spielerübersicht um moderne Statistiken, Prognosen, Auswertungen, Live-Daten, Wetterinformationen, Fuhrpark-Analysen, Mitgliederübersichten und komfortable Verwaltungsfunktionen.
+Ziel des Skripts ist es, wichtige Informationen rund um Verband, Spielerfortschritt, Fuhrpark, Einsaetze, Wetterlage und Entwicklung zentral, uebersichtlich und professionell darzustellen, direkt im Spiel und ohne dauerhaft externe Tools offen halten zu muessen.
 
-Ziel des Skripts ist es, wichtige Informationen rund um Verband, Spielerfortschritt, Fuhrpark, Einsätze und Entwicklung zentral, übersichtlich und professionell darzustellen — direkt im Spiel, ohne externe Tools öffnen zu müssen.
+## Highlights
 
----
+- professionelles Verbands-Dashboard
+- Verbandsprognose mit Zielwert, Tagestrend und Datenbasis
+- Spielerprognose mit Platzierungsumfeld
+- Fuhrpark- und Standortanalyse
+- Mitgliederuebersicht mit Rollen, Aktivitaet und Profillinks
+- moderne Credit-Popups mit Einsatzname, Patienten- und Gefangeneninfos
+- Wetterzentrale mit DWD-Warnkarte und Windy-Radar
+- News-Laufschrift mit Tagesschau, WELT, Sportschau und Fussball-News
+- Leitstellenspiel-Eventerkennung direkt aus der Spielnavigation
+- Backup, Wiederherstellung und Diagnoseexport
+- mehrere Designs inklusive Summer 2026, Summer Dark 2026 und LCARS 2364
 
-## ✨ Hauptfunktionen
+## Funktionen
 
-### 📊 Professionelles Verbands-Dashboard
+### Verbands-Dashboard
 
-Zeigt wichtige Verbandsdaten wie:
+Das Dashboard zeigt wichtige Verbandsdaten auf einen Blick:
 
 - Gesamtcredits
 - Verbandskasse
@@ -28,108 +38,116 @@ Zeigt wichtige Verbandsdaten wie:
 - Mitgliederanzahl
 - Tagesverdienst
 - 7-Tage-Entwicklung
-- mögliche Einnahmen aus offenen Einsätzen
+- moegliche Einnahmen aus offenen Einsaetzen
+- Aktivitaets- und Potenzialwerte
 
----
+### Verbandsprognose
 
-### 🔮 Verbandsprognose
-
-Berechnet anhand lokaler Verlaufsdaten:
+Die Verbandsprognose berechnet anhand lokaler Verlaufsdaten:
 
 - voraussichtliches Erreichungsdatum eines Zielwerts
 - Resttage bis zum Ziel
 - durchschnittlichen Tagesverdienst
-- 7-Tage- und 30-Tage-Tempo
+- 7-Tage-Tempo
 - Fortschritt zum gesetzten Meilenstein
-- Datenqualität der Prognose
+- Datenqualitaet der Prognose
 
-Die Fortschrittsanzeige besitzt eine eigene Farblegende, damit Status und Tempo verständlicher erkennbar sind.
+### Spielerprognose
 
----
+Die Spielerprognose zeigt die persoenliche Entwicklung des Spielers:
 
-### 👤 Spielerprognose
+- aktueller Dienstgrad
+- Fortschritt bis zur naechsten Befoerderung
+- voraussichtliches Befoerderungsdatum
+- persoenlicher Tagesdurchschnitt
+- Platzierungsumfeld mit eigener Position
+- Meilensteine und Rekorde
 
-Zeigt die persönliche Entwicklung des Spielers mit:
+### Fuhrpark & Standorte
 
-- aktuellem Dienstgrad
-- Fortschritt bis zur nächsten Beförderung
-- fehlenden Credits
-- voraussichtlichem Beförderungsdatum
-- persönlichem Tagesdurchschnitt
-- Meilensteinen und Rekorden
-
----
-
-### 🚗 Fuhrpark & Standorte
-
-Analysiert Fahrzeuge und Gebäude übersichtlich:
+Die Fuhrpark- und Standortanalyse wertet API-Daten uebersichtlich aus:
 
 - Fahrzeugstatus
 - Fahrzeugtypen
-- Gebäudetypen
+- Gebaeudetypen
 - Standorte
 - Personal- und Ausbauinformationen
-- Qualitätschecks
+- Qualitaetschecks
 - API-Datenbasis
 
----
+### Mitgliederuebersicht
 
-### 👥 Mitgliederübersicht
-
-Stellt Verbandsmitglieder professionell dar:
+Die Mitgliederuebersicht stellt Verbandsmitglieder professionell dar:
 
 - Rollen und Sonderrollen
-- Online-/Inaktivitätsstatus
+- Online- und Inaktivitaetsstatus
 - Dienstgrad
 - Credits
 - Spielerrang
 - Profil- und Nachrichtenlinks
+- performantere Darstellung grosser Verbaende
 
-Große Verbände werden performanter dargestellt, da Mitgliederkarten gebündelt gerendert werden.
+### Credit-Popups
 
----
+Bei neuen Einnahmen kann ein animiertes Popup erscheinen. Die Popups zeigen:
 
-### 💰 Credit-Popups
-
-Bei neuen Einnahmen kann ein animiertes Popup erscheinen:
-
-- Betrag der Einnahme
+- Betrag
+- Einsatzname als Titel
 - Tagesstand
 - Uhrzeit
-- verschiedene Größen
-- verschiedene Positionen
-- mehrere Animationen
-- mehrere Sounds
-- Lautstärkeregler
+- getrennte Details fuer Credits, Patienten und Gefangene
+- mehrere Designs, Groessen und Positionen
+- mehrere Animationen und Sounds
+- Lautstaerkeregler
 
----
+### Wetterzentrale
 
-### 🌦️ Wetter & Warnungen
+Die Wetterzentrale befindet sich unter **Sonstiges** und buendelt Wetter- und Warninformationen:
 
-Optionales Wettermodul mit:
-
-- aktueller Wetterlage
+- Ort- und PLZ-Suche mit Laenderauswahl
+- aktueller Wetterbericht
+- Warnbericht
 - Stundenprognose
 - 7-Tage-Ausblick
-- Wind, Regen, Temperatur und Luftfeuchtigkeit
-- DWD-Warnungen für Deutschland
-- optionalem Warnton
+- Temperatur und gefuehlte Temperatur
+- Niederschlag, Feuchte und Luftdruck
+- Wind, Boeen und Windrichtung
+- UV-Index und Sonnenzeiten
+- DWD-Warnungen fuer Deutschland
+- DWD-Warnkarte mit offizieller WMS-Einbindung
+- klickbare Warngebiete mit Warnfenster
+- mehrere aktive Warnungen untereinander
+- Warnlegende fuer Stufen 1 bis 4, Vorabinformation, Hitze, UV und keine Warnung
+- Windy Live-Radar
+- Windy Regen-Prognose
+- Windy Gewitter-Prognose
+- Wind + Regen Ansicht
+- frei skalierbare Radarbox
 
----
+### News-Laufschrift
 
-### 📅 Leitstellenspiel-Events
+Die News-Laufschrift ist standardmaessig aktiv und zeigt alle Kategorien direkt an.
 
-Das Skript erkennt aktive Leitstellenspiel-Events direkt aus der Spielnavigation, z. B.:
+Verfuegbare Quellen:
+
+- Tagesschau
+- WELT
+- Sportschau
+- Sportschau Fussball
+
+Jede News zeigt Quelle, Datum, Uhrzeit und Titel. Die Geschwindigkeit kann in den Einstellungen angepasst werden.
+
+### Leitstellenspiel-Events
+
+Das Skript erkennt aktive Leitstellenspiel-Events direkt aus der Spielnavigation:
 
 - Credit-Boosts
 - Coin-Sales
 - Einsatz-Events
 
-Externe Spielplan- oder Sportmodule wurden ab Version `v9.6.0` vollständig entfernt.
+Externe Spielplan- und Sportmodule wurden entfernt. Der Eventbereich konzentriert sich ausschliesslich auf echte Leitstellenspiel-Events.
 
----
-
-### 💾 Backup & Wiederherstellung
+### Backup & Wiederherstellung
 
 In den Einstellungen kann ein komplettes JSON-Backup erstellt und wiederhergestellt werden.
 
@@ -141,22 +159,21 @@ Gesichert werden unter anderem:
 - Prognosedaten
 - Tageswerte
 - Diagnoseinformationen
-- Aktivitätsdaten
+- Aktivitaetsdaten
+- Wetter- und News-Einstellungen
 
-Der Import ist zusätzlich abgesichert durch:
+Der Import ist abgesichert durch:
 
-- Dateigrößenlimit
-- JSON-Prüfung
-- Backup-Typprüfung
-- Domainprüfung
+- Dateigroessenlimit
+- JSON-Pruefung
+- Backup-Typpruefung
+- Domainpruefung
 - Feld-Allowlist
 - Daten-Normalisierung
 
----
+### Sicherheit & Stabilitaet
 
-### 🔐 Sicherheit & Stabilität
-
-Ab Version `v9.6.0` wurde die Sicherheit deutlich verbessert:
+Das Skript enthaelt mehrere Schutz- und Stabilitaetsfunktionen:
 
 - sichere URL-Allowlist
 - Blockierung unsicherer URLs
@@ -166,11 +183,9 @@ Ab Version `v9.6.0` wurde die Sicherheit deutlich verbessert:
 - Timeout-Behandlung
 - anonymisierte Supportdateien
 - Schutz dynamischer Profil- und Nachrichtenlinks
-- bessere Diagnose bei Fehlern
+- Diagnosebereich fuer Fehleranalyse
 
----
-
-### 🎨 Designs & Bedienung
+### Designs & Bedienung
 
 Enthaltene Themes:
 
@@ -180,23 +195,9 @@ Enthaltene Themes:
 - Summer Dark 2026
 - LCARS 2364
 
-Das Dashboard kann als eingebettete Layout-Box oder als Floating-Menü genutzt werden.  
-Tastenkürzel, Sprache, Anzeigen und Module sind in den Einstellungen anpassbar.
+Das Dashboard kann als eingebettete Layout-Box oder als Floating-Menue genutzt werden. Tastenkürzel, Sprache, Anzeigen, Module, News, Wetter und Popups sind in den Einstellungen anpassbar.
 
----
-
-## 🔄 Automatische Updates
-
-Das Skript unterstützt automatische Updates über Tampermonkey mithilfe von:
-
-- `@updateURL`
-- `@downloadURL`
-
-Zusätzlich kann in den Einstellungen manuell geprüft werden, ob eine neue Version verfügbar ist.
-
----
-
-## 🛠️ Installation
+## Installation
 
 Dieses Skript kann mit einem UserScript-Manager installiert werden, z. B.:
 
@@ -206,60 +207,91 @@ Dieses Skript kann mit einem UserScript-Manager installiert werden, z. B.:
 
 ### Schritte
 
-1. UserScript-Manager im Browser installieren
-2. Skript hinzufügen oder über die GitHub-Raw-Datei installieren
+1. UserScript-Manager im Browser installieren.
+2. Skript hinzufuegen oder ueber die GitHub-Raw-Datei installieren.
 3. Sicherstellen, dass das Skript auf folgenden Seiten aktiv ist:
-   - [leitstellenspiel.de](https://www.leitstellenspiel.de/)
-   - [polizei.leitstellenspiel.de](https://polizei.leitstellenspiel.de/)
-4. Leitstellenspiel neu laden
-5. Dashboard öffnen und Einstellungen anpassen
+   - `leitstellenspiel.de`
+   - `polizei.leitstellenspiel.de`
+4. Leitstellenspiel neu laden.
+5. Dashboard oeffnen und Einstellungen anpassen.
 
----
+## Automatische Updates
 
-## ⚠️ Hinweise
+Das Skript unterstuetzt automatische Updates ueber Tampermonkey mithilfe von:
 
-Dieses Skript arbeitet direkt im Browser und speichert Daten lokal über den UserScript-Manager.  
-Bei Browser-, Tampermonkey- oder Cache-Bereinigungen können lokale Daten verloren gehen.
+- `@updateURL`
+- `@downloadURL`
 
-Daher wird empfohlen, regelmäßig ein Backup über die Einstellungen zu erstellen.
+Zusaetzlich kann in den Einstellungen manuell geprueft werden, ob eine neue Version verfuegbar ist.
 
----
+## Aktueller Entwicklungsstand
 
-## ℹ️ Aktueller Entwicklungsstand v9.6.0
+### v9.6.2.1
 
-Version `v9.6.0` konzentriert sich auf Sicherheit, Stabilität und Datenschutz.
+- Versionsnummer auf 9.6.2.1 gesetzt
+- News standardmaessig aktiviert
+- alle News-Kategorien standardmaessig vorausgewaehlt
+- Tagesschau, WELT, Sportschau und Sportschau Fussball als Newsquellen aktiv
 
-Wichtige Änderungen:
+### v9.6.2
 
-- externes Spielplan-/Sportmodul vollständig entfernt
+- Wetterzentrale unter Sonstiges ergaenzt
+- DWD-Warnkarte mit WMS-Webmodul eingebaut
+- Warnfenster bei Kartenklick ergaenzt
+- mehrere Warnungen werden untereinander angezeigt
+- Vorabinformationen werden rot hervorgehoben
+- Windy Radar wiederhergestellt
+- Windy Umschalter fuer Live-Radar, Regen-Prognose, Gewitter-Prognose und Wind + Regen ergaenzt
+- News-Laufschrift ergaenzt
+- News zeigen Datum und Uhrzeit
+- Sportschau und Sportschau Fussball als News-Kategorien ergaenzt
+- BILD als News-Quelle entfernt
+- Credit-Popups professioneller gestaltet
+- Einsatzname wird bei Credit-Popups als Titel angezeigt
+- Patienten- und Gefangeneninformationen in Popups verbessert
+- Einstellungen deutlich uebersichtlicher strukturiert
+- Kopfzeilen-Button in Darstellung & Bedienung integriert
+- AAO und Verlauf aus Menue und Hintergrundabrufen entfernt
+- Werkzeuge wurde zu Sonstiges umbenannt
+- Event wurde beim Verband mit Trenner integriert
+- Platzierungsumfeld fuer Verband und Spieler wieder kompakt gesetzt
+- moeglicher Verdienst aus offenen Einsaetzen stabilisiert
+- Lehrgangsdaten und Anzeige stabilisiert
+- UTF-8-Artefakte, kaputte Symbole und falsche Umlaute korrigiert
+- Credits-Symbol wieder korrekt gesetzt
+
+### v9.6.0
+
+- externes Spielplan-/Sportmodul vollstaendig entfernt
 - Eventbereich auf reine Leitstellenspiel-Events reduziert
 - API-Aufrufe abgesichert
-- Backup-System gehärtet
+- Backup-System gehaertet
 - Diagnoseexport anonymisiert
-- große Mitgliederlisten performanter gemacht
-- Patchnotes bereinigt und auf einen aktuellen Block reduziert
-- Lizenz auf private Nutzung beschränkt
+- grosse Mitgliederlisten performanter gemacht
+- Patchnotes bereinigt
+- Lizenz auf private Nutzung beschraenkt
 
----
+## Hinweise
 
-## 🔒 Lizenz
+Dieses Skript arbeitet direkt im Browser und speichert Daten lokal ueber den UserScript-Manager. Bei Browser-, Tampermonkey- oder Cache-Bereinigungen koennen lokale Daten verloren gehen.
+
+Es wird empfohlen, regelmaessig ein Backup ueber die Einstellungen zu erstellen.
+
+## Lizenz
 
 Dieses Projekt steht unter:
 
 **Proprietary License - Personal Use Only**
 
-Private Nutzung ist erlaubt.  
-Kopieren, Verändern, Weiterveröffentlichen, Verkaufen, Hosten, Spiegeln oder Einbinden in andere Projekte ist ohne vorherige schriftliche Erlaubnis nicht gestattet.
+Private Nutzung ist erlaubt. Kopieren, Veraendern, Weiterveroeffentlichen, Verkaufen, Hosten, Spiegeln oder Einbinden in andere Projekte ist ohne vorherige schriftliche Erlaubnis nicht gestattet.
 
----
+## Feedback & Fehlerberichte
 
-## 📬 Feedback & Fehlerberichte
+Fehler, Verbesserungsvorschlaege oder Ideen koennen direkt an Fabian (Capt.BobbyNash) gemeldet werden.
 
-Fehler, Verbesserungsvorschläge oder Ideen können direkt an **Fabian (Capt.BobbyNash)** gemeldet werden.
+Bitte bei Fehlern moeglichst angeben:
 
-Bitte bei Fehlern möglichst angeben:
-
-- welche Ansicht geöffnet war
+- welche Ansicht geoeffnet war
 - was genau passiert ist
 - ob Fehlermeldungen angezeigt wurden
 - optional eine anonymisierte Supportdatei aus den Einstellungen
