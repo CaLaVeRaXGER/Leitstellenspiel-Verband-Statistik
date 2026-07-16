@@ -2,7 +2,7 @@
 // @name         LSS Verband Statistik Pro
 // @namespace    http://tampermonkey.net/
 // @charset      UTF-8
-// @version      9.6.2.2
+// @version      9.6.2.1
 // @description  Ultimate Premium Dashboard: Live-Charts, Verbandsprognose, Wetter, Events und animiertes Summer-2026-Design für Feuerwehr und Polizei.
 // @author       Fabian (Capt.BobbyNash)
 // @license      Proprietary - Personal Use Only
@@ -29,8 +29,8 @@
 // @connect      www.welt.de
 // @connect      www.sportschau.de
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
-// @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
-// @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js
+// @updateURL    https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Verbands-Statistik-Pro.user.js
+// @downloadURL  https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Verbands-Statistik-Pro.user.js
 // ==/UserScript==
 
 (function () {
@@ -47,10 +47,10 @@ if(/^\/(?:alliances\/\d+|verband(?:\/|$))/i.test(location.pathname))return;
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  KONFIGURATION                                               ║
 // ╚══════════════════════════════════════════════════════════════╝
-const V   = "9.6.2.2";
+const V   = "9.6.2.1";
 const GAME_HOSTS = new Set(["www.leitstellenspiel.de","polizei.leitstellenspiel.de"]);
 const BASE = GAME_HOSTS.has(location.hostname) ? location.origin : "https://www.leitstellenspiel.de";
-const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Leitstellenspiel-Verband-Statistik-Pro.user.js";
+const UPDATE_URL = "https://raw.githubusercontent.com/CaLaVeRaXGER/Leitstellenspiel-Verband-Statistik/main/Verbands-Statistik-Pro.user.js";
 const SECURITY = {
   maxBackupBytes: 1_500_000,
   maxDiagnosticString: 360,
